@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Margin</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 class="logo">M<span class="rule" aria-hidden="true"></span>argin</h1>
+        <span class="version" id="version"></span>
+      </header>
+      <p class="lede">
+        This build checks that the desktop app's parts work together on this computer. The editor comes next.
+      </p>
+
+      <ul class="checks">
+        <li id="engine" data-state="wait">
+          <h2>Engine</h2>
+          <p class="what">Margin's checks, running inside the app with no network.</p>
+          <p class="result">Checking…</p>
+        </li>
+        <li id="model" data-state="wait">
+          <h2>Local model</h2>
+          <p class="what">Ollama on this computer, reached through the app's HTTP plugin.</p>
+          <p class="result">Looking for Ollama…</p>
+          <button type="button" id="test-model" hidden>Test a reply</button>
+        </li>
+        <li id="library" data-state="wait">
+          <h2>Library</h2>
+          <p class="what">Your writing will live in one SQLite file on this computer.</p>
+          <p class="result">Opening…</p>
+        </li>
+      </ul>
+
+      <section class="try">
+        <h2>Try the checks</h2>
+        <p class="what">Edit the text: the findings update as you type.</p>
+        <textarea id="sample" spellcheck="true" aria-label="Text to check"></textarea>
+        <ul id="findings" aria-live="polite"></ul>
+      </section>
+    </main>
+  </body>
+</html>

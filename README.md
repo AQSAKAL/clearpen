@@ -12,7 +12,7 @@ Margin helps you write articles that hold up. You do the writing; Margin edits a
 packages/
   core/       the engine — checks, diffs, prompts, the LLM client and AI tasks
 apps/
-  desktop/    Tauri app for Mac and Windows            (phase 5)
+  desktop/    Tauri app for Mac and Windows            (packaging done; the editor comes in phase 3)
   server/     self-hosted server with Postgres         (phase 4)
   web/        the app in a browser                     (phase 4)
 docs/

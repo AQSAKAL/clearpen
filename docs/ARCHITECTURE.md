@@ -236,7 +236,7 @@ Desktop ↔ your server: local changes go into an outbox and are pushed through 
 | 2 | `packages/db`: both schemas, migrations, repositories, dual-dialect test suite |
 | 3 | `packages/ui` in shadcn: shell, library with projects, editor, margin notes, selection toolbar, Assist |
 | 4 | `apps/server` (Hono, Postgres, auth) and `apps/web` with Docker Compose |
-| 5 | `apps/desktop` (Tauri): SQLite, keychain, Ollama, menus, auto-update, installers |
+| 5 | `apps/desktop` (Tauri): SQLite, keychain, Ollama, menus, auto-update, installers. *Started early: the shell, its permissions and the unsigned Mac/Windows release workflow exist — see `apps/desktop/README.md`.* |
 | 6 | Publishing v1: static site generator, themes, folder and GitHub/Cloudflare Pages targets |
 | 7 | Sync between desktop and a server (self-hosted or cloud) |
 | 8 | Margin Cloud: accounts, site hosting, custom domains with automatic HTTPS and redirects, billing |

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Margin</title>
+  <!-- Margin's mark: the M and the margin rule, on paper. Source for `pnpm tauri icon app-icon.svg`. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf9"/>
+      <stop offset="1" stop-color="#f1ede4"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#paper)" stroke="#e2ddd2" stroke-width="4"/>
+  <g transform="translate(7 0)" fill="#1d1c1a">
+    <rect x="283" y="324" width="34" height="376"/>
+    <polygon points="286,324 352,324 486,700 420,700"/>
+    <polygon points="456,700 486,700 610,324 580,324"/>
+    <rect x="574" y="324" width="72" height="376"/>
+    <rect x="240" y="680" width="120" height="20"/>
+    <rect x="540" y="680" width="150" height="20"/>
+    <rect x="240" y="324" width="112" height="20"/>
+    <rect x="574" y="324" width="116" height="20"/>
+    <rect x="730" y="262" width="40" height="500" rx="20" fill="#d6452b"/>
+  </g>
+</svg>
