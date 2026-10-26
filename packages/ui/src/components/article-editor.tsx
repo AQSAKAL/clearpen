@@ -54,6 +54,8 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
       },
       onAccept: (id, suggestion) => page.emit('accept', { id, suggestion }),
       onReject: (id, suggestion) => page.emit('reject', { id, suggestion }),
+      onNoteClick: (id) => page.emit('note', id),
+      onGeometry: () => page.emit('geometry', null),
       onRequestCompletion() {
         page.emit('complete', null);
         return true;

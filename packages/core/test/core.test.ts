@@ -10,6 +10,7 @@ import { inventions, warning } from '../src/integrity.ts';
 import { completedItems, completedString } from '../src/jsonstream.ts';
 import { toDocument, toHTML } from '../src/markdown.ts';
 import { ImageError, imageBlock, MEDIA_SRC, prepareImage } from '../src/media.ts';
+import { findingsIn, LENS_CATEGORIES, relocate } from '../src/notes.ts';
 import { outlineToMarkdown, sectionsOf } from '../src/outline.ts';
 import { editChanges, isWholeRewrite, streamingRewrite } from '../src/suggest.ts';
 import { firstSentenceEnd, tidyCompletion, tidyRewrite } from '../src/tidy.ts';
@@ -355,4 +356,27 @@ test('suggestions: whole rewrites, split edits, invented figures, streaming prea
   assert.equal(streamingRewrite("Here's a shorter version: The inbox", ' The inbox has'), ' The inbox');
   assert.equal(streamingRewrite('  The inbox', 'The inbox'), 'The inbox');
   assert.equal(streamingRewrite('Here is: the plan', 'Here is the plan: ship it'), 'Here is: the plan');
+});
+
+test('notes follow their passage, and lenses pick their own findings', () => {
+  const before = 'Alpha beta. Gamma delta. Alpha beta.';
+  const span = { from: 25, to: 35 }; // the second "Alpha beta"
+  assert.deepEqual(relocate(span, before, before), span);
+  const after = `Intro. ${before}`;
+  assert.deepEqual(relocate(span, before, after), { from: 32, to: 42 });
+  assert.equal(relocate(span, before, 'Gamma delta.'), null);
+
+  const findings = [
+    { from: 0, to: 5, category: 'numbers' },
+    { from: 10, to: 20, category: 'logic' },
+    { from: 30, to: 40, category: 'numbers' },
+  ] as Parameters<typeof findingsIn>[0];
+  assert.deepEqual(
+    findingsIn(findings, 0, 25, LENS_CATEGORIES.factcheck).map((f) => f.from),
+    [0],
+  );
+  assert.deepEqual(
+    findingsIn(findings, 0, 25, LENS_CATEGORIES.logic).map((f) => f.from),
+    [10],
+  );
 });

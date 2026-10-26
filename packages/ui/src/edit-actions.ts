@@ -6,7 +6,6 @@
 
 import {
   editChanges,
-  intentOf,
   isWholeRewrite,
   type RewriteAction,
   type RewriteDone,
@@ -185,16 +184,6 @@ export function useEditActions(mod: string) {
       if (!ed) return;
       const text = ed.slice(span.from, span.to);
       if (!text.trim()) return;
-      // "Fact-check it" or "is this right?" want a verdict, not an edit.
-      const intent = intentOf(instruction);
-      if (intent === 'ask') {
-        status.show({ text: 'Questions about a passage come with Ask, in a later update.', ms: 5000 });
-        return;
-      }
-      if (intent) {
-        status.show({ text: 'Checking a passage comes in the next update.', ms: 5000 });
-        return;
-      }
       const group = `e${Date.now()}`;
       void ai.run('Working out the changes', async (signal) => {
         ed.setSelection(span.to, span.to, false);

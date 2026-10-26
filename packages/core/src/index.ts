@@ -16,6 +16,7 @@ export * from './llm/openai.ts';
 export type * from './llm/types.ts';
 export * from './markdown.ts';
 export * from './media.ts';
+export * from './notes.ts';
 export * from './outline.ts';
 export * from './prompts.ts';
 export * from './suggest.ts';

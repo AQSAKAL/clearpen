@@ -16,6 +16,12 @@ In today's fast-paced world, it is very important for writers to basically make 
 
 Finish a sentence and pause. Margin checks whether your paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey: **Tab** keeps it, **${mod}→** takes one word, and typing on ignores it. When the paragraph is complete you'll see *¶ point made*, and Tab starts a new one. **${mod}J** asks for a suggestion at any time, and ⋯ → Next-sentence suggestions turns them off.
 
+## Check it
+
+- **Review** (${mod}⇧E) reads the whole draft. Margin's own checks come first: table totals, percentages, contradictions, sweeping claims. The AI's notes follow, each beside the passage it's about. Click a note to see its passage, then *Apply* its fix or dismiss it.
+- **Check ▾** on a selection fact-checks it, tests its logic or compares it with the rest of the draft. A correction is shown only if the model stands by it when asked again.
+- **The word count** opens Insights: reading level, long sentences, passive voice, and the phrases that make writing sound machine-made.
+
 ## Start here
 
 - **New article** in the sidebar starts a blank page. Your work saves as you type.
@@ -27,7 +33,7 @@ Finish a sentence and pause. Margin checks whether your paragraph has made its p
 
 ## Coming next
 
-Checks of your facts, logic and numbers, an editor's review, and thinking aids for planning a section arrive in the next updates of this build. Margin edits; the writing itself is yours.
+Thinking aids for planning a section, Ask, and help with publishing arrive in the next updates of this build. Margin edits; the writing itself is yours.
 
 When you're done here, press **New article** and write something of your own.
 `;

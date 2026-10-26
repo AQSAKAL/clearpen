@@ -8,6 +8,8 @@ export function shortcuts(mod: string): [string[], string][] {
     [[`${mod}J`], 'Suggest the next sentence now'],
     [[`${mod}↵`], 'Accept the latest suggested changes'],
     [['Esc'], 'Dismiss a suggestion, reject changes, or stop the AI'],
+    [[`${mod}⇧E`], 'Review the draft'],
+    [[`${mod}⇧A`], 'Show or hide the Assist panel'],
     [[`${mod}S`], 'Save a version'],
     [[`${mod}\\`], 'Show or hide the library'],
     [[`${mod}.`], 'Focus mode'],

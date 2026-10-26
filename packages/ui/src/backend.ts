@@ -4,11 +4,15 @@
 // HTTP. The UI never calls Tauri, SQLite or a model server directly.
 
 import type {
+  Brief,
+  CheckEvent,
+  CheckInput,
   EditEvent,
   EditInput,
   LLMStatus,
   NextSentence,
   NoticeEvent,
+  ReviewEvent,
   RewriteDone,
   RewriteInput,
   Role,
@@ -34,6 +38,10 @@ export interface AI {
   setModels(models: ModelChoice, opts?: { preload?: boolean }): void;
   rewrite(input: RewriteInput, opts?: TaskOptions): AsyncIterable<NoticeEvent | TokenEvent | RewriteDone>;
   edit(input: EditInput, opts?: TaskOptions): AsyncIterable<EditEvent>;
+  /** An editor's notes on the whole draft. */
+  review(input: { title?: string; content: string; brief?: Brief }, opts?: TaskOptions): AsyncIterable<ReviewEvent>;
+  /** Verdicts on a passage: its facts, its logic, or its consistency with the draft. */
+  check(input: CheckInput, opts?: TaskOptions): AsyncIterable<CheckEvent>;
   /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing. */
   nextSentence(
     input: { title?: string; before: string; heading?: string; notes?: string[] },

@@ -11,6 +11,10 @@ export interface PageEvents {
   reject: { id: string; suggestion: Suggestion | undefined };
   /** ⌘J: suggest the next sentence now. */
   complete: null;
+  /** A click in the text, on a noted passage (its id) or elsewhere (null). */
+  note: string | null;
+  /** The editor's layout changed: anything placed beside the text should move. */
+  geometry: null;
 }
 
 export interface Page {

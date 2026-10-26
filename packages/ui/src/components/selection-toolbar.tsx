@@ -3,12 +3,14 @@
 // the mouse lets go, sits above the selection (below it near the top of the
 // window), and keeps the editor's selection while you use it.
 
-import type { RewriteAction } from '@margin/core';
+import { intentOf, type Lens, type RewriteAction } from '@margin/core';
 import { ChevronDownIcon, SparklesIcon } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAI } from '../ai.tsx';
 import { REWRITE_ACTIONS, type Span, TONES, useEditActions } from '../edit-actions.ts';
 import { usePage } from '../editor-ref.tsx';
+import { LENSES } from '../review-actions.ts';
+import { useStatus } from '../status.tsx';
 import { Button } from './ui/button.tsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu.tsx';
 import { Input } from './ui/input.tsx';
@@ -16,9 +18,10 @@ import { Separator } from './ui/separator.tsx';
 
 const SHOW_AFTER_MS = 180;
 
-export function SelectionToolbar({ mod }: { mod: string }) {
+export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span, lens: Lens): void }) {
   const page = usePage();
   const ai = useAI();
+  const status = useStatus();
   const { rewrite, editWith } = useEditActions(mod);
   const bar = useRef<HTMLDivElement>(null);
   const [span, setSpan] = useState<Span | null>(null);
@@ -151,6 +154,34 @@ export function SelectionToolbar({ mod }: { mod: string }) {
       >
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="ghost">
+            Check <ChevronDownIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+          {(Object.entries(LENSES) as [Lens, (typeof LENSES)[Lens]][]).map(([lens, l]) => (
+            <DropdownMenuItem
+              key={lens}
+              className="flex-col items-start gap-0"
+              onSelect={() => {
+                const s = span;
+                hide();
+                check(s, lens);
+              }}
+            >
+              <span>{l.label}</span>
+              <span className="text-xs text-muted-foreground">{l.hint}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu
+        modal={false}
+        onOpenChange={(open) => {
+          menuOpen.current = open;
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="ghost">
             Tone <ChevronDownIcon />
           </Button>
         </DropdownMenuTrigger>
@@ -171,7 +202,12 @@ export function SelectionToolbar({ mod }: { mod: string }) {
           if (!what) return;
           const s = span;
           hide();
-          editWith(s, what);
+          // "Fact-check it" or "is this right?" want a verdict, not an edit.
+          const intent = intentOf(what);
+          if (intent === 'ask')
+            status.show({ text: 'Questions about a passage come with Ask, in a later update.', ms: 5000 });
+          else if (intent) check(s, intent);
+          else editWith(s, what);
         }}
       >
         <SparklesIcon className="ml-1.5 size-3.5 shrink-0 text-ai" aria-hidden />

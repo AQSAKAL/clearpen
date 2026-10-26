@@ -10,9 +10,12 @@ import { AskProvider } from './ask.tsx';
 import { Autocomplete } from './autocomplete.tsx';
 import type { Backend } from './backend.ts';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
+import { AssistPanel, type AssistTab } from './components/assist-panel.tsx';
 import { FontsDialog } from './components/fonts-dialog.tsx';
 import { HistoryDialog } from './components/history-dialog.tsx';
+import { useHighlights } from './components/insights.tsx';
 import { LibrarySidebar, Logo } from './components/library-sidebar.tsx';
+import { MarginNotes } from './components/margin-notes.tsx';
 import { ModelsDialog } from './components/models-dialog.tsx';
 import { MoveDialog } from './components/move-dialog.tsx';
 import { Reader } from './components/reader.tsx';
@@ -26,7 +29,10 @@ import { TooltipProvider } from './components/ui/tooltip.tsx';
 import { EditorRefProvider, usePage } from './editor-ref.tsx';
 import { applyFonts } from './fonts.ts';
 import { copyMarkdown, copyRichText, documentOf, fileName, markdownOf } from './lib/export.ts';
+import { cn } from './lib/utils.ts';
 import { LibraryProvider, useLibrary } from './library.tsx';
+import { NotesProvider } from './notes.tsx';
+import { useReviewActions } from './review-actions.ts';
 import { loadSettings, type Settings, SettingsProvider, useSettings } from './settings.tsx';
 import { StatusProvider } from './status.tsx';
 import { ThemeProvider } from './theme.tsx';
@@ -34,6 +40,39 @@ import { WELCOME_TITLE, welcomeText } from './welcome.ts';
 
 /** A version is saved this often while an article is open, if its text changed. */
 export const AUTO_VERSION_MS = 10 * 60 * 1000;
+
+/** Room for the page (700), the gap and the margin column (300), with padding. */
+const MARGIN_ROOM_PX = 1090;
+/** Wide enough for the Assist panel to sit beside the page rather than over it. */
+const PANEL_INLINE_QUERY = '(min-width: 1280px)';
+
+/** Is `ref`'s element at least `px` wide? Follows it as the window and panels resize. */
+function useWide(ref: React.RefObject<HTMLElement | null>, px: number): boolean {
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => entry && setWide(entry.contentRect.width >= px));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, px]);
+  return wide;
+}
+
+function useMedia(query: string): boolean {
+  const [match, setMatch] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : true,
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const q = window.matchMedia(query);
+    const update = () => setMatch(q.matches);
+    update();
+    q.addEventListener('change', update);
+    return () => q.removeEventListener('change', update);
+  }, [query]);
+  return match;
+}
 
 const hashId = () => /^#\/([\w-]+)$/.exec(window.location.hash)?.[1] ?? null;
 
@@ -94,7 +133,9 @@ function Shell({ backend }: { backend: Backend }) {
             <AskProvider>
               <LibraryProvider backend={backend} onOpen={onOpen}>
                 <EditorRefProvider>
-                  <Workspace />
+                  <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
+                    <Workspace />
+                  </NotesProvider>
                 </EditorRefProvider>
               </LibraryProvider>
             </AskProvider>
@@ -118,7 +159,20 @@ function Workspace() {
   const [focus, setFocus] = useState(false);
   const [dialog, setDialog] = useState<'history' | 'fonts' | 'shortcuts' | 'trash' | 'models' | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
+  const [panel, setPanel] = useState<AssistTab | null>(null);
   const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
+  const scroller = useRef<HTMLDivElement>(null);
+  const notesInMargin = useWide(scroller, MARGIN_ROOM_PX);
+  const panelInline = useMedia(PANEL_INLINE_QUERY);
+  const highlight = useHighlights();
+  // Notes go in the margin when there's room, otherwise in the Assist panel.
+  const openNotes = useCallback(() => {
+    if (!notesInMargin) setPanel('notes');
+  }, [notesInMargin]);
+  const { review, check } = useReviewActions(openNotes);
+
+  // A click on a noted passage shows its note, wherever the notes are.
+  useEffect(() => page.on('note', (id) => id && openNotes()), [page, openNotes]);
   const libRef = useRef(lib);
   libRef.current = lib;
 
@@ -218,6 +272,15 @@ function Workspace() {
   async function run(c: Command) {
     try {
       switch (c) {
+        case 'review':
+          review();
+          break;
+        case 'assist':
+          setPanel((p) => (p ? null : notesInMargin ? 'insights' : 'notes'));
+          break;
+        case 'insights':
+          setPanel('insights');
+          break;
         case 'autocomplete':
           set('autocomplete', !settings.autocomplete);
           toast(settings.autocomplete ? 'Next-sentence suggestions off' : 'Next-sentence suggestions on');
@@ -293,6 +356,12 @@ function Workspace() {
       } else if (modKey && e.shiftKey && key === 'p') {
         e.preventDefault();
         toggleReader();
+      } else if (modKey && e.shiftKey && key === 'e') {
+        e.preventDefault();
+        void runRef.current('review');
+      } else if (modKey && e.shiftKey && key === 'a') {
+        e.preventDefault();
+        void runRef.current('assist');
       } else if (e.key === 'Escape' && !e.defaultPrevented && document.querySelector('[data-reading]')) {
         if (!document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) toggleReader();
       }
@@ -306,7 +375,7 @@ function Workspace() {
   return (
     <SidebarProvider open={settings.libraryOpen} onOpenChange={(o) => set('libraryOpen', o)}>
       <LibrarySidebar onMove={setMoving} onTrash={() => setDialog('trash')} onModels={() => setDialog('models')} />
-      <SidebarInset className="min-w-0">
+      <SidebarInset className="h-svh min-w-0 overflow-hidden">
         <TopBar
           counts={counts}
           reading={!!reading}
@@ -315,21 +384,32 @@ function Workspace() {
           mod={mod}
           onCommand={run}
         />
-        <div className="flex-1 overflow-y-auto" data-reading={reading ? '' : undefined}>
-          <div className={reading ? 'hidden' : undefined} aria-hidden={!!reading}>
-            <ArticleEditor onCounts={onCounts} />
+        <div className="flex min-h-0 flex-1">
+          <div ref={scroller} className="min-w-0 flex-1 overflow-y-auto" data-reading={reading ? '' : undefined}>
+            <div className={cn('flex justify-center gap-9 px-2', reading && 'hidden')} aria-hidden={!!reading}>
+              <div className="w-full min-w-0 max-w-[700px]">
+                <ArticleEditor onCounts={onCounts} />
+              </div>
+              {notesInMargin && <MarginNotes />}
+            </div>
+            {reading && (
+              <Reader
+                title={reading.title}
+                content={reading.content}
+                counts={countsOf(reading.content)}
+                onExit={toggleReader}
+              />
+            )}
+            {!ready && <div className="sr-only">Opening your library…</div>}
           </div>
-          {reading && (
-            <Reader
-              title={reading.title}
-              content={reading.content}
-              counts={countsOf(reading.content)}
-              onExit={toggleReader}
-            />
+          {panelInline && (
+            <AssistPanel inline tab={panel} onTab={setPanel} notesInMargin={notesInMargin} highlight={highlight} />
           )}
-          {!ready && <div className="sr-only">Opening your library…</div>}
         </div>
       </SidebarInset>
+      {!panelInline && (
+        <AssistPanel inline={false} tab={panel} onTab={setPanel} notesInMargin={notesInMargin} highlight={highlight} />
+      )}
       <HistoryDialog
         open={dialog === 'history'}
         onOpenChange={(o) => setDialog(o ? 'history' : null)}
@@ -344,7 +424,7 @@ function Workspace() {
       <TrashDialog open={dialog === 'trash'} onOpenChange={(o) => setDialog(o ? 'trash' : null)} />
       <MoveDialog docId={moving} onOpenChange={(o) => !o && setMoving(null)} />
       <ModelsDialog open={dialog === 'models'} onOpenChange={(o) => setDialog(o ? 'models' : null)} />
-      {!reading && <SelectionToolbar mod={mod} />}
+      {!reading && <SelectionToolbar mod={mod} check={check} />}
       <Autocomplete />
     </SidebarProvider>
   );

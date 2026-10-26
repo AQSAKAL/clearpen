@@ -1,6 +1,6 @@
 // The bar above the page: save state, word count, reader mode and the ⋯ menu.
 
-import { BookOpenIcon, MoreHorizontalIcon, PencilLineIcon } from 'lucide-react';
+import { BookOpenIcon, MessageSquareTextIcon, MoreHorizontalIcon, PanelRightIcon, PencilLineIcon } from 'lucide-react';
 import { cn } from '../lib/utils.ts';
 import { type SaveState, useLibrary } from '../library.tsx';
 import { type ThemeSetting, useTheme } from '../theme.tsx';
@@ -21,6 +21,9 @@ import {
 import { SidebarTrigger, useSidebar } from './ui/sidebar.tsx';
 
 export type Command =
+  | 'review'
+  | 'assist'
+  | 'insights'
   | 'autocomplete'
   | 'focus'
   | 'reader'
@@ -81,9 +84,15 @@ export function TopBar({
         {saveState === 'retrying' && failures > 2 ? 'Not saved — can’t reach the library' : SAVE_LABELS[saveState]}
       </span>
       <div data-tauri-drag-region className="h-full flex-1" />
-      <span className="px-2 text-xs text-muted-foreground tabular-nums">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-xs font-normal text-muted-foreground tabular-nums"
+        onClick={() => onCommand('insights')}
+        title="Insights"
+      >
         {counts.words.toLocaleString()} words<span className="max-sm:hidden"> · {counts.minutes} min read</span>
-      </span>
+      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -92,6 +101,19 @@ export function TopBar({
       >
         {reading ? <PencilLineIcon /> : <BookOpenIcon />}
         <span className="max-sm:hidden">{reading ? 'Edit' : 'Read'}</span>
+      </Button>
+      <Button variant="ghost" size="sm" onClick={() => onCommand('review')} title={`Review the draft (${mod}⇧E)`}>
+        <MessageSquareTextIcon />
+        <span className="max-sm:hidden">Review</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onCommand('assist')}
+        aria-label="Assist"
+        title={`Assist: notes and insights (${mod}⇧A)`}
+      >
+        <PanelRightIcon />
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
