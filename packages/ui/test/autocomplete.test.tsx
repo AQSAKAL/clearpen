@@ -14,12 +14,9 @@ const POINT = 'The shared inbox worked because no ticket waited for one person.'
 const SUPPORT = 'Requests now reach whoever is free first.';
 const NEXT = 'That means a sick day no longer leaves a customer waiting.';
 
-/** The judge quotes the point and its support but finds no meaning; then the one sentence. */
+/** The judge finds the point (sentence 1) and its support (2) but no meaning; then the one sentence. */
 const missingMeaning: Reply[] = [
-  {
-    when: /The paragraph:/,
-    reply: JSON.stringify({ idea: 'why the inbox worked', point: POINT, support: SUPPORT, meaning: '' }),
-  },
+  { when: /The paragraph, sentence by sentence/, reply: JSON.stringify({ point: 1, support: 2, meaning: 0 }) },
   { when: /Article title:/, reply: NEXT },
 ];
 
@@ -66,6 +63,17 @@ test('after a finished sentence and a pause, the missing sentence appears in gre
   assert.equal(ghost(), '');
 });
 
+test('a sentence that only repeats the paragraph is taken back once written', async () => {
+  const { view } = await launch([
+    missingMeaning[0]!,
+    { when: /Article title:/, reply: 'Requests now reach whoever is really free first.' },
+  ]);
+  type(view, `${POINT} ${SUPPORT}`);
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.equal(ghost(), '');
+  assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT}`);
+});
+
 test('mid-sentence there is no suggestion', async () => {
   const { view } = await launch(missingMeaning);
   type(view, `${POINT} Requests now reach`);
@@ -76,10 +84,7 @@ test('mid-sentence there is no suggestion', async () => {
 test('a complete paragraph gets “point made”, and Tab starts a new paragraph', async () => {
   const meaning = 'That is the change we wanted.';
   const { view } = await launch([
-    {
-      when: /The paragraph:/,
-      reply: JSON.stringify({ idea: 'the inbox', point: POINT, support: SUPPORT, meaning }),
-    },
+    { when: /The paragraph, sentence by sentence/, reply: JSON.stringify({ point: 1, support: 2, meaning: 3 }) },
   ]);
   type(view, `${POINT} ${SUPPORT} ${meaning}`);
   await waitFor(() => assert.match(ghost(), /point made/), slow);

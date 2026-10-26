@@ -1,6 +1,6 @@
 # Plan: the writing app in the desktop app
 
-**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review.
+**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review. Later, also at your request, the next sentence streams in as it's written.
 
 ## Context
 

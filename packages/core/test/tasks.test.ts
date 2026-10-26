@@ -23,7 +23,7 @@ import {
 import { check } from '../src/tasks/check.ts';
 import { InputError } from '../src/tasks/common.ts';
 import { edit } from '../src/tasks/edit.ts';
-import { nextSentence } from '../src/tasks/next.ts';
+import { nextSentence, nextSentenceStream } from '../src/tasks/next.ts';
 import { headlines, meta, normaliseOutline, outline } from '../src/tasks/plan.ts';
 import { review } from '../src/tasks/review.ts';
 import { think } from '../src/tasks/think.ts';
@@ -330,11 +330,24 @@ test('a suggestion is asked for only after a finished sentence at the end of pro
   assert.equal(nextSentenceSpot(six.slice(0, -10), six.length - 10), true);
 });
 
-test('the next sentence comes only after a verdict: the judge quotes, code decides', () => {
-  // The judge only quotes; a part counts as done only if its quote is really there.
+test('the next sentence comes only after a verdict: the judge names sentences, code decides', () => {
   assert.match(judgeMessages({ before: 'x' })[0]!.content, /Do not write or suggest anything/);
   const para3 =
     'Most advice is about control. Control only works while you are in the room. So explain more and command less. ';
+  // The judge is shown the paragraph numbered, and answers with numbers…
+  assert.match(
+    judgeMessages({ before: `Earlier.\n\n${para3}` })[1]!.content,
+    /1\. Most advice is about control\.\n2\. Control[\s\S]*3\. So explain/,
+  );
+  assert.equal(paragraphVerdict(para3, { point: 1, support: 2, meaning: 3 }).complete, true);
+  // …and a number that names no sentence, or 0, doesn't count.
+  assert.equal(
+    paragraphVerdict(para3, { point: 1, support: 2, meaning: 4 }).missing,
+    'what it means — why it matters or what follows',
+  );
+  assert.match(paragraphVerdict(para3, { point: 1, support: 0, meaning: 3 }).missing ?? '', /^support for its point/);
+  assert.equal(paragraphVerdict(para3, { point: '1', support: '2', meaning: '3' }).complete, true);
+  // Quotes still work; a part counts as done only if its quote is really there.
   const all = {
     point: 'Most advice is about control.',
     support: 'Control only works while you are in the room.',
@@ -392,12 +405,7 @@ test('the next sentence stops when it would only repeat or drone on', () => {
 });
 
 test('nextSentence asks the model only when it should, and writes only what is missing', async () => {
-  const judgeAll = JSON.stringify({
-    idea: 'control vs trust',
-    point: 'Most advice is about control.',
-    support: 'Control only works while you are in the room.',
-    meaning: 'So explain more and command less.',
-  });
+  const judgeAll = JSON.stringify({ point: 1, support: 2, meaning: 3 });
   const para3 =
     'Most advice is about control. Control only works while you are in the room. So explain more and command less.';
 
@@ -412,20 +420,11 @@ test('nextSentence asks the model only when it should, and writes only what is m
 
   // A paragraph that has made its point: one call, the judge's, and nothing suggested.
   const made = fakeLLM({ complete: () => judgeAll, stream: () => ['Should never be asked.'] });
-  assert.deepEqual(await nextSentence(made.llm, { before: para3 }), {
-    complete: true,
-    idea: 'control vs trust',
-    next: '',
-  });
+  assert.deepEqual(await nextSentence(made.llm, { before: para3 }), { complete: true, next: '' });
   assert.equal(made.provider.requests.length, 1);
 
   // Missing its meaning: the writing call is told exactly that, and is steered by the section.
-  const judgeTwo = JSON.stringify({
-    idea: 'control',
-    point: 'Most advice is about control.',
-    support: 'Control only works while you are in the room.',
-    meaning: '',
-  });
+  const judgeTwo = JSON.stringify({ point: 1, support: 2, meaning: 0 });
   const two = 'Most advice is about control. Control only works while you are in the room.';
   const writes = fakeLLM({
     complete: () => judgeTwo,
@@ -438,7 +437,6 @@ test('nextSentence asks the model only when it should, and writes only what is m
   });
   assert.deepEqual(out, {
     complete: false,
-    idea: 'control',
     missing: 'what it means — why it matters or what follows',
     next: ' So explain more and command less.',
   });
@@ -452,4 +450,25 @@ test('nextSentence asks the model only when it should, and writes only what is m
     stream: () => ['Control only works while you are really in the room.'],
   });
   assert.equal((await nextSentence(echo.llm, { before: two })).next, '');
+});
+
+test('nextSentenceStream gives the verdict first, then the sentence as it is written', async () => {
+  const two = 'Most advice is about control. Control only works while you are in the room.';
+  const writes = fakeLLM({
+    complete: () => JSON.stringify({ point: 1, support: 2, meaning: 0 }),
+    stream: () => [' So explain', ' more and', ' command less.', ' Then a second', ' sentence.'],
+  });
+  const events = await collect(nextSentenceStream(writes.llm, { before: two }));
+  assert.deepEqual(events[0], {
+    type: 'verdict',
+    complete: false,
+    missing: 'what it means — why it matters or what follows',
+  });
+  assert.deepEqual(
+    events.filter((e) => e.type === 'text').map((e) => e.text),
+    [' So explain', ' So explain more and', ' So explain more and command less.'],
+  );
+  assert.deepEqual(events.at(-1), { type: 'done', next: ' So explain more and command less.' });
+  // One sentence is all that's wanted: the model is stopped once it's written.
+  assert.equal(writes.provider.requests[1]!.signal?.aborted, true);
 });

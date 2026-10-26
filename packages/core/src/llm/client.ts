@@ -62,6 +62,9 @@ export function pickModel(installed: string[], preferred = PREFERRED_MODELS): st
   return installed.find((m) => !/embed/i.test(m)) ?? null;
 }
 
+/** How long `modelFor` trusts the last list of installed models. */
+const STATUS_FRESH_MS = 10_000;
+
 export function createLLM({
   provider,
   models = {},
@@ -97,10 +100,14 @@ export function createLLM({
     }
   }
 
+  // The installed models change rarely; don't ask the server before every request.
+  let recent: { at: number; status: LLMStatus } | null = null;
+
   async function modelFor(role: Role = 'quick'): Promise<string> {
     const direct = chosen[role] ?? (role === 'quick' ? null : chosen.quick);
     if (direct && provider.kind !== 'ollama') return direct;
-    const s = await status();
+    const s = recent && Date.now() - recent.at < STATUS_FRESH_MS ? recent.status : await status();
+    recent = s.ok ? { at: Date.now(), status: s } : null;
     const m = s.roles[role];
     if (!m) throw new Error(s.error || 'No model available.');
     return m;

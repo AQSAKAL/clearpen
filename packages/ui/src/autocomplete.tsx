@@ -1,7 +1,8 @@
 // The next logical sentence. When the writer finishes a sentence and pauses,
 // Margin asks whether the paragraph has made its point. If it has, a small
 // "¶ point made" appears (Tab starts a new paragraph); if not, one sentence
-// in grey supplies the missing part. Tab keeps it; typing on ignores it.
+// in grey supplies the missing part, appearing as the model writes it. Tab
+// keeps it; typing on ignores it.
 // After a suggestion is taken, Margin waits for words of the writer's own,
 // so Tab can never write a paragraph.
 
@@ -58,8 +59,11 @@ export function Autocomplete() {
       s.ctrl = ctrl;
       // The section's notes steer the next sentence toward the writer's next point.
       const section = sectionAt(text, pos);
-      const out = await backend.ai
-        .nextSentence(
+      // The writer moved on while the model thought.
+      const stale = () => id !== s.seq || ed.cursor() !== pos || !ed.getSelection().empty;
+      let complete = false;
+      try {
+        for await (const ev of backend.ai.nextSentence(
           {
             title: page.title.current,
             before: text.slice(Math.max(0, pos - 6000), pos),
@@ -67,12 +71,22 @@ export function Autocomplete() {
             notes: section?.points ?? [],
           },
           { signal: ctrl.signal },
-        )
-        .catch(() => null); // the model is away: no suggestion this time
-      // The writer moved on while the model thought.
-      if (!out || id !== s.seq || ed.cursor() !== pos || !ed.getSelection().empty) return;
-      if (out.next.trim()) ed.showGhost(pos, out.next);
-      else if (out.complete) ed.showGhost(pos, '\n\n', POINT_MADE);
+        )) {
+          if (stale()) return;
+          if (ev.type === 'verdict') {
+            complete = ev.complete;
+            if (complete) ed.showGhost(pos, '\n\n', POINT_MADE);
+          } else if (ev.type === 'text') ed.showGhost(pos, ev.text);
+          // Shown as it streamed, then taken back if it only repeated what's there.
+          else if (!complete) {
+            if (ev.next.trim()) ed.showGhost(pos, ev.next);
+            else ed.clearGhost();
+          }
+        }
+      } catch {
+        // The model is away: no suggestion this time.
+        if (!stale()) ed.clearGhost();
+      }
     }
 
     const offUpdate = page.on('update', (u) => {

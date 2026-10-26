@@ -1,7 +1,8 @@
 // The next logical sentence — the one place Margin writes, one sentence at a
 // time. First a verdict: has this paragraph made its point? Only if not, the
-// one sentence that supplies the missing part. Ask only where
-// `nextSentenceSpot` says it's worth it.
+// one sentence that supplies the missing part, streamed as it's written so
+// the writer sees it begin at once. Ask only where `nextSentenceSpot` says
+// it's worth it.
 
 import {
   endsSentence,
@@ -11,48 +12,73 @@ import {
   paragraphVerdict,
 } from '../autocomplete.ts';
 import type { LLMClient } from '../llm/client.ts';
+import { anySignal } from '../llm/util.ts';
 import * as P from '../prompts.ts';
-import { tidyCompletion } from '../tidy.ts';
-import { field, type TaskOptions } from './common.ts';
+import { firstSentenceEnd, tidyCompletion } from '../tidy.ts';
+import type { TaskOptions } from './common.ts';
+
+export interface NextSentenceInput {
+  title?: string;
+  /** The article up to the cursor. */
+  before: string;
+  /** The section being written, and the author's notes for it. */
+  heading?: string;
+  notes?: string[];
+}
 
 export interface NextSentence {
   /** The paragraph has made its point: suggest nothing (the editor shows "¶ point made"). */
   complete: boolean;
-  /** The paragraph's idea, in a few words, when the judge was asked. */
-  idea?: string;
   /** What the paragraph was missing, when it was. */
   missing?: string;
   /** The suggested sentence, or '' for none. */
   next: string;
 }
 
-export async function nextSentence(
+export type NextSentenceEvent =
+  /** The judge's verdict, before any sentence is written. */
+  | { type: 'verdict'; complete: boolean; missing?: string }
+  /** The sentence so far, tidied to fit at the cursor. */
+  | { type: 'text'; text: string }
+  /** The finished sentence — or '' when it only repeated what's there. */
+  | { type: 'done'; next: string };
+
+export async function* nextSentenceStream(
   llm: LLMClient,
-  input: { title?: string; before: string; heading?: string; notes?: string[] },
+  input: NextSentenceInput,
   { signal }: TaskOptions = {},
-): Promise<NextSentence> {
+): AsyncGenerator<NextSentenceEvent> {
   const before = input.before.slice(-20_000);
-  if (!endsSentence(before)) return { complete: false, next: '' }; // whole sentences only
-  if (paragraphLength(before) >= MAX_PARAGRAPH_SENTENCES) return { complete: true, next: '' };
+  // Whole sentences only, and a long paragraph has said enough.
+  if (!endsSentence(before)) {
+    yield { type: 'done', next: '' };
+    return;
+  }
+  if (paragraphLength(before) >= MAX_PARAGRAPH_SENTENCES) {
+    yield { type: 'verdict', complete: true };
+    yield { type: 'done', next: '' };
+    return;
+  }
   const notes = (input.notes ?? []).slice(0, 12).map((n) => n.slice(0, 300));
   const model = await llm.modelFor('quick');
-  const abort = signal ? { signal } : {};
 
-  // First the judge — it only quotes; code decides whether the point is made.
+  // First the judge — it only names sentences; code decides whether the point is made.
   const judged = await llm.json({
     model,
     messages: P.judgeMessages({ before }),
     format: P.judgeSchema,
-    maxTokens: 260,
+    maxTokens: 60,
     temperature: 0,
-    ...abort,
+    ...(signal ? { signal } : {}),
   });
   const { complete, missing } = paragraphVerdict(before, judged);
-  const idea = field(judged && typeof judged === 'object' ? (judged as Record<string, unknown>).idea : undefined, 200);
-  if (complete) return { complete: true, idea, next: '' };
+  yield complete ? { type: 'verdict', complete: true } : { type: 'verdict', complete: false, missing };
+  if (complete) {
+    yield { type: 'done', next: '' };
+    return;
+  }
 
   // Then, only for an unfinished paragraph, the one sentence it's missing.
-  let raw = '';
   const messages = P.completeMessages({
     title: input.title ?? '',
     before,
@@ -60,9 +86,47 @@ export async function nextSentence(
     notes,
     missing,
   });
-  for await (const chunk of llm.stream({ model, messages, maxTokens: 70, temperature: 0.45, stop: ['\n\n'], ...abort }))
-    raw += chunk;
+  // One sentence is all that's wanted: stop the model as soon as it's written.
+  const enough = new AbortController();
+  let raw = '';
+  let shown = '';
+  try {
+    for await (const chunk of llm.stream({
+      model,
+      messages,
+      maxTokens: 70,
+      temperature: 0.45,
+      stop: ['\n\n'],
+      signal: anySignal([signal, enough.signal]),
+    })) {
+      raw += chunk;
+      const text = tidyCompletion(raw, before);
+      if (text.trim() && text !== shown) {
+        shown = text;
+        yield { type: 'text', text };
+      }
+      if (/\n/.test(raw.trimStart()) || firstSentenceEnd(raw.trimStart()) !== -1) break;
+    }
+  } finally {
+    enough.abort();
+  }
   const next = tidyCompletion(raw, before);
   // A restatement, or the same opener again, isn't a step forward.
-  return { complete: false, idea, missing, next: nextSentenceOk(before, next) ? next : '' };
+  yield { type: 'done', next: nextSentenceOk(before, next) ? next : '' };
+}
+
+/** The verdict and the sentence together, for callers that don't stream. */
+export async function nextSentence(
+  llm: LLMClient,
+  input: NextSentenceInput,
+  opts: TaskOptions = {},
+): Promise<NextSentence> {
+  const out: NextSentence = { complete: false, next: '' };
+  for await (const ev of nextSentenceStream(llm, input, opts)) {
+    if (ev.type === 'verdict') {
+      out.complete = ev.complete;
+      if (ev.missing) out.missing = ev.missing;
+    } else if (ev.type === 'done') out.next = ev.next;
+  }
+  return out;
 }

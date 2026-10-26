@@ -10,7 +10,7 @@ import type {
   EditEvent,
   EditInput,
   LLMStatus,
-  NextSentence,
+  NextSentenceEvent,
   NoticeEvent,
   ReviewEvent,
   RewriteDone,
@@ -42,11 +42,11 @@ export interface AI {
   review(input: { title?: string; content: string; brief?: Brief }, opts?: TaskOptions): AsyncIterable<ReviewEvent>;
   /** Verdicts on a passage: its facts, its logic, or its consistency with the draft. */
   check(input: CheckInput, opts?: TaskOptions): AsyncIterable<CheckEvent>;
-  /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing. */
+  /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing, as it's written. */
   nextSentence(
     input: { title?: string; before: string; heading?: string; notes?: string[] },
     opts?: TaskOptions,
-  ): Promise<NextSentence>;
+  ): AsyncIterable<NextSentenceEvent>;
 }
 
 export interface Backend {

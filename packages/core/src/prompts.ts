@@ -66,22 +66,24 @@ const withBrief = (brief: Brief | undefined, before: string, after: string) =>
 // accept it. Judging and writing are separate calls: a model about to write a
 // sentence always finds a reason to. The judge only quotes; code decides (see
 // autocomplete.ts).
-const JUDGE_SYSTEM = `You read the paragraph an author is writing and find, by quoting it exactly, the sentences that do three jobs: the sentence that states the paragraph's point; the sentence that supports it with a reason, evidence, an example or an experience; and the sentence that draws the meaning — why it matters, what follows, or what the reader should take from it. Quote each sentence exactly as written. If no sentence does a job, give "" for it. Do not write or suggest anything. You answer only with JSON.`;
+// The judge names sentences by number rather than quoting them: the same
+// verdict, a few tokens instead of whole sentences — under a second, not three.
+const JUDGE_SYSTEM = `You read the paragraph an author is writing, given as numbered sentences, and find the sentences that do three jobs: the one that states the paragraph's point; the one that supports it with a reason, evidence, an example or an experience; and the one that draws the meaning — why it matters, what follows, or what the reader should take from it. Answer with each sentence's number, or 0 if no sentence does that job. Do not write or suggest anything. You answer only with JSON.`;
 
 const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Reason only from what the author has already written: draw out a consequence, a cause or why it matters, but never state a fact, result or outcome they haven't claimed, and never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
 
 export function judgeMessages({ before = '' }: { before?: string }): ChatMessage[] {
-  const { paragraph } = splitParagraph(before);
+  const numbered = paragraphSentences(before)
+    .map((s, i) => `${i + 1}. ${s}`)
+    .join('\n');
   return [
     { role: 'system', content: JUDGE_SYSTEM },
     {
       role: 'user',
-      content: `The paragraph:
-<<<
-${paragraph}
->>>
+      content: `The paragraph, sentence by sentence:
+${numbered}
 
-Return JSON {"idea": "the paragraph's idea, in a few words", "point": "the exact sentence that states the point, or """, "support": "the exact sentence that supports it, or """, "meaning": "the exact sentence that draws the meaning, or """}.`,
+Return JSON {"point": n, "support": n, "meaning": n}.`,
     },
   ];
 }
@@ -89,12 +91,11 @@ Return JSON {"idea": "the paragraph's idea, in a few words", "point": "the exact
 export const judgeSchema: JsonSchema = {
   type: 'object',
   properties: {
-    idea: { type: 'string' },
-    point: { type: 'string' },
-    support: { type: 'string' },
-    meaning: { type: 'string' },
+    point: { type: 'integer' },
+    support: { type: 'integer' },
+    meaning: { type: 'integer' },
   },
-  required: ['idea', 'point', 'support', 'meaning'],
+  required: ['point', 'support', 'meaning'],
 };
 
 export interface CompleteInput {

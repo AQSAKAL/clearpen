@@ -4,8 +4,8 @@
 // - Ask only after a finished sentence at the end of a line of prose, after a
 //   pause; never mid-sentence or word by word.
 // - First a verdict: has the paragraph made its point? A judge model only
-//   quotes the sentences that state it, support it and draw its meaning;
-//   code decides, and a part counts only if its quote is really there.
+//   names the sentences that state it, support it and draw its meaning;
+//   code decides, and a part counts only if that sentence is really there.
 // - A paragraph of six sentences has made its point without asking.
 // - A suggestion that restates the last few sentences, or opens like the
 //   previous two, is dropped.
@@ -102,16 +102,20 @@ export interface ParagraphVerdict {
 }
 
 /**
- * Has the paragraph made its point? Decided in code from the judge's quotes:
- * a part counts as done only when its quote is really in the paragraph.
+ * Has the paragraph made its point? Decided in code from the judge's answer:
+ * a part counts as done only when the sentence the judge names — by number,
+ * or by quoting it — is really in the paragraph.
  */
 export function paragraphVerdict(before: string, judged: unknown): ParagraphVerdict {
   const { paragraph } = splitParagraph(before);
-  const quote = (key: string) =>
+  const count = paragraphSentences(before).length;
+  const answer = (key: string) =>
     judged && typeof judged === 'object' ? (judged as Record<string, unknown>)[key] : undefined;
   const has = (key: string) => {
-    const q = quote(key);
-    return typeof q === 'string' && q.trim().length > 3 && !!findQuote(paragraph, q);
+    const a = answer(key);
+    const n = typeof a === 'number' ? a : typeof a === 'string' && /^\s*\d+\s*$/.test(a) ? Number(a) : null;
+    if (n !== null) return Number.isInteger(n) && n >= 1 && n <= count;
+    return typeof a === 'string' && a.trim().length > 3 && !!findQuote(paragraph, a);
   };
   const parts = { point: has('point'), support: has('support'), meaning: has('meaning') };
   const missing = !parts.point
