@@ -4,6 +4,7 @@
 export * from './analysis.ts';
 export * from './anchor.ts';
 export * from './autocomplete.ts';
+export * from './autocorrect.ts';
 export * from './checks.ts';
 export * from './diff.ts';
 export * from './edits.ts';
@@ -26,6 +27,7 @@ export * from './tasks/common.ts';
 export * from './tasks/edit.ts';
 export * from './tasks/next.ts';
 export * from './tasks/plan.ts';
+export * from './tasks/proofread.ts';
 export * from './tasks/review.ts';
 export * from './tasks/think.ts';
 export * from './tasks/write.ts';

@@ -2,13 +2,14 @@
 // with the hooks the AI features need. The app only ever talks to the small
 // API that createEditor() returns.
 
-import { defaultKeymap, history, historyKeymap, redo, undo } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, isolateHistory, redo, undo } from '@codemirror/commands';
 import { markdown, markdownKeymap, markdownLanguage } from '@codemirror/lang-markdown';
-import { syntaxHighlighting } from '@codemirror/language';
+import { ensureSyntaxTree, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { EditorState, type Extension, type StateEffect } from '@codemirror/state';
-import { drawSelection, EditorView, keymap, placeholder } from '@codemirror/view';
+import { EditorState, type Extension, type StateEffect, Transaction } from '@codemirror/state';
+import { drawSelection, EditorView, keymap, placeholder, type ViewUpdate } from '@codemirror/view';
 import { analysisField, setAnalysis } from './analysis.ts';
+import { addFixes, correction, FIX_SHOWN_MS, fadeFixes, fixesField, isKept } from './corrections.ts';
 import { focusCompartment, focusPlugin } from './focus.ts';
 import { acceptGhost, ghostField, setGhost } from './ghost.ts';
 import { imageField } from './images.ts';
@@ -27,6 +28,7 @@ import type { EditorOptions, MarginEditor } from './types.ts';
 
 export type {
   AnalysisRange,
+  EditorFix,
   EditorNote,
   EditorOptions,
   EditorUpdate,
@@ -36,6 +38,35 @@ export type {
   SuggestionInput,
   SuggestionStatus,
 } from './types.ts';
+
+// Where the text isn't prose, and so isn't autocorrect's to touch.
+const NOT_PROSE = new Set([
+  'FencedCode',
+  'CodeBlock',
+  'InlineCode',
+  'URL',
+  'Autolink',
+  'HTMLTag',
+  'HTMLBlock',
+  'CommentBlock',
+  'ProcessingInstruction',
+  'Image',
+  'LinkReference',
+  'Table',
+]);
+
+/** The writer typing or pressing Enter, as opposed to a paste, an AI edit or a taken suggestion. */
+const typing = (tr: Transaction) => tr.isUserEvent('input.type') || tr.annotation(Transaction.userEvent) === 'input';
+
+/** Where the text the writer typed in this update now is. */
+function typedRanges(u: ViewUpdate): { from: number; to: number }[] {
+  let out: { from: number; to: number }[] = [];
+  for (const tr of u.transactions) {
+    out = out.map((r) => ({ from: tr.changes.mapPos(r.from, 1), to: tr.changes.mapPos(r.to, -1) }));
+    if (typing(tr)) tr.changes.iterChanges((_a, _b, from, to) => to > from && out.push({ from, to }));
+  }
+  return out.filter((r) => r.to > r.from);
+}
 
 /** Creates the writing surface inside `parent`. */
 export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): MarginEditor {
@@ -65,6 +96,7 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
     sugField,
     notesField,
     ghostField,
+    fixesField,
     analysisField,
     imageField(opts),
     sectionField(opts, sugField),
@@ -90,9 +122,12 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
           docChanged: u.docChanged,
           selectionSet: u.selectionSet,
           focusChanged: u.focusChanged,
-          // The writer's own typing — as opposed to taking a suggested sentence.
-          userEdit: u.transactions.some((tr) => tr.isUserEvent('input.type')),
+          // The writer's own typing, Enter included — as opposed to taking a suggested sentence.
+          userEdit: u.transactions.some(typing),
+          typed: typedRanges(u),
           ghostAccepted: u.transactions.some((tr) => tr.isUserEvent('input.complete')),
+          corrected: u.docChanged && u.transactions.every((tr) => !tr.docChanged || tr.annotation(correction)),
+          mapPos: (pos, assoc = -1) => u.changes.mapPos(pos, assoc),
         });
       }
     }),
@@ -137,6 +172,7 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
   const view = new EditorView({ state: EditorState.create({ doc: opts.doc || '', extensions }), parent });
 
   let seq = 0;
+  let destroyed = false;
   const api: MarginEditor = {
     view,
     getText: () => view.state.doc.toString(),
@@ -182,6 +218,62 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
     },
     undo: () => undo(view),
     redo: () => redo(view),
+
+    // Autocorrect
+    correct(fixes) {
+      // Changing the text under an input method's composition breaks it.
+      if (view.composing) return 0;
+      const { state } = view;
+      const length = state.doc.length;
+      const fit = fixes
+        .filter(
+          (f) =>
+            f.from >= 0 &&
+            f.from <= f.to &&
+            f.to <= length &&
+            state.sliceDoc(f.from, f.to) !== f.insert &&
+            !isKept(state, f.from, f.to) &&
+            api.isProse(f.from, f.to),
+        )
+        .sort((a, b) => a.from - b.from);
+      const list: typeof fit = [];
+      for (const f of fit) if (!list.length || f.from >= list[list.length - 1]!.to) list.push(f);
+      if (!list.length) return 0;
+      const changes = state.changes(list.map(({ from, to, insert }) => ({ from, to, insert })));
+      const at = Date.now();
+      view.dispatch({
+        changes,
+        annotations: [correction.of(true), isolateHistory.of('full')],
+        userEvent: 'input.correct',
+        effects: addFixes.of(
+          list.map((f) => ({
+            from: changes.mapPos(f.from, -1),
+            to: changes.mapPos(f.to, 1),
+            original: state.sliceDoc(f.from, f.to),
+            at,
+            shown: true,
+          })),
+        ),
+      });
+      setTimeout(() => {
+        if (!destroyed) view.dispatch({ effects: fadeFixes.of(at) });
+      }, FIX_SHOWN_MS);
+      return list.length;
+    },
+    isProse(from, to) {
+      const end = Math.min(Math.max(to, from + 1), view.state.doc.length);
+      const tree = ensureSyntaxTree(view.state, end, 50) ?? syntaxTree(view.state);
+      let prose = true;
+      tree.iterate({
+        from,
+        to: end,
+        enter: (n) => {
+          if (NOT_PROSE.has(n.name)) prose = false;
+          return prose;
+        },
+      });
+      return prose;
+    },
 
     // Ghost text
     showGhost(pos, text, display = '') {
@@ -288,7 +380,10 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
     scrollTo(pos) {
       view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
     },
-    destroy: () => view.destroy(),
+    destroy() {
+      destroyed = true;
+      view.destroy();
+    },
   };
 
   return api;

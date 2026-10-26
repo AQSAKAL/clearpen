@@ -1,7 +1,7 @@
 // The AI features running in the app itself, on a model client the backend
 // makes (Ollama on this machine, through whatever fetch it needs).
 
-import { check, edit, type LLMClient, nextSentenceStream, type Role, review, rewrite } from '@margin/core';
+import { check, edit, type LLMClient, nextSentenceStream, proofread, type Role, review, rewrite } from '@margin/core';
 import type { AI } from './backend.ts';
 
 const ROLES: Role[] = ['quick', 'coach', 'checker'];
@@ -20,6 +20,7 @@ export function localAI(llm: LLMClient): AI {
     rewrite: (input, opts) => rewrite(llm, input, opts),
     edit: (input, opts) => edit(llm, input, opts),
     nextSentence: (input, opts) => nextSentenceStream(llm, input, opts),
+    proofread: (input, opts) => proofread(llm, input, opts),
     review: (input, opts) => review(llm, input, opts),
     check: (input, opts) => check(llm, input, opts),
   };

@@ -1,7 +1,8 @@
 // What models wrap around an answer — thinking tags, preambles, code fences,
 // quotation marks, echoed text — removed so the answer drops into place.
 
-const ABBREVIATIONS = new Set([
+/** Words a full stop follows without ending the sentence: "e.g.", "Dr.", "etc." */
+export const ABBREVIATIONS = new Set([
   'mr',
   'mrs',
   'ms',

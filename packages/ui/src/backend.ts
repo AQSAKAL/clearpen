@@ -9,9 +9,11 @@ import type {
   CheckInput,
   EditEvent,
   EditInput,
+  Fix,
   LLMStatus,
   NextSentenceEvent,
   NoticeEvent,
+  ProofreadInput,
   ReviewEvent,
   RewriteDone,
   RewriteInput,
@@ -42,6 +44,8 @@ export interface AI {
   review(input: { title?: string; content: string; brief?: Brief }, opts?: TaskOptions): AsyncIterable<ReviewEvent>;
   /** Verdicts on a passage: its facts, its logic, or its consistency with the draft. */
   check(input: CheckInput, opts?: TaskOptions): AsyncIterable<CheckEvent>;
+  /** The slips in a sentence just written, as safe fixes with offsets into it. */
+  proofread(input: ProofreadInput, opts?: TaskOptions): Promise<Fix[]>;
   /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing, as it's written. */
   nextSentence(
     input: { title?: string; before: string; heading?: string; notes?: string[] },

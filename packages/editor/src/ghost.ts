@@ -1,8 +1,10 @@
 // Ghost text: autocomplete's suggestion in grey at the cursor, the rest of the
-// sentence. Tab takes it; any edit or cursor move makes it go away.
+// sentence. Tab takes it; any edit or cursor move makes it go away — except
+// autocorrect's fixes, which it moves with.
 
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
+import { correction } from './corrections.ts';
 import type { Ghost } from './types.ts';
 
 export const setGhost = StateEffect.define<Ghost | null>();
@@ -40,7 +42,8 @@ export const ghostField = StateField.define<Ghost | null>({
   update(value, tr) {
     for (const e of tr.effects) if (e.is(setGhost)) return e.value;
     if (!value) return null;
-    if (tr.docChanged) return null;
+    // Autocorrect fixing words behind the cursor doesn't make the suggestion wrong.
+    if (tr.docChanged) return tr.annotation(correction) ? { ...value, pos: tr.changes.mapPos(value.pos, 1) } : null;
     if (tr.selection && tr.state.selection.main.head !== value.pos) return null;
     return value;
   },

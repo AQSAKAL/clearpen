@@ -25,6 +25,8 @@ export function Autocomplete() {
     /** Characters the writer typed since they last took a suggestion. */
     typed: Number.POSITIVE_INFINITY,
     length: 0,
+    /** Where the suggestion on its way belongs; autocorrect's fixes move it. */
+    at: 0,
     timer: undefined as ReturnType<typeof setTimeout> | undefined,
     ctrl: null as AbortController | null,
   });
@@ -57,10 +59,11 @@ export function Autocomplete() {
       const id = ++s.seq;
       const ctrl = new AbortController();
       s.ctrl = ctrl;
+      s.at = pos;
       // The section's notes steer the next sentence toward the writer's next point.
       const section = sectionAt(text, pos);
       // The writer moved on while the model thought.
-      const stale = () => id !== s.seq || ed.cursor() !== pos || !ed.getSelection().empty;
+      const stale = () => id !== s.seq || ed.cursor() !== s.at || !ed.getSelection().empty;
       let complete = false;
       try {
         for await (const ev of backend.ai.nextSentence(
@@ -75,11 +78,11 @@ export function Autocomplete() {
           if (stale()) return;
           if (ev.type === 'verdict') {
             complete = ev.complete;
-            if (complete) ed.showGhost(pos, '\n\n', POINT_MADE);
-          } else if (ev.type === 'text') ed.showGhost(pos, ev.text);
+            if (complete) ed.showGhost(s.at, '\n\n', POINT_MADE);
+          } else if (ev.type === 'text') ed.showGhost(s.at, ev.text);
           // Shown as it streamed, then taken back if it only repeated what's there.
           else if (!complete) {
-            if (ev.next.trim()) ed.showGhost(pos, ev.next);
+            if (ev.next.trim()) ed.showGhost(s.at, ev.next);
             else ed.clearGhost();
           }
         }
@@ -93,6 +96,12 @@ export function Autocomplete() {
       if (!u.docChanged && !u.selectionSet) return;
       const ed = page.editor.current;
       const length = ed?.length() ?? 0;
+      // Autocorrect fixed words behind the cursor: a suggestion showing, or on its way, still fits.
+      if (u.corrected) {
+        s.length = length;
+        s.at = u.mapPos(s.at, 1);
+        return;
+      }
       if (u.ghostAccepted) s.typed = 0;
       else if (u.userEdit) s.typed += Math.max(0, length - s.length);
       s.length = length;

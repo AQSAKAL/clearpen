@@ -245,6 +245,14 @@
   vertical-align: 2px;
 }
 
+/* ───────────────────────────────────────── autocorrect: a fix, underlined for a moment */
+
+.cm-fixed {
+  text-decoration: underline 2px;
+  text-decoration-color: color-mix(in srgb, var(--ai) 45%, transparent);
+  text-underline-offset: 4px;
+}
+
 /* ───────────────────────────────────────── tracked suggestions */
 
 .cm-sug-del {

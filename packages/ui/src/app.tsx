@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { AIProvider } from './ai.tsx';
 import { AskProvider } from './ask.tsx';
 import { Autocomplete } from './autocomplete.tsx';
+import { Autocorrect } from './autocorrect.tsx';
 import type { Backend } from './backend.ts';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
 import { AssistPanel, type AssistTab } from './components/assist-panel.tsx';
@@ -285,6 +286,10 @@ function Workspace() {
           set('autocomplete', !settings.autocomplete);
           toast(settings.autocomplete ? 'Next-sentence suggestions off' : 'Next-sentence suggestions on');
           break;
+        case 'autocorrect':
+          set('autocorrect', !settings.autocorrect);
+          toast(settings.autocorrect ? 'Typo fixes off' : 'Typo fixes on — undo any one to keep what you typed');
+          break;
         case 'focus':
           setFocus((f) => !f);
           toast(focus ? 'Focus mode off' : 'Focus mode — only your paragraph stays bright');
@@ -381,6 +386,7 @@ function Workspace() {
           reading={!!reading}
           focus={focus}
           autocomplete={settings.autocomplete}
+          autocorrect={settings.autocorrect}
           mod={mod}
           onCommand={run}
         />
@@ -426,6 +432,7 @@ function Workspace() {
       <ModelsDialog open={dialog === 'models'} onOpenChange={(o) => setDialog(o ? 'models' : null)} />
       {!reading && <SelectionToolbar mod={mod} check={check} />}
       <Autocomplete />
+      <Autocorrect />
     </SidebarProvider>
   );
 }

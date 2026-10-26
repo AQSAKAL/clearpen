@@ -16,6 +16,8 @@ In today's fast-paced world, it is very important for writers to basically make 
 
 Finish a sentence and pause. Margin checks whether your paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey: **Tab** keeps it, **${mod}→** takes one word, and typing on ignores it. When the paragraph is complete you'll see *¶ point made*, and Tab starts a new one. **${mod}J** asks for a suggestion at any time, and ⋯ → Next-sentence suggestions turns them off.
 
+Typos are fixed as you go: a capital to start each sentence the moment you finish its first word, and slips like “mi favorite” once you finish the sentence. A fix is underlined for a moment; **${mod}Z** right after puts back what you typed, and Margin leaves those words alone.
+
 ## Check it
 
 - **Review** (${mod}⇧E) reads the whole draft. Margin's own checks come first: table totals, percentages, contradictions, sweeping claims. The AI's notes follow, each beside the passage it's about. Click a note to see its passage, then *Apply* its fix or dismiss it.

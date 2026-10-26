@@ -715,3 +715,42 @@ ${head(content, 24000)}
     { role: 'user', content: question },
   ];
 }
+
+// Autocorrect: a proofreader, not an editor. With these examples an 8B model
+// fixed about twice as many slips, and still changed nothing that was right.
+const PROOFREAD_SYSTEM = `You are a proofreader. You return the sentence an author has just written with its typing mistakes fixed: misspellings, a wrong word that is plainly a slip (mi → my, then → than, their → they're, too → to, weather → whether, should of → should have), agreement (results was → results were), capitalization, and missing apostrophes (dont → don't). Read every word.
+
+Change nothing else: keep the author's words, slang, style, names, numbers, links, Markdown, and British or American spelling. Never improve a correct sentence; returning it unchanged is a fine answer. Work in the sentence's own language. You answer only with JSON.`;
+
+const PROOFREAD_EXAMPLES: [string, string][] = [
+  [
+    'i think teh plan is good, but its to late and there not ready.',
+    "I think the plan is good, but it's too late and they're not ready.",
+  ],
+  [
+    'The reports was due tomorow, weather we liked it or not, and noone new were to send them.',
+    'The reports were due tomorrow, whether we liked it or not, and no one knew where to send them.',
+  ],
+  ['The vibe was off, but we gonna ship anyway.', 'The vibe was off, but we gonna ship anyway.'],
+  ['Our organisation spent £3m on colour printing in 2019.', 'Our organisation spent £3m on colour printing in 2019.'],
+];
+
+const proofreadAsk = (before: string, sentence: string) =>
+  `${before.trim() ? `Before it (context only):\n<<<\n${clip(before.trim(), 600)}\n>>>\n\n` : ''}The sentence:\n<<<\n${sentence}\n>>>`;
+
+export function proofreadMessages({ before = '', sentence }: { before?: string; sentence: string }): ChatMessage[] {
+  return [
+    { role: 'system', content: PROOFREAD_SYSTEM },
+    ...PROOFREAD_EXAMPLES.flatMap(([wrote, fixed]): ChatMessage[] => [
+      { role: 'user', content: proofreadAsk('', wrote) },
+      { role: 'assistant', content: JSON.stringify({ sentence: fixed }) },
+    ]),
+    { role: 'user', content: proofreadAsk(before, sentence) },
+  ];
+}
+
+export const proofreadSchema: JsonSchema = {
+  type: 'object',
+  properties: { sentence: { type: 'string' } },
+  required: ['sentence'],
+};

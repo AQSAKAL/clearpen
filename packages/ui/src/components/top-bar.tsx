@@ -25,6 +25,7 @@ export type Command =
   | 'assist'
   | 'insights'
   | 'autocomplete'
+  | 'autocorrect'
   | 'focus'
   | 'reader'
   | 'fonts'
@@ -50,6 +51,7 @@ export function TopBar({
   reading,
   focus,
   autocomplete,
+  autocorrect,
   mod,
   onCommand,
 }: {
@@ -57,6 +59,7 @@ export function TopBar({
   reading: boolean;
   focus: boolean;
   autocomplete: boolean;
+  autocorrect: boolean;
   /** ⌘ on Mac, Ctrl elsewhere. */
   mod: string;
   onCommand(c: Command): void;
@@ -127,6 +130,9 @@ export function TopBar({
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem checked={autocomplete} onSelect={() => onCommand('autocomplete')}>
             Next-sentence suggestions <DropdownMenuShortcut>{mod}J</DropdownMenuShortcut>
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem checked={autocorrect} onSelect={() => onCommand('autocorrect')}>
+            Fix typos as I write
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem onSelect={() => onCommand('reader')}>
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>

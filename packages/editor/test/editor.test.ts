@@ -62,6 +62,9 @@ describe('onUpdate', () => {
       focusChanged: false,
       userEdit: true,
       ghostAccepted: false,
+      typed: [{ from: 4, to: 5 }],
+      corrected: false,
+      mapPos: expect.any(Function),
     });
     ed.insertAt(0, 'The ');
     expect(onUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ docChanged: true, userEdit: false }));

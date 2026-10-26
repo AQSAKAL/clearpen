@@ -22,6 +22,8 @@ export interface Settings {
   models: ModelChoice;
   /** Suggest the next sentence when a paragraph is missing one. */
   autocomplete: boolean;
+  /** Fix typos as the writer types. */
+  autocorrect: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   welcomed: false,
   models: {},
   autocomplete: true,
+  autocorrect: true,
 };
 
 interface SettingsValue {

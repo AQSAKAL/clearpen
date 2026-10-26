@@ -41,6 +41,13 @@ export interface Ghost {
   display?: string;
 }
 
+/** One of autocorrect's fixes: from–to becomes `insert`. */
+export interface EditorFix {
+  from: number;
+  to: number;
+  insert: string;
+}
+
 /** A review note's place in the text. */
 export interface EditorNote {
   id: string;
@@ -65,10 +72,16 @@ export interface EditorUpdate {
   docChanged: boolean;
   selectionSet: boolean;
   focusChanged: boolean;
-  /** The writer typed, as opposed to taking a suggested sentence. */
+  /** The writer typed or pressed Enter, as opposed to taking a suggested sentence. */
   userEdit: boolean;
   /** Ghost text was accepted. */
   ghostAccepted: boolean;
+  /** Where the text the writer typed now is — usually one keystroke; more from dictation or an input method. */
+  typed: readonly { from: number; to: number }[];
+  /** The only change was autocorrect fixing words: ghost text and the cursor moved with it. */
+  corrected: boolean;
+  /** Where a position from before the update is now. */
+  mapPos(pos: number, assoc?: -1 | 1): number;
 }
 
 /** Callbacks are read when they're needed, so the app may swap them on this object later. */
@@ -134,6 +147,15 @@ export interface MarginEditor {
   insertAt(pos: number, insert: string): void;
   undo(): boolean;
   redo(): boolean;
+
+  /**
+   * Makes autocorrect's fixes, all of them one undo step of their own, and underlines them for a
+   * moment. Fixes on words the writer put back by undoing a fix, outside prose, or during an input
+   * method's composition are skipped. Returns how many were made.
+   */
+  correct(fixes: readonly EditorFix[]): number;
+  /** Is from–to prose — not code, a link's address, an image, HTML or a table? */
+  isProse(from: number, to: number): boolean;
 
   /** Shows ghost text at `pos`; `display`, if given, is shown instead of `text`. */
   showGhost(pos: number, text: string, display?: string): void;
