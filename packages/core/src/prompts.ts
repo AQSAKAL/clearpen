@@ -68,7 +68,7 @@ const withBrief = (brief: Brief | undefined, before: string, after: string) =>
 // autocomplete.ts).
 const JUDGE_SYSTEM = `You read the paragraph an author is writing and find, by quoting it exactly, the sentences that do three jobs: the sentence that states the paragraph's point; the sentence that supports it with a reason, evidence, an example or an experience; and the sentence that draws the meaning — why it matters, what follows, or what the reader should take from it. Quote each sentence exactly as written. If no sentence does a job, give "" for it. Do not write or suggest anything. You answer only with JSON.`;
 
-const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
+const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Reason only from what the author has already written: draw out a consequence, a cause or why it matters, but never state a fact, result or outcome they haven't claimed, and never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
 
 export function judgeMessages({ before = '' }: { before?: string }): ChatMessage[] {
   const { paragraph } = splitParagraph(before);

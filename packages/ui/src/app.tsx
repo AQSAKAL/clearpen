@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AIProvider } from './ai.tsx';
 import { AskProvider } from './ask.tsx';
+import { Autocomplete } from './autocomplete.tsx';
 import type { Backend } from './backend.ts';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
 import { FontsDialog } from './components/fonts-dialog.tsx';
@@ -79,9 +80,11 @@ function Shell({ backend }: { backend: Backend }) {
     [set],
   );
 
-  // The models chosen last time; the dialog changes them later.
+  // The models chosen last time; the dialog changes them later. With
+  // next-sentence suggestions on, the writing model loads now, so the first
+  // suggestion doesn't wait for it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, at launch.
-  useEffect(() => backend.ai.setModels(settings.models), [backend]);
+  useEffect(() => backend.ai.setModels(settings.models, { preload: settings.autocomplete }), [backend]);
 
   return (
     <ThemeProvider theme={settings.theme} onChange={onTheme}>
@@ -215,6 +218,10 @@ function Workspace() {
   async function run(c: Command) {
     try {
       switch (c) {
+        case 'autocomplete':
+          set('autocomplete', !settings.autocomplete);
+          toast(settings.autocomplete ? 'Next-sentence suggestions off' : 'Next-sentence suggestions on');
+          break;
         case 'focus':
           setFocus((f) => !f);
           toast(focus ? 'Focus mode off' : 'Focus mode — only your paragraph stays bright');
@@ -300,7 +307,14 @@ function Workspace() {
     <SidebarProvider open={settings.libraryOpen} onOpenChange={(o) => set('libraryOpen', o)}>
       <LibrarySidebar onMove={setMoving} onTrash={() => setDialog('trash')} onModels={() => setDialog('models')} />
       <SidebarInset className="min-w-0">
-        <TopBar counts={counts} reading={!!reading} focus={focus} mod={mod} onCommand={run} />
+        <TopBar
+          counts={counts}
+          reading={!!reading}
+          focus={focus}
+          autocomplete={settings.autocomplete}
+          mod={mod}
+          onCommand={run}
+        />
         <div className="flex-1 overflow-y-auto" data-reading={reading ? '' : undefined}>
           <div className={reading ? 'hidden' : undefined} aria-hidden={!!reading}>
             <ArticleEditor onCounts={onCounts} />
@@ -331,6 +345,7 @@ function Workspace() {
       <MoveDialog docId={moving} onOpenChange={(o) => !o && setMoving(null)} />
       <ModelsDialog open={dialog === 'models'} onOpenChange={(o) => setDialog(o ? 'models' : null)} />
       {!reading && <SelectionToolbar mod={mod} />}
+      <Autocomplete />
     </SidebarProvider>
   );
 }

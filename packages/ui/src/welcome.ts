@@ -12,6 +12,10 @@ In today's fast-paced world, it is very important for writers to basically make 
 
 **Select the paragraph above** and choose *Shorten* or *Improve*. Only the words that change are marked: click ✓ or ✕ on each, press ${mod}↵ to accept them all, or Esc to keep your original. You can also type an instruction in the bar, such as “make it punchier”.
 
+## Keep the logic whole
+
+Finish a sentence and pause. Margin checks whether your paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey: **Tab** keeps it, **${mod}→** takes one word, and typing on ignores it. When the paragraph is complete you'll see *¶ point made*, and Tab starts a new one. **${mod}J** asks for a suggestion at any time, and ⋯ → Next-sentence suggestions turns them off.
+
 ## Start here
 
 - **New article** in the sidebar starts a blank page. Your work saves as you type.
@@ -23,7 +27,7 @@ In today's fast-paced world, it is very important for writers to basically make 
 
 ## Coming next
 
-Checks of your facts, logic and numbers, an editor's review, and the next logical sentence when a paragraph is missing one arrive in the next updates of this build. Margin edits; the writing itself is yours.
+Checks of your facts, logic and numbers, an editor's review, and thinking aids for planning a section arrive in the next updates of this build. Margin edits; the writing itself is yours.
 
 When you're done here, press **New article** and write something of your own.
 `;

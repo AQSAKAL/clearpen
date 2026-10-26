@@ -7,6 +7,7 @@ import type {
   EditEvent,
   EditInput,
   LLMStatus,
+  NextSentence,
   NoticeEvent,
   RewriteDone,
   RewriteInput,
@@ -33,6 +34,11 @@ export interface AI {
   setModels(models: ModelChoice, opts?: { preload?: boolean }): void;
   rewrite(input: RewriteInput, opts?: TaskOptions): AsyncIterable<NoticeEvent | TokenEvent | RewriteDone>;
   edit(input: EditInput, opts?: TaskOptions): AsyncIterable<EditEvent>;
+  /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing. */
+  nextSentence(
+    input: { title?: string; before: string; heading?: string; notes?: string[] },
+    opts?: TaskOptions,
+  ): Promise<NextSentence>;
 }
 
 export interface Backend {

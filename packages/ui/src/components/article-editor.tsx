@@ -54,6 +54,10 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
       },
       onAccept: (id, suggestion) => page.emit('accept', { id, suggestion }),
       onReject: (id, suggestion) => page.emit('reject', { id, suggestion }),
+      onRequestCompletion() {
+        page.emit('complete', null);
+        return true;
+      },
       onImages(files, from, to) {
         void addImages(ed, files, from, to);
       },

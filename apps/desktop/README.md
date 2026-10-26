@@ -39,6 +39,14 @@ pnpm --filter @margin/desktop tauri build
 
 Installers land in `src-tauri/target/release/bundle/`: `macos/Margin.app` and `dmg/Margin_<version>_<arch>.dmg` on Mac, or an `nsis/…-setup.exe` and an `msi/…​.msi` on Windows. The first build compiles every Rust dependency and takes a few minutes. Later builds take about a minute.
 
+If the `.dmg` step fails on your Mac with `hdiutil: couldn't unmount … Resource busy` (something holds the temporary disk image open), build just the app and make the image yourself:
+
+```bash
+pnpm --filter @margin/desktop tauri build --bundles app
+mkdir -p /tmp/margin-dmg && cp -R src-tauri/target/release/bundle/macos/Margin.app /tmp/margin-dmg/ && ln -sf /Applications /tmp/margin-dmg/Applications
+hdiutil create -volname Margin -srcfolder /tmp/margin-dmg -ov -format UDZO src-tauri/target/release/bundle/dmg/Margin.dmg
+```
+
 For one Mac app that runs on both Apple silicon and Intel, install both Rust targets with rustup and build with `--target universal-apple-darwin`. The release workflow does this.
 
 ## Release

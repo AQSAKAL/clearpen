@@ -325,6 +325,9 @@ test('a suggestion is asked for only after a finished sentence at the end of pro
   assert.equal(sectionAt(doc, doc.length)?.heading, 'Why pain matters');
   assert.deepEqual(sectionAt(doc, doc.length)?.points, ['Pain is a signal']);
   assert.equal(sectionAt(doc, 2), undefined, 'the title is not a section');
+  const six = 'One here. Two here. Three here. Four here. Five here. Six here.';
+  assert.equal(nextSentenceSpot(six, six.length), false, 'six sentences: the paragraph is done');
+  assert.equal(nextSentenceSpot(six.slice(0, -10), six.length - 10), true);
 });
 
 test('the next sentence comes only after a verdict: the judge quotes, code decides', () => {

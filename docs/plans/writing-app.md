@@ -1,6 +1,6 @@
 # Plan: the writing app in the desktop app
 
-**Status:** approved 2026-10-26. Milestones 1 (Write) and 2 (Edit with AI) are built. At your request the next sentence (autocomplete) moved up to milestone 3, ahead of checks and review.
+**Status:** approved 2026-10-26. Milestones 1 (Write), 2 (Edit with AI) and 3 (Next sentence) are built; at your request the next sentence moved up, ahead of checks and review, which come next.
 
 ## Context
 

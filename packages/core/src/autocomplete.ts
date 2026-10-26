@@ -31,6 +31,8 @@ export function nextSentenceSpot(text: string, pos: number): boolean {
   const before = line.slice(0, pos - from);
   if (before.replace(/^\s*(?:#{1,6}|[-*+]|\d+[.)]|>)\s*/, '').trim().length < 12) return false;
   if (/^\s*#{1,6}\s/.test(line)) return false; // headings are the writer's
+  // A paragraph this long has made its point; leave it to the writer.
+  if ((before.match(/[.!?…]["”’)]*(?=\s|$)/g) || []).length >= MAX_PARAGRAPH_SENTENCES) return false;
   if (!/[.!?…]["”’)]*\s?$/.test(before)) return false; // not a word: whole sentences only
   if (/^\s*(?:```|~~~|\|)/.test(line)) return false;
   // Inside a fenced code block?

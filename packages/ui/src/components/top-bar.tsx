@@ -21,6 +21,7 @@ import {
 import { SidebarTrigger, useSidebar } from './ui/sidebar.tsx';
 
 export type Command =
+  | 'autocomplete'
   | 'focus'
   | 'reader'
   | 'fonts'
@@ -45,12 +46,14 @@ export function TopBar({
   counts,
   reading,
   focus,
+  autocomplete,
   mod,
   onCommand,
 }: {
   counts: Counts;
   reading: boolean;
   focus: boolean;
+  autocomplete: boolean;
   /** ⌘ on Mac, Ctrl elsewhere. */
   mod: string;
   onCommand(c: Command): void;
@@ -99,6 +102,9 @@ export function TopBar({
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuCheckboxItem checked={focus} onSelect={() => onCommand('focus')}>
             Focus mode <DropdownMenuShortcut>{mod}.</DropdownMenuShortcut>
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem checked={autocomplete} onSelect={() => onCommand('autocomplete')}>
+            Next-sentence suggestions <DropdownMenuShortcut>{mod}J</DropdownMenuShortcut>
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem onSelect={() => onCommand('reader')}>
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>

@@ -20,6 +20,8 @@ export interface Settings {
   welcomed: boolean;
   /** The model chosen for each role. */
   models: ModelChoice;
+  /** Suggest the next sentence when a paragraph is missing one. */
+  autocomplete: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   last: null,
   welcomed: false,
   models: {},
+  autocomplete: true,
 };
 
 interface SettingsValue {

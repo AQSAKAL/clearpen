@@ -9,6 +9,8 @@ export interface PageEvents {
   update: EditorUpdate;
   accept: { id: string; suggestion: Suggestion & { count?: number } };
   reject: { id: string; suggestion: Suggestion | undefined };
+  /** ⌘J: suggest the next sentence now. */
+  complete: null;
 }
 
 export interface Page {
