@@ -35,6 +35,7 @@ import { LibraryProvider, useLibrary } from './library.tsx';
 import { NotesProvider } from './notes.tsx';
 import { useReviewActions } from './review-actions.ts';
 import { loadSettings, type Settings, SettingsProvider, useSettings } from './settings.tsx';
+import { SetupProvider } from './setup.tsx';
 import { StatusProvider } from './status.tsx';
 import { ThemeProvider } from './theme.tsx';
 import { WELCOME_TITLE, welcomeText } from './welcome.ts';
@@ -130,17 +131,19 @@ function Shell({ backend }: { backend: Backend }) {
     <ThemeProvider theme={settings.theme} onChange={onTheme}>
       <TooltipProvider delayDuration={400}>
         <StatusProvider>
-          <AIProvider>
-            <AskProvider>
-              <LibraryProvider backend={backend} onOpen={onOpen}>
-                <EditorRefProvider>
-                  <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
-                    <Workspace />
-                  </NotesProvider>
-                </EditorRefProvider>
-              </LibraryProvider>
-            </AskProvider>
-          </AIProvider>
+          <SetupProvider backend={backend}>
+            <AIProvider>
+              <AskProvider>
+                <LibraryProvider backend={backend} onOpen={onOpen}>
+                  <EditorRefProvider>
+                    <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
+                      <Workspace />
+                    </NotesProvider>
+                  </EditorRefProvider>
+                </LibraryProvider>
+              </AskProvider>
+            </AIProvider>
+          </SetupProvider>
         </StatusProvider>
         <Toaster position="top-center" />
       </TooltipProvider>

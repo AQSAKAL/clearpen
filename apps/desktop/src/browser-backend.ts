@@ -1,6 +1,7 @@
 // For developing the interface in a browser (`pnpm dev`, outside Tauri): the
 // real library code on SQLite compiled to WebAssembly, held in memory, with
 // Ollama reached directly (it allows localhost origins). Never in a build.
+// `?ollama=<url>` points it elsewhere — at nothing, to see first-run setup.
 
 import { createLLM, createOllama, prepareImage } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
@@ -29,7 +30,8 @@ export async function createBrowserBackend(): Promise<Backend> {
   };
   const library = await openLibrary(driver);
   const images = new Map<string, { blob: Blob; url: string }>();
-  const llm = createLLM({ provider: createOllama() });
+  const ollama = new URLSearchParams(location.search).get('ollama');
+  const llm = createLLM({ provider: createOllama(ollama ? { baseUrl: ollama } : {}) });
 
   return {
     where: 'in this browser tab (not saved)',
@@ -67,5 +69,10 @@ export async function createBrowserBackend(): Promise<Backend> {
       },
     },
     ai: localAI(llm),
+    async openLink(url) {
+      window.open(url, '_blank', 'noopener');
+    },
+    // Browsers don't say (Chrome caps its answer at 8 GB).
+    memory: async () => null,
   };
 }

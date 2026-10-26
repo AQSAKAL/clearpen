@@ -14,6 +14,7 @@ import type {
   NextSentenceEvent,
   NoticeEvent,
   ProofreadInput,
+  PullProgress,
   ReviewEvent,
   RewriteDone,
   RewriteInput,
@@ -44,6 +45,8 @@ export interface AI {
   review(input: { title?: string; content: string; brief?: Brief }, opts?: TaskOptions): AsyncIterable<ReviewEvent>;
   /** Verdicts on a passage: its facts, its logic, or its consistency with the draft. */
   check(input: CheckInput, opts?: TaskOptions): AsyncIterable<CheckEvent>;
+  /** Downloads a model onto this computer, where the model server can (Ollama). */
+  pull?(model: string, opts?: TaskOptions): AsyncIterable<PullProgress>;
   /** The slips in a sentence just written, as safe fixes with offsets into it. */
   proofread(input: ProofreadInput, opts?: TaskOptions): Promise<Fix[]>;
   /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing, as it's written. */
@@ -77,6 +80,11 @@ export interface Backend {
   };
 
   ai: AI;
+
+  /** Opens a web page in the writer's browser. */
+  openLink(url: string): Promise<void>;
+  /** The computer's memory in bytes, to offer a model that fits; null when it can't tell. */
+  memory(): Promise<number | null>;
 
   /** Runs `save` before the window closes, and waits for it. Returns a function that stops listening. */
   beforeClose?(save: () => Promise<void>): () => void;

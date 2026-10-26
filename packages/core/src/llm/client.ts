@@ -23,10 +23,13 @@ export const PREFERRED_MODELS = [
   'llama3.1:8b',
   'mistral-nemo',
   'gemma4:12b-mlx',
+  'qwen3:4b-instruct',
 ];
 
 export interface LLMStatus {
   ok: boolean;
+  /** The server answered — Ollama is running — whether or not a model is installed. */
+  reachable: boolean;
   provider: string;
   baseUrl: string;
   models: string[];
@@ -82,6 +85,7 @@ export function createLLM({
       const role = (r: Role) => (usable(chosen[r]) ? chosen[r]! : quick);
       return {
         ok: !!quick,
+        reachable: true,
         provider: provider.kind,
         baseUrl: provider.baseUrl,
         models: installed,
@@ -91,6 +95,7 @@ export function createLLM({
     } catch (err) {
       return {
         ok: false,
+        reachable: false,
         provider: provider.kind,
         baseUrl: provider.baseUrl,
         models: [],

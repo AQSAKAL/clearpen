@@ -1,22 +1,29 @@
 // A Backend for tests: the real library on in-memory SQLite, images in a Map,
-// saved files recorded instead of written, and a model that's always there.
+// saved files recorded instead of written, and a model that's there unless a
+// test says otherwise.
 
 import { prepareImage } from '@clearpen/core';
 import { openLibrary } from '@clearpen/db';
 import { nodeDriver } from '@clearpen/db/node';
 import type { Backend } from '../src/backend.ts';
 import { localAI } from '../src/local-ai.ts';
-import { fakeModel, type Reply } from './fake-model.ts';
+import { type FakeMachine, fakeModel, type Reply } from './fake-model.ts';
 
 export interface TestBackend extends Backend {
   saved: { name: string; contents: string; type: string }[];
   images: Map<string, Uint8Array>;
+  /** Links the app opened. */
+  opened: string[];
 }
 
-export async function testBackend(replies: Reply[] = []): Promise<TestBackend> {
+export async function testBackend(
+  replies: Reply[] = [],
+  { machine, memory = null }: { machine?: FakeMachine; memory?: number | null } = {},
+): Promise<TestBackend> {
   const library = await openLibrary(nodeDriver());
   const images = new Map<string, Uint8Array>();
   const saved: TestBackend['saved'] = [];
+  const opened: string[] = [];
   return {
     where: 'in memory',
     platform: 'mac',
@@ -24,6 +31,7 @@ export async function testBackend(replies: Reply[] = []): Promise<TestBackend> {
     library,
     saved,
     images,
+    opened,
     media: {
       async add(file) {
         const img = await prepareImage(file);
@@ -42,6 +50,10 @@ export async function testBackend(replies: Reply[] = []): Promise<TestBackend> {
         return true;
       },
     },
-    ai: localAI(fakeModel(replies).llm),
+    ai: localAI(fakeModel(replies, machine).llm),
+    async openLink(url) {
+      opened.push(url);
+    },
+    memory: async () => memory,
   };
 }

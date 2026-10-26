@@ -5,12 +5,13 @@
 import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
 import { type Backend, localAI } from '@clearpen/ui';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { appConfigDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { save } from '@tauri-apps/plugin-dialog';
 import { BaseDirectory, exists, mkdir, readFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import Database from '@tauri-apps/plugin-sql';
 
 const inAppFolder = { baseDir: BaseDirectory.AppConfig };
@@ -94,6 +95,8 @@ export async function createDesktopBackend(): Promise<Backend> {
     },
 
     ai: localAI(llm),
+    openLink: (url) => openUrl(url),
+    memory: () => invoke<number>('total_memory').catch(() => null),
 
     beforeClose(saveAll) {
       const stop = getCurrentWindow().onCloseRequested(async () => {

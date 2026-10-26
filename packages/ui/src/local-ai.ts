@@ -9,6 +9,7 @@ const ROLES: Role[] = ['quick', 'coach', 'checker'];
 export function localAI(llm: LLMClient): AI {
   return {
     status: () => llm.status(),
+    ...(llm.provider.pull ? { pull: llm.provider.pull.bind(llm.provider) } : {}),
     setModels(models, { preload = false } = {}) {
       for (const role of ROLES) llm.setModel(role, models[role] ?? null);
       if (preload)

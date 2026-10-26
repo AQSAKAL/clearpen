@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import { createLLM, pickModel } from '../src/llm/client.ts';
+import { formatBytes, MODEL_OFFERS, recommendedOffer } from '../src/llm/offers.ts';
 import { createOllama } from '../src/llm/ollama.ts';
 import { createOpenAICompatible } from '../src/llm/openai.ts';
 import type { Fetch } from '../src/llm/types.ts';
@@ -133,4 +134,89 @@ test('thinking is hidden even when a tag is split across chunks', () => {
   const signal = anySignal([undefined, ctrl.signal, new AbortController().signal]);
   ctrl.abort();
   assert.equal(signal.aborted, true);
+});
+
+test('Ollama: a model downloads with its progress summed over every part', async () => {
+  const { fetch, calls } = fakeFetch(() =>
+    streamOf([
+      '{"status":"pulling manifest"}\n',
+      '{"status":"pulling aaa","digest":"sha256:aaa","total":1000,"completed":0}\n',
+      '{"status":"pulling aaa","digest":"sha256:aaa","total":1000,"completed":600}\n{"status":"pulling aaa","digest":"sha256:aaa","total":1000,"completed":1000}\n',
+      '{"status":"pulling bbb","digest":"sha256:bbb","total":10,"completed":5}\n',
+      '{"status":"verifying sha256 digest"}\n{"status":"writing manifest"}\n{"status":"success"}\n',
+    ]),
+  );
+  const ollama = createOllama({ fetch });
+  const steps = await collect(ollama.pull!('qwen3:4b'));
+  assert.deepEqual(calls[0]!.body, { model: 'qwen3:4b', stream: true });
+  assert.deepEqual(
+    steps.map((p) => [p.completed, p.total]),
+    [
+      [0, 0],
+      [0, 1000],
+      [600, 1000],
+      [1000, 1000],
+      [1005, 1010],
+      [1005, 1010],
+      [1005, 1010],
+      [1010, 1010],
+    ],
+  );
+  assert.equal(steps.at(-1)!.done, true);
+  assert.equal(steps.filter((p) => p.done).length, 1);
+});
+
+test('Ollama: a download that fails or stops early says so', async () => {
+  const failing = createOllama({
+    fetch: fakeFetch(() =>
+      streamOf(['{"status":"pulling manifest"}\n{"error":"pull model manifest: file does not exist"}\n']),
+    ).fetch,
+  });
+  await assert.rejects(collect(failing.pull!('qwen3:nope')), /file does not exist/);
+  const cut = createOllama({
+    fetch: fakeFetch(() => streamOf(['{"status":"pulling aaa","digest":"sha256:aaa","total":9,"completed":3}\n']))
+      .fetch,
+  });
+  await assert.rejects(collect(cut.pull!('qwen3:4b')), /stopped before it finished/);
+  const away = createOllama({
+    fetch: (async () => {
+      throw new TypeError('fetch failed');
+    }) as Fetch,
+  });
+  await assert.rejects(collect(away.pull!('qwen3:4b')), /Cannot reach Ollama/);
+});
+
+test('status tells "Ollama isn’t running" from "no model yet"', async () => {
+  const none = createLLM({ provider: fakeProvider({}) });
+  // fakeProvider lists three models; one with none installed:
+  const empty = createLLM({ provider: { ...fakeProvider({}), listModels: async () => [] } });
+  assert.equal((await none.status()).reachable, true);
+  const s = await empty.status();
+  assert.deepEqual([s.ok, s.reachable, s.error], [false, true, 'No models installed.']);
+  const away = createLLM({
+    provider: {
+      ...fakeProvider({}),
+      listModels: async () => {
+        throw new TypeError('fetch failed');
+      },
+    },
+  });
+  assert.deepEqual([(await away.status()).ok, (await away.status()).reachable], [false, false]);
+});
+
+test('the model to offer depends on the memory there is', () => {
+  const GB = 2 ** 30;
+  assert.equal(recommendedOffer(null).model, 'qwen3:8b', 'unknown: the best one');
+  assert.equal(recommendedOffer(24 * GB).model, 'qwen3:8b');
+  assert.equal(recommendedOffer(15.8 * GB).model, 'qwen3:8b', 'a 16 GB machine reports a little less');
+  assert.equal(recommendedOffer(8 * GB).model, 'qwen3:4b-instruct');
+  assert.equal(recommendedOffer(4 * GB).model, 'qwen3:4b-instruct', 'the lightest when nothing fits');
+  assert.ok(
+    MODEL_OFFERS.every((o) => pickModel([o.model]) === o.model),
+    'every offer is a model Clearpen will use',
+  );
+  assert.deepEqual(
+    [formatBytes(5.23e9), formatBytes(2.5e9), formatBytes(480e6), formatBytes(12e3)],
+    ['5.2 GB', '2.5 GB', '480 MB', '12 KB'],
+  );
 });

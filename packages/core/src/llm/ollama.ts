@@ -5,7 +5,7 @@
 //   or every answer starts with seconds of hidden text;
 // - Ollama's MLX engine has no structured output: ask nicely instead.
 
-import type { ChatRequest, Fetch, LLMProvider, StreamInfo } from './types.ts';
+import type { ChatRequest, Fetch, LLMProvider, PullProgress, StreamInfo } from './types.ts';
 import { isUnreachable, lines, thinkFilter, timeoutSignal } from './util.ts';
 
 export interface OllamaOptions {
@@ -15,6 +15,14 @@ export interface OllamaOptions {
   /** How long Ollama keeps the model in memory after a request. */
   keepAlive?: string;
   fetch?: Fetch;
+}
+
+interface PullLine {
+  status?: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+  error?: string;
 }
 
 interface OllamaChunk {
@@ -170,6 +178,43 @@ export function createOllama({
       } catch {
         // Best-effort: the first real request loads it instead.
       }
+    },
+
+    async *pull(model, { signal } = {}) {
+      let res: Response;
+      try {
+        res = await fetchImpl(`${base}/api/pull`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model, stream: true }),
+          signal: signal ?? null,
+        });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        throw new Error(provider.describeError(err));
+      }
+      if (!res.ok) throw new Error(`Couldn’t download ${model}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+      // A model comes in parts — the weights, then small files — each with its own size.
+      const parts = new Map<string, { total: number; completed: number }>();
+      let done = false;
+      for await (const raw of lines(res.body!)) {
+        const line = raw.trim();
+        if (!line) continue;
+        const msg = JSON.parse(line) as PullLine;
+        if (msg.error) throw new Error(msg.error);
+        if (msg.digest && msg.total) parts.set(msg.digest, { total: msg.total, completed: msg.completed ?? 0 });
+        let total = 0;
+        let completed = 0;
+        for (const p of parts.values()) {
+          total += p.total;
+          completed += Math.min(p.completed, p.total);
+        }
+        done = msg.status === 'success';
+        const progress: PullProgress = { status: msg.status ?? '', completed: done ? total : completed, total, done };
+        yield progress;
+      }
+      // Ollama keeps what it has; asking again carries on from there.
+      if (!done) throw new Error('The download stopped before it finished. Try again to carry on where it left off.');
     },
 
     describeError(err) {

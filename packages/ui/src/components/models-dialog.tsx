@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import type { ModelChoice } from '../backend.ts';
 import { useLibrary } from '../library.tsx';
 import { useSettings } from '../settings.tsx';
+import { useSetup } from '../setup.tsx';
 import { Button } from './ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog.tsx';
 import { Label } from './ui/label.tsx';
@@ -24,6 +25,7 @@ export function ModelsDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const { settings, set } = useSettings();
   const [status, setStatus] = useState<LLMStatus | null>(null);
   const [draft, setDraft] = useState<ModelChoice>(settings.models);
+  const setup = useSetup();
 
   useEffect(() => {
     if (!open) return;
@@ -87,6 +89,16 @@ export function ModelsDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           })}
         </div>
         <DialogFooter>
+          <Button
+            variant="link"
+            className="mr-auto px-0"
+            onClick={() => {
+              onOpenChange(false);
+              setup.open('choose');
+            }}
+          >
+            Download a model…
+          </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

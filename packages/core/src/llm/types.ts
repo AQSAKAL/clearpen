@@ -17,6 +17,18 @@ export interface StreamInfo {
   truncated?: boolean;
 }
 
+/** How a model download is going. */
+export interface PullProgress {
+  /** Ollama's word for the step: "pulling manifest", "pulling 6e4c38e1172f", "verifying sha256 digest", "success". */
+  status: string;
+  /** Bytes downloaded so far, over every part of the model. */
+  completed: number;
+  /** Bytes to download, over the parts known so far. */
+  total: number;
+  /** The model is downloaded and ready to use. */
+  done: boolean;
+}
+
 /** A model server: Ollama, or anything that speaks the OpenAI API. */
 export interface LLMProvider {
   readonly kind: string;
@@ -33,6 +45,8 @@ export interface LLMProvider {
   isLoaded(model: string): Promise<boolean>;
   /** Loads the model ahead of the first request. Best-effort. */
   preload(model: string): Promise<void>;
+  /** Downloads a model onto this machine, reporting progress — on servers that can (Ollama). */
+  pull?(model: string, opts?: { signal?: AbortSignal }): AsyncIterable<PullProgress>;
   /** A sentence a writer can act on, for an error from this server. */
   describeError(err: unknown): string;
 }

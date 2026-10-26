@@ -12,6 +12,7 @@ export * from './integrity.ts';
 export * from './intent.ts';
 export * from './jsonstream.ts';
 export * from './llm/client.ts';
+export * from './llm/offers.ts';
 export * from './llm/ollama.ts';
 export * from './llm/openai.ts';
 export type * from './llm/types.ts';
