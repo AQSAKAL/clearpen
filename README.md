@@ -2,7 +2,7 @@
 
 **An open-source writing app with an editor in the margin — offline, on Mac, Windows and the web.**
 
-Margin helps you write articles that hold up: an AI editor that suggests pinpoint changes you accept or reject, checks your facts, logic and numbers, and never rewrites a word of yours without asking. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
+Margin helps you write articles that hold up. You do the writing; Margin helps you think: it lays out the argument of a section, the objection to answer and the evidence to find, checks your facts, logic and numbers, and suggests pinpoint edits you accept or reject. It never writes your prose. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
 
 > **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). Phase 1, the engine (`packages/core`), is done; the app around it comes next.
 
@@ -37,10 +37,11 @@ ollama pull qwen3:8b
 
 ## Principles
 
-1. **Your words are yours.** Local by default; nothing leaves your machine unless you configure it to; everything exports to plain Markdown.
-2. **Never lose a word.** Durable storage, versions, a trash, backups.
-3. **AI proposes; you decide.** Pinpoint edits you accept one by one. Checks that say where their knowledge came from. Arithmetic done by code, never by a model.
-4. **Write each feature once.** One engine runs on the desktop, the server and the cloud.
+1. **You write; Margin helps you think.** The AI never writes your prose — no drafted sections, paragraphs, openings or examples. It outlines logic and argument, checks facts and reasoning, and suggests pinpoint edits.
+2. **Your words are yours.** Local by default; nothing leaves your machine unless you configure it to; everything exports to plain Markdown.
+3. **Never lose a word.** Durable storage, versions, a trash, backups.
+4. **AI proposes; you decide.** Pinpoint edits you accept one by one. Checks that say where their knowledge came from. Arithmetic done by code, never by a model.
+5. **Write each feature once.** One engine runs on the desktop, the server and the cloud.
 
 ## License
 

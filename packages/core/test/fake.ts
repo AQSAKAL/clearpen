@@ -27,7 +27,7 @@ export function fakeProvider(script: Script): LLMProvider & { requests: ChatRequ
     kind: 'fake',
     baseUrl: 'fake://',
     requests,
-    listModels: async () => ['quick-model', 'writer-model'],
+    listModels: async () => ['quick-model', 'coach-model', 'big-model'],
     async *stream(req: ChatRequest, info: StreamInfo = {}) {
       requests.push(req);
       const out = script.stream?.(req) ?? [];

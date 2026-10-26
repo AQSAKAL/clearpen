@@ -86,15 +86,6 @@ export function tidyRewrite(raw: string, original: string): string {
   return lead + text.trim() + trail;
 }
 
-/** A section body drafted in place: no heading of its own, no stray wrapper. */
-export function tidySectionBody(raw: string): string {
-  return String(raw)
-    .replace(THINKING, '')
-    .replace(/^\s*#{1,6}\s[^\n]*\n+/, '')
-    .replace(/^```\w*\n([\s\S]*?)\n?```\s*$/, '$1')
-    .trim();
-}
-
 /** Any model answer as plain text: thinking removed, trimmed. */
 export function tidyText(raw: string): string {
   return String(raw).replace(THINKING, '').trim();

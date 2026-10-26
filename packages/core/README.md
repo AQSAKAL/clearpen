@@ -16,8 +16,8 @@ Margin's engine. Pure TypeScript with no platform APIs, so the same code runs in
 | `outline` | The article's own outline: its sections and the notes under each. |
 | `intent` | Is a typed instruction a check, a question, or an edit? |
 | `prompts`, `tidy` | Every prompt Margin sends, and the clean-up of every answer. |
-| `llm/*` | Ollama and OpenAI-compatible providers, and the client: model roles, stall protection, JSON answers. |
-| `tasks/*` | The AI features as async generators of events: `complete`, `rewrite`, `edit`, `check`, `review`, `continueWriting`, `draft`, `ask`, plus `headlines`, `outline`, `meta`. |
+| `llm/*` | Ollama and OpenAI-compatible providers, and the client: model roles (quick, coach, checker), stall protection, JSON answers. |
+| `tasks/*` | The AI features. Async generators of events: `complete`, `rewrite`, `edit`, `check`, `review`, `ask`. Structured answers: `think` (coach notes — the argument of a section, what comes next, objections; never prose), `outline`, `headlines`, `meta`. |
 
 ## Using it
 

@@ -94,8 +94,6 @@ Continue from the cursor.`,
 export const REWRITES = {
   improve: 'Improve this passage: make it clearer, tighter and more vivid without changing its meaning or voice.',
   shorten: 'Make it about 40% shorter. Keep every key point.',
-  expand:
-    'Expand it with more depth — an explanation, a concrete example or a telling detail. Make it about 1.5 to 2 times longer.',
   simplify: 'Rewrite it in plain, simple language anyone could follow. Short sentences, everyday words.',
   grammar: 'Fix spelling, grammar and punctuation only. Change nothing else.',
   formal: 'Rewrite it in a more formal, professional tone.',
@@ -195,38 +193,149 @@ export const editsSchema: JsonSchema = {
   required: ['edits'],
 };
 
-// ─────────────────────────────────────────────────────────── continue writing
+// ─────────────────────────────────────────────────────────── thinking aids
 
-export function continueMessages({
-  title = '',
-  before = '',
-  after = '',
-  brief,
-  instruction,
-}: {
+// Margin never writes the author's prose. It helps them think: the point a
+// section must make, the steps of the argument, the evidence to find, the
+// objection to answer, the questions only they can answer. Notes, not prose.
+const COACH_SYSTEM = `You are a writing coach and a sharp editor. You NEVER write the author's prose: no paragraphs, no ready-to-use sentences, no openings, endings, examples or transitions written out. Writing is the author's job; yours is to help them think. You lay out logic and argument as short notes — fragments of at most 15 words, in your voice as a coach, never in the author's voice. Never invent facts, statistics, studies, quotes, people or anecdotes: for evidence, say what kind would support the point and where the author might find it; for examples, point to the kind of experience the author could draw on. You answer only with JSON.`;
+
+/** Each kind of help: what it's for, and the groups of notes to return ([label, how many and what]). */
+export const THINK_KINDS = {
+  shape: {
+    task: 'Lay out the argument of the section under the heading "{heading}", so the author can write it themselves.',
+    groups: [
+      ['The point', '1 note: the one claim this section must establish'],
+      ['Steps of the argument', '3 to 5 notes, in order, each one step of reasoning'],
+      ['Evidence to find', '2 to 4 notes: the kind of evidence that would support it, and where to look'],
+      ['Strongest objection', '1 or 2 notes'],
+      ['Ask yourself', '2 or 3 questions only the author can answer from their own experience'],
+    ],
+  },
+  next: {
+    task: 'Say where the argument should go next, from where the text stops.',
+    groups: [
+      ['Where it goes next', '2 to 4 notes: the next steps of the argument, in order'],
+      ['Ask yourself', '2 questions that would help the author write the next part'],
+    ],
+  },
+  opening: {
+    task: 'Suggest ways the author could open the article — describe the angle, never write the opening.',
+    groups: [
+      ['Ways to open', '3 notes, each an angle to open from (e.g. "Open on the moment you…")'],
+      ['The promise', '1 note: what the reader should know they will get'],
+    ],
+  },
+  ending: {
+    task: 'Suggest how the author could end the article — describe it, never write it.',
+    groups: [
+      ['What the ending must land', '1 or 2 notes'],
+      ['Ways to close', '2 or 3 notes, each an angle'],
+      ['Ask yourself', '1 or 2 questions'],
+    ],
+  },
+  examples: {
+    task: 'Suggest what kind of example would make the point just before the cursor concrete — never write the example or make one up.',
+    groups: [
+      ['Examples to look for', "3 to 5 notes: kinds of example from the author's own work or reading"],
+      ['Ask yourself', '1 or 2 questions that would surface a real example'],
+    ],
+  },
+  counter: {
+    task: 'Find the strongest objections a skeptical reader would raise to the argument so far.',
+    groups: [
+      ['Strongest objections', '2 notes'],
+      ['How you might answer', '2 notes: the reasoning, not the words'],
+    ],
+  },
+  ideas: {
+    task: 'Suggest fresh angles the author could cover next.',
+    groups: [['Angles to cover', '5 notes, specific and different from what is already written']],
+  },
+  point: {
+    task: 'Check whether the argument so far comes across as the author means it.',
+    groups: [
+      ['Your point, as a reader hears it', '1 note'],
+      ['Where it gets unclear', '1 or 2 notes'],
+      ['What it still needs', '1 or 2 notes'],
+    ],
+  },
+  deepen: {
+    task: 'For the selected passage, say what a reader would still want to know — never rewrite or extend it.',
+    groups: [
+      ['A reader would ask', '2 or 3 questions'],
+      ['What would make it concrete', '2 notes: the kind of detail, number or example to look for'],
+      ['What to cut or check', '0 or 1 note'],
+    ],
+  },
+} as const satisfies Record<string, { task: string; groups: readonly (readonly [string, string])[] }>;
+
+export type ThinkKind = keyof typeof THINK_KINDS;
+
+export interface ThinkInput {
+  kind: ThinkKind;
   title?: string;
+  brief?: Brief;
+  /** The author's text up to the cursor. */
   before?: string;
   after?: string;
-  brief?: Brief;
-  instruction?: string;
-}): ChatMessage[] {
+  /** The selected passage, for kinds that work on one. */
+  passage?: string;
+  /** The section heading, for "shape". */
+  heading?: string;
+  /** The author's own notes for the section. */
+  notes?: string[];
+  /** The article's section headings. */
+  outline?: string[];
+}
+
+export function thinkMessages({
+  kind,
+  title = '',
+  brief,
+  before = '',
+  after = '',
+  passage = '',
+  heading = '',
+  notes = [],
+  outline = [],
+}: ThinkInput): ChatMessage[] {
+  const k = THINK_KINDS[kind];
+  const groups = k.groups.map(([label, what]) => `  - "${label}": ${what}`).join('\n');
   return [
-    {
-      role: 'system',
-      content: `You are a skilled writer helping an author draft an article. You continue their text in their own voice, as if you were them. Never invent statistics, quotes or named sources — if a claim needs evidence, write it so the author can add the source. Output ONLY the new text, in Markdown, with no preamble.`,
-    },
+    { role: 'system', content: COACH_SYSTEM },
     {
       role: 'user',
-      content: `Article title: ${title || '(untitled)'}
-${withBrief(brief, '\nBrief:\n', '\n')}
-<text_so_far>
-${clip(before, 9000)}
-</text_so_far>
-${after.trim() ? `<text_that_follows>\n${head(after, 1200)}\n</text_that_follows>\n` : ''}
-${instruction ? `Write the next part: ${instruction}` : 'Write the next paragraph, continuing naturally from where the text stops.'} Write one or two paragraphs at most.`,
+      content: `Title: ${title || '(untitled)'}
+${withBrief(brief, '\nBrief:\n', '\n')}${outline.length ? `\nThe article's sections: ${outline.map((h) => `"${h}"`).join(', ')}\n` : ''}
+The author's text so far:
+<<<
+${clip(before, 9000) || '(nothing yet)'}
+>>>
+${passage ? `\nThe selected passage:\n<<<\n${head(passage, 4000)}\n>>>\n` : ''}${notes.length ? `\nThe author's own notes for this section:\n${notes.map((n) => `- ${n}`).join('\n')}\n` : ''}${after.trim() ? `\nWhat comes after:\n<<<\n${head(after, 1500)}\n>>>\n` : ''}
+${k.task.replace('{heading}', heading)}
+
+Return JSON {"groups": [{"label": "...", "items": ["...", "..."]}]} with these groups, in this order:
+${groups}
+Notes, not prose: short fragments the author can think with. Never write sentences the author could paste into the article.`,
     },
   ];
 }
+
+export const thinkSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    groups: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { label: { type: 'string' }, items: { type: 'array', items: { type: 'string' } } },
+        required: ['label', 'items'],
+      },
+    },
+  },
+  required: ['groups'],
+};
 
 // ─────────────────────────────────────────────────────────── review
 
@@ -492,57 +601,6 @@ export const outlineSchema: JsonSchema = {
   },
   required: ['title', 'sections'],
 };
-
-export interface DraftInput {
-  title?: string;
-  brief?: Brief;
-  outline: Outline;
-  index: number;
-  before?: string;
-  after?: string;
-  /** The section's heading is already in the article: write only its body. */
-  inPlace?: boolean;
-}
-
-export function draftMessages({
-  title = '',
-  brief = {},
-  outline,
-  index,
-  before = '',
-  after = '',
-  inPlace = false,
-}: DraftInput): ChatMessage[] {
-  const section = outline.sections[index];
-  if (!section) throw new RangeError(`No section ${index} in the outline.`);
-  const words = Math.max(120, Math.round((Number(brief.length) || 1200) / outline.sections.length));
-  const plan = outline.sections.map((s, i) => `${i === index ? '→' : ' '} ${i + 1}. ${s.heading}`).join('\n');
-  const points = section.points.map((p) => `- ${p}`).join('\n');
-  const task = inPlace
-    ? `The heading "${section.heading}" is already in the article. Write the body of this section only — about ${words} words${section.points.length ? `, turning the author's notes into prose:\n${points}` : '.'}
-${after.trim() ? `\nThe article continues after this section with:\n<<<\n${head(after, 1500)}\n>>>\nDon't cover what comes next.\n` : ''}
-Do not repeat the heading and do not add any other heading. Start straight with the first paragraph.`
-    : `Write section ${index + 1}: "${section.heading}" — about ${words} words, making these points:
-${points}
-
-Start with the heading as "## ${section.heading}"${index === 0 ? ' — or, for the opening section, no heading at all if a heading would read awkwardly before the first paragraph' : ''}. Do not write any other section.`;
-  return [
-    {
-      role: 'system',
-      content: `You are a skilled writer drafting an article for the author, in their voice. Write with clarity and specificity: concrete examples, active verbs, no filler, no clichés ("in today's fast-paced world", "delve", "game-changer"). Never invent statistics, studies, quotes or named sources — where evidence is needed, write the claim so the author can add a source, and mark it with [source needed]. Output ONLY Markdown for the requested section.`,
-    },
-    {
-      role: 'user',
-      content: `Article: ${title || outline.title}
-${briefBlock(brief)}
-
-The plan:
-${plan}
-
-${before.trim() ? `The article so far:\n<<<\n${clip(before, 9000)}\n>>>\n\n` : ''}${task}`,
-    },
-  ];
-}
 
 export function metaMessages({ title = '', content }: { title?: string; content: string }): ChatMessage[] {
   return [

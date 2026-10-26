@@ -2,7 +2,7 @@
 // metadata for publishing. Models without schema support sometimes return
 // partial objects, so every answer is normalised into a safe shape.
 
-import type { LLMClient } from '../llm/client.ts';
+import type { LLMClient, Role } from '../llm/client.ts';
 import * as P from '../prompts.ts';
 import { field, InputError, type TaskOptions, wordCount } from './common.ts';
 
@@ -65,8 +65,9 @@ async function structured(
   format: P.JsonSchema,
   maxTokens: number,
   { signal }: TaskOptions,
+  role: Role = 'quick',
 ): Promise<unknown> {
-  const model = await llm.modelFor('quick');
+  const model = await llm.modelFor(role);
   return llm.json({ model, messages, format, maxTokens, ...(signal ? { signal } : {}) });
 }
 
@@ -84,7 +85,8 @@ export async function outline(
   opts: TaskOptions = {},
 ): Promise<P.Outline> {
   if (!input.brief?.topic && !input.title?.trim()) throw new InputError('Tell me what the article is about first.');
-  const out = normaliseOutline(await structured(llm, P.outlineMessages(input), P.outlineSchema, 1500, opts));
+  // An outline is the argument's shape — the coach's job.
+  const out = normaliseOutline(await structured(llm, P.outlineMessages(input), P.outlineSchema, 1500, opts, 'coach'));
   if (!out.sections.length) throw new Error('The model didn’t return an outline — try again.');
   return out;
 }

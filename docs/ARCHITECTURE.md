@@ -15,10 +15,11 @@ An open-source writing app that:
 
 Principles that every decision below follows:
 
-1. **Your words are yours.** Local by default; nothing leaves the machine unless you configure it to; everything exports to plain Markdown at any time.
-2. **Never lose a word.** Durable storage on a real disk, versions, a trash, automatic backups.
-3. **AI proposes; you decide.** Pinpoint edits you accept or reject, checks that say where their knowledge came from, arithmetic done by code — never by the model.
-4. **Write each feature once.** One codebase runs in all three places.
+1. **You write; Margin helps you think.** The AI never writes the author's prose — no drafted sections, paragraphs, openings or examples. It outlines logic and argument (headings, notes, the steps of a section, evidence to find, objections, questions), checks facts and reasoning, and makes pinpoint edits the author accepts or rejects.
+2. **Your words are yours.** Local by default; nothing leaves the machine unless you configure it to; everything exports to plain Markdown at any time.
+3. **Never lose a word.** Durable storage on a real disk, versions, a trash, automatic backups.
+4. **AI proposes; you decide.** Pinpoint edits you accept or reject, checks that say where their knowledge came from, arithmetic done by code — never by the model.
+5. **Write each feature once.** One codebase runs in all three places.
 
 ## Four ways to run it
 
@@ -77,7 +78,7 @@ apps/
   web/        Vite build of the UI for browsers
 packages/
   core/       pure logic: checks, diff, integrity, analysis, Markdown, prompts, anchoring,
-              streaming JSON, the LLM client and AI tasks (review, check, edit, draft)
+              streaming JSON, the LLM client and AI tasks (review, check, edit, think)
   db/         Drizzle schemas (pg + sqlite), migrations, repositories, shared tests
   editor/     the CodeMirror 6 layer: ghost text, tracked changes, margin notes, images
   ui/         the app in React + Tailwind + shadcn/ui ✅
@@ -96,9 +97,9 @@ So a feature like *fact-check a selection* is written once in `core` and appears
 ## AI
 
 - **Providers:** Ollama (default, local) · any OpenAI-compatible endpoint (LM Studio, llama.cpp, vLLM, hosted) · Anthropic.
-- **Roles, each its own model:**
+- **Roles, each its own model** (none of them writes the author's prose):
   - *quick*: autocomplete, edits, checks;
-  - *writer*: drafting;
+  - *coach*: outlines and section plans — the argument, never the prose;
   - *checker*: fact-checking, where a larger or hosted model helps most.
 - **Keys:** the OS keychain on desktop; encrypted server secrets when self-hosted. Never stored in plain text, never in exports.
 - **Transparency:** the UI shows where each request goes (this Mac / your server / a named provider).

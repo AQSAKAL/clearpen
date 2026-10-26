@@ -23,5 +23,6 @@ export * from './tasks/common.ts';
 export * from './tasks/edit.ts';
 export * from './tasks/plan.ts';
 export * from './tasks/review.ts';
+export * from './tasks/think.ts';
 export * from './tasks/write.ts';
 export * from './tidy.ts';

@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import { applyHunks } from '../src/diff.ts';
+import * as core from '../src/index.ts';
+import { REWRITES, THINK_KINDS, type ThinkKind, thinkMessages } from '../src/prompts.ts';
 import { check } from '../src/tasks/check.ts';
-import { InputError, streamText } from '../src/tasks/common.ts';
+import { InputError } from '../src/tasks/common.ts';
 import { edit } from '../src/tasks/edit.ts';
 import { headlines, meta, normaliseOutline, outline } from '../src/tasks/plan.ts';
 import { review } from '../src/tasks/review.ts';
+import { think } from '../src/tasks/think.ts';
 import { complete, rewrite } from '../src/tasks/write.ts';
 import { chunks, collect, fakeLLM, lastUser } from './fake.ts';
 
@@ -148,28 +151,6 @@ test('autocomplete is tidied to fit the cursor', async () => {
   assert.deepEqual(provider.requests[0]!.stop, ['\n\n']);
 });
 
-test('a separate writer model that won’t start is replaced by the quick one', async () => {
-  const { llm } = fakeLLM(
-    { stream: (req) => (req.model === 'writer-model' ? 'hang' : ['Drafted by quick.']) },
-    { quick: 'quick-model', writer: 'writer-model' },
-  );
-  const gen = streamText(llm, [{ role: 'user', content: 'draft' }], { role: 'writer', firstWordMs: 20 });
-  const events = [];
-  let r = await gen.next();
-  while (!r.done) {
-    events.push(r.value);
-    r = await gen.next();
-  }
-  assert.equal(r.value, 'Drafted by quick.');
-  assert.ok(
-    events.some(
-      (e) =>
-        e.type === 'notice' &&
-        /writer-model is taking too long to start — writing with quick-model instead/.test(e.text),
-    ),
-  );
-});
-
 test('structured answers are normalised into safe shapes', async () => {
   assert.deepEqual(
     normaliseOutline({ title: ' T ', sections: [{ heading: 'A', points: ['x', 3, ''] }, { heading: '' }, 'junk'] }),
@@ -190,4 +171,62 @@ test('structured answers are normalised into safe shapes', async () => {
   const m = await meta(llm, { content: 'word '.repeat(80) });
   assert.equal(m.slug, 'hello-world');
   assert.deepEqual(m.tags, ['a']);
+});
+
+// ─────────────────────────────────────────────────────────── you write
+
+test('Margin has no way to write the author’s prose', () => {
+  for (const name of ['draft', 'continueWriting', 'draftMessages', 'continueMessages', 'tidySectionBody']) {
+    assert.ok(!(name in core), `${name} must not exist`);
+  }
+  assert.ok(!('expand' in REWRITES), 'no rewrite adds prose the author didn’t write');
+});
+
+test('thinking aids ask for coach notes, never prose', () => {
+  const [system, user] = thinkMessages({
+    kind: 'shape',
+    title: 'Why small teams write things down',
+    heading: 'Why pain matters',
+    notes: ['Pain is a signal'],
+    outline: ['Why pain matters', 'What to write down'],
+    before: 'Most small teams run on talk.',
+  });
+  assert.match(system!.content, /NEVER write the author's prose/);
+  assert.match(user!.content, /the section under the heading "Why pain matters"/);
+  assert.match(user!.content, /- Pain is a signal/);
+  assert.match(user!.content, /Never write sentences the author could paste into the article/);
+  // Every kind builds a prompt that names each of its groups, in order.
+  for (const kind of Object.keys(THINK_KINDS) as ThinkKind[]) {
+    const content = thinkMessages({ kind })[1]!.content;
+    const labels = THINK_KINDS[kind].groups.map(([label]) => content.indexOf(`"${label}"`));
+    assert.ok(
+      labels.every((i, n) => i > 0 && (n === 0 || i > labels[n - 1]!)),
+      kind,
+    );
+  }
+});
+
+test('think returns tidy groups of notes from the coach model', async () => {
+  const { llm, provider } = fakeLLM(
+    {
+      complete: () =>
+        JSON.stringify({
+          groups: [
+            { label: 'The point', items: ['Pain tells you where the process breaks', ''] },
+            { label: '', items: ['orphan'] },
+            { label: 'Ask yourself', items: [] },
+            { label: 'Steps of the argument', items: ['one', 2, 'two'] },
+          ],
+        }),
+    },
+    { quick: 'quick-model', coach: 'coach-model' },
+  );
+  assert.deepEqual(await think(llm, { kind: 'shape', heading: 'Why pain matters' }), [
+    { label: 'The point', items: ['Pain tells you where the process breaks'] },
+    { label: 'Steps of the argument', items: ['one', 'two'] },
+  ]);
+  assert.equal(provider.requests[0]!.model, 'coach-model');
+  await assert.rejects(think(llm, { kind: 'write-it-for-me' as ThinkKind }), InputError);
+  const empty = fakeLLM({ complete: () => '{"groups":[]}' });
+  await assert.rejects(think(empty.llm, { kind: 'next' }), /No notes came back/);
 });

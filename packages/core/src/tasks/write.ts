@@ -1,12 +1,13 @@
-// Tasks that answer with prose: autocomplete, rewrites, continuing, drafting
-// a section, and answering questions about the draft.
+// Tasks that stream text: autocomplete, rewrites of the author's own passage,
+// and answers about the draft. Margin never drafts the author's prose — for
+// help with what to write, see `think`.
 
 import { type Hunk, hunks } from '../diff.ts';
 import { warning } from '../integrity.ts';
 import type { LLMClient } from '../llm/client.ts';
 import type { StreamInfo } from '../llm/types.ts';
 import * as P from '../prompts.ts';
-import { tidyCompletion, tidyRewrite, tidySectionBody, tidyText } from '../tidy.ts';
+import { tidyCompletion, tidyRewrite, tidyText } from '../tidy.ts';
 import { InputError, MAX_PASSAGE, type NoticeEvent, streamText, type TaskOptions, type TokenEvent } from './common.ts';
 
 export interface TextDone {
@@ -75,39 +76,6 @@ export async function* rewrite(
   const out = tidyRewrite(raw, text);
   const changes = hunks(text, out).map((h) => ({ ...h, warning: warning(text.slice(h.from, h.to), h.insert) }));
   yield { type: 'done', text: out, truncated: false, changes };
-}
-
-/** Writes the next paragraph or two, in the author's voice. */
-export async function* continueWriting(
-  llm: LLMClient,
-  input: { title?: string; before: string; after?: string; brief?: P.Brief; instruction?: string; useWriter?: boolean },
-  opts: TaskOptions & { firstWordMs?: number } = {},
-): AsyncGenerator<TextEvent> {
-  const info: StreamInfo = {};
-  const raw = yield* streamText(
-    llm,
-    P.continueMessages(input),
-    { ...opts, role: input.useWriter ? 'writer' : 'quick', maxTokens: 500, temperature: 0.75 },
-    info,
-  );
-  yield { type: 'done', text: tidyText(raw), truncated: !!info.truncated };
-}
-
-/** Drafts one section of the outline with the writer model. */
-export async function* draft(
-  llm: LLMClient,
-  input: P.DraftInput,
-  opts: TaskOptions & { firstWordMs?: number } = {},
-): AsyncGenerator<TextEvent> {
-  if (!input.outline.sections[input.index]) throw new InputError('No such section in the outline.');
-  const info: StreamInfo = {};
-  const raw = yield* streamText(
-    llm,
-    P.draftMessages(input),
-    { ...opts, role: 'writer', maxTokens: 1400, temperature: 0.75 },
-    info,
-  );
-  yield { type: 'done', text: input.inPlace ? tidySectionBody(raw) : tidyText(raw), truncated: !!info.truncated };
 }
 
 /** Answers a question about the draft. */

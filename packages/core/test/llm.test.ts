@@ -119,11 +119,11 @@ test('roles default sensibly and an explicit choice wins', async () => {
   assert.equal(pickModel(['nomic-embed-text', 'something-new']), 'something-new');
   assert.equal(pickModel([]), null);
   const llm = createLLM({ provider: fakeProvider({}), models: { quick: 'quick-model' } });
-  assert.equal(await llm.modelFor('writer'), 'quick-model', 'every role falls back to the quick model');
-  llm.setModel('checker', 'writer-model');
-  assert.equal(await llm.modelFor('checker'), 'writer-model');
+  assert.equal(await llm.modelFor('coach'), 'quick-model', 'every role falls back to the quick model');
+  llm.setModel('checker', 'big-model');
+  assert.equal(await llm.modelFor('checker'), 'big-model');
   const s = await llm.status();
-  assert.deepEqual(s.roles, { quick: 'quick-model', writer: 'quick-model', checker: 'writer-model' });
+  assert.deepEqual(s.roles, { quick: 'quick-model', coach: 'quick-model', checker: 'big-model' });
 });
 
 test('thinking is hidden even when a tag is split across chunks', () => {

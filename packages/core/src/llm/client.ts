@@ -7,12 +7,12 @@ import { anySignal, parseJSONAnswer } from './util.ts';
 /**
  * - quick: everything interactive — autocomplete, edits, checks, reviews.
  *   Must be fast and keep its prompt cache warm.
- * - writer: drafting whole sections, where prose quality matters most.
+ * - coach: outlines and section plans — the argument, never the prose.
  * - checker: fact-checking, where a larger model knows more.
  * On a typical laptop two models don't fit in memory together, so by default
  * every role uses the quick model.
  */
-export type Role = 'quick' | 'writer' | 'checker';
+export type Role = 'quick' | 'coach' | 'checker';
 
 /** Good defaults, in order, when the writer hasn't picked a model. */
 export const PREFERRED_MODELS = [
@@ -82,7 +82,7 @@ export function createLLM({
         provider: provider.kind,
         baseUrl: provider.baseUrl,
         models: installed,
-        roles: { quick, writer: role('writer'), checker: role('checker') },
+        roles: { quick, coach: role('coach'), checker: role('checker') },
         error: quick ? null : 'No models installed.',
       };
     } catch (err) {
@@ -91,7 +91,7 @@ export function createLLM({
         provider: provider.kind,
         baseUrl: provider.baseUrl,
         models: [],
-        roles: { quick: null, writer: null, checker: null },
+        roles: { quick: null, coach: null, checker: null },
         error: provider.describeError(err),
       };
     }

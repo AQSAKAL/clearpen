@@ -1,9 +1,8 @@
 // What every AI task shares: input errors, the loading notice, and streaming
-// plain text with a fallback when a separate writer model won't start.
+// plain text as token events.
 
-import type { LLMClient, Role } from '../llm/client.ts';
+import type { LLMClient } from '../llm/client.ts';
 import type { StreamInfo } from '../llm/types.ts';
-import { anySignal } from '../llm/util.ts';
 import type { ChatMessage } from '../prompts.ts';
 
 /** A request the task can't do as asked — a 400, not a crash. */
@@ -41,57 +40,25 @@ export async function loadingNotice(llm: LLMClient, model: string): Promise<Noti
 }
 
 export interface TextStreamOptions extends TaskOptions {
-  role?: Role;
   temperature?: number;
   maxTokens?: number;
   stop?: string[];
-  /** How long a separate writer model may stay silent before the quick model takes over. */
-  firstWordMs?: number;
 }
 
-/**
- * Streams a plain-text answer as token events and returns the raw text.
- * A separate writer model that hasn't said a word in `firstWordMs` is given
- * up on, and the quick model — already in memory — writes it instead.
- */
+/** Streams a plain-text answer from the quick model as token events, and returns the raw text. */
 export async function* streamText(
   llm: LLMClient,
   messages: ChatMessage[],
-  { role = 'quick', signal, firstWordMs = 45_000, ...opts }: TextStreamOptions,
+  opts: TextStreamOptions,
   info: StreamInfo = {},
 ): AsyncGenerator<NoticeEvent | TokenEvent, string> {
-  let model = await llm.modelFor(role);
-  const quick = await llm.modelFor('quick');
+  const model = await llm.modelFor('quick');
   const notice = await loadingNotice(llm, model);
   if (notice) yield notice;
   let raw = '';
-
-  async function* attempt(m: string, timeoutMs: number): AsyncGenerator<TokenEvent, boolean> {
-    const giveUp = new AbortController();
-    const timer = timeoutMs ? setTimeout(() => giveUp.abort(), timeoutMs) : null;
-    try {
-      for await (const chunk of llm.stream(
-        { model: m, messages, ...opts, signal: anySignal([signal, giveUp.signal]) },
-        info,
-      )) {
-        if (timer) clearTimeout(timer);
-        raw += chunk;
-        yield { type: 'token', text: chunk };
-      }
-    } catch (err) {
-      if (giveUp.signal.aborted && !signal?.aborted && !raw) return false;
-      throw err;
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-    return true;
-  }
-
-  const fallback = role === 'writer' && model !== quick;
-  if (!(yield* attempt(model, fallback ? firstWordMs : 0))) {
-    yield { type: 'notice', text: `${model} is taking too long to start — writing with ${quick} instead.` };
-    model = quick;
-    yield* attempt(model, 0);
+  for await (const chunk of llm.stream({ model, messages, ...opts }, info)) {
+    raw += chunk;
+    yield { type: 'token', text: chunk };
   }
   return raw;
 }
