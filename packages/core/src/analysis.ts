@@ -261,6 +261,9 @@ export function sentences(text: string): Sentence[] {
 const plain = (s: string) => s.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`#>]/g, ' ');
 const wordsOf = (s: string): string[] => plain(s).match(/[\p{L}\p{N}’']+/gu) || [];
 
+/** Words in a Markdown text, counted the way `stats` counts them, so every count in the app agrees. */
+export const countWords = (text: string): number => wordsOf(text).length;
+
 export function syllables(word: string): number {
   const w = word.toLowerCase().replace(/[^a-z]/g, '');
   if (!w) return 0;

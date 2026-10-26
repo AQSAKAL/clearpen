@@ -16,7 +16,13 @@
         "width": 1200,
         "height": 800,
         "minWidth": 720,
-        "minHeight": 480
+        "minHeight": 480,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 18
+        }
       }
     ],
     "security": {
@@ -44,11 +50,17 @@
         "form-action": "'none'",
         "frame-ancestors": "'none'"
       },
-      "dangerousDisableAssetCspModification": ["style-src"]
+      "dangerousDisableAssetCspModification": ["style-src"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPCONFIG/media/*"]
+      }
     }
   },
   "plugins": {
-    "http": { "scopeRedirects": true }
+    "http": {
+      "scopeRedirects": true
+    }
   },
   "bundle": {
     "active": true,

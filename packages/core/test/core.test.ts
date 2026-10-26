@@ -9,6 +9,7 @@ import { anchorNotes, createAnchorer, findQuote } from '../src/anchor.ts';
 import { inventions, warning } from '../src/integrity.ts';
 import { completedItems, completedString } from '../src/jsonstream.ts';
 import { toDocument, toHTML } from '../src/markdown.ts';
+import { ImageError, imageBlock, MEDIA_SRC, prepareImage } from '../src/media.ts';
 import { outlineToMarkdown, sectionsOf } from '../src/outline.ts';
 import { firstSentenceEnd, tidyCompletion, tidyRewrite } from '../src/tidy.ts';
 
@@ -280,4 +281,45 @@ test('the article is its own outline: sections, their notes, and what is still t
     }),
     '## One\n\n- a\n- b\n\n## Two',
   );
+});
+
+test('images: relative media paths map through imageSrc, and only safe results render', () => {
+  const md = '![chart](media/ab12.png)\n\n![x](media/evil.png)\n\n![gone](media/none.png)';
+  const html = toHTML(md, {
+    imageSrc: (src) =>
+      src === 'media/ab12.png'
+        ? 'asset://localhost/lib/media/ab12.png'
+        : src === 'media/evil.png'
+          ? 'javascript:alert(1)'
+          : null,
+  });
+  assert.match(html, /<img src="asset:\/\/localhost\/lib\/media\/ab12.png" alt="chart">/);
+  assert.match(html, /<img src="#" alt="x">/);
+  assert.match(html, /<p>gone<\/p>/);
+  // Without a resolver, a relative path isn't a URL the page can trust.
+  assert.match(toHTML('![a](media/ab12.png)'), /src="#"/);
+  assert.match(
+    toDocument('T', '![a](media/x.png)', { imageSrc: () => 'data:image/png;base64,AAAA' }),
+    /data:image\/png;base64,AAAA/,
+  );
+});
+
+test('countWords counts words the way stats does, ignoring Markdown and image paths', () => {
+  const text = '# Title\n\nTwo **words** ![alt text](media/x.png)';
+  assert.equal(analysis.countWords(text), 5);
+  assert.equal(analysis.countWords(text), analysis.stats(text).words);
+});
+
+test('images: prepared by content, and placed in a paragraph of their own', async () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 1, 2, 3]);
+  const img = await prepareImage(new Blob([png]));
+  assert.equal(img.ext, 'png');
+  assert.equal(img.type, 'image/png');
+  assert.match(img.src, MEDIA_SRC);
+  assert.equal((await prepareImage(new Blob([png]))).sha256, img.sha256);
+  await assert.rejects(prepareImage(new Blob(['<svg onload=alert(1)>'])), ImageError);
+
+  assert.equal(imageBlock('One.', 4, 4, ['![a](media/x.png)']), '\n\n![a](media/x.png)\n');
+  assert.equal(imageBlock('One.\n\nTwo.', 6, 6, ['![a](media/x.png)']), '![a](media/x.png)\n\n');
+  assert.equal(imageBlock('', 0, 0, ['![a](m)', '![b](n)']), '![a](m)\n\n![b](n)\n');
 });

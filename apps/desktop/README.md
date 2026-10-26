@@ -1,15 +1,18 @@
 # apps/desktop
 
-Margin for Mac and Windows: the app in a [Tauri 2](https://tauri.app) shell. For now the window shows a check screen. It proves the app's parts work together on the computer: the engine, a local model and the library file. The editor replaces it in phase 3 (see [the architecture](../../docs/ARCHITECTURE.md)).
+Margin for Mac and Windows: the writing app (`@margin/ui`) in a [Tauri 2](https://tauri.app) shell. This app only supplies a `Backend` (`src/desktop-backend.ts`): the library, images, save dialogs and the local model. Everything you see comes from `packages/ui`. What's built and what comes next is in [the plan](../../docs/plans/writing-app.md).
 
 ## What the shell adds
 
 | | How | Where it's set |
 |---|---|---|
-| **Library** | One SQLite file, through Tauri's SQL plugin: `library.db` in the app's config folder — `~/Library/Application Support/app.margin.desktop/` on Mac, `%APPDATA%\app.margin.desktop\` on Windows. | `src-tauri/src/lib.rs` |
-| **Local models** | Requests to Ollama go through Tauri's HTTP plugin, so there is no CORS. They carry no `Origin` header, because Ollama turns away the app's Windows origin (`http://tauri.localhost`) with a 403. | `src/main.ts`, `src-tauri/Cargo.toml` |
-| **Permissions** | The window may open its database and reach Ollama on `127.0.0.1:11434` / `localhost:11434` — nothing else. Redirects are checked against that list too. | `src-tauri/capabilities/default.json`, `tauri.conf.json` |
-| **Content Security Policy** | Scripts only from the app itself; network only through Tauri's IPC. | `tauri.conf.json` → `app.security` |
+| **Library** | One SQLite file, through Tauri's SQL plugin: `library.db` in the app's config folder — `~/Library/Application Support/app.margin.desktop/` on Mac, `%APPDATA%\app.margin.desktop\` on Windows. `@margin/db` brings its tables up to date on every launch. | `src/desktop-backend.ts` |
+| **Images** | Pasted and dropped images are stored once, by content, in a `media` folder beside the library, and shown through Tauri's asset protocol. Articles refer to them as `media/<hash>.png`. | `src/desktop-backend.ts`, `tauri.conf.json` |
+| **Saving files** | "Save as Markdown…" and "Save as web page…" ask where with the system's save dialog. | `src/desktop-backend.ts` |
+| **Local models** | Requests to Ollama go through Tauri's HTTP plugin, so there is no CORS. They carry no `Origin` header, because Ollama turns away the app's Windows origin (`http://tauri.localhost`) with a 403. | `src/desktop-backend.ts`, `src-tauri/Cargo.toml` |
+| **Never lose a word** | Changes waiting to be saved are written before the window closes. | `src/desktop-backend.ts` (`beforeClose`) |
+| **Permissions** | The window may open its database, read and write its `media` folder, write a file the writer picked in a save dialog, and reach Ollama on `127.0.0.1:11434` / `localhost:11434` — nothing else. Redirects are checked against that list too. | `src-tauri/capabilities/default.json`, `tauri.conf.json` |
+| **Content Security Policy** | Scripts only from the app itself; images only from the app's own folder; network only through Tauri's IPC. Images from the web don't load. | `tauri.conf.json` → `app.security` |
 
 The app folder's name comes from the bundle identifier (`app.margin.desktop`). **Choose the final identifier before the first public release.** Changing it later moves where everyone's library lives.
 
@@ -24,7 +27,9 @@ pnpm install
 pnpm --filter @margin/desktop tauri dev
 ```
 
-The window loads the Vite dev server on port 1420 and reloads as you edit `src/`.
+The window loads the Vite dev server on port 1420 and reloads as you edit.
+
+To work on the interface without Tauri, run `pnpm --filter @margin/desktop dev` and open http://localhost:1420 in a browser. There the app runs on the same library code with SQLite compiled to WebAssembly, held in memory, so nothing is saved. It reaches Ollama directly.
 
 ## Build an installer
 

@@ -1,0 +1,456 @@
+/*
+ * Margin's editor, styled: the rules from the prototype's app.css.
+ *
+ * The app defines these custom properties. Values are the prototype's, light / dark.
+ *
+ *   Text and surfaces
+ *   --ink            #1d1c1a / #ece8df                 text, headings
+ *   --ink-2          #4a4741 / #c9c4b8                 quotes
+ *   --muted-foreground #7a766d / #9a958a               struck-through text, suggestion labels (shadcn's name)
+ *   --faint          #a8a398 / #6e6a62                 placeholder, Markdown marks, URLs, ghost text
+ *   --line           #e9e5dc / #2d2b27                 "Shape this section" border
+ *   --line-2         #dcd7cb / #3a3833                 quote rule, suggestion buttons
+ *   --panel          #ffffff / #201f1c                 suggestion and section buttons
+ *   --paper-2        #f4f2ec / #1c1b18                 code, image backdrop
+ *   --sel            rgba(102, 80, 224, 0.16) / rgba(157, 140, 255, 0.24)   selection
+ *   --shadow-sm      0 1px 2px rgba(20, 18, 14, 0.08), 0 2px 8px rgba(20, 18, 14, 0.06)
+ *                    / 0 1px 3px rgba(0, 0, 0, 0.4)    buttons, images
+ *
+ *   Accents
+ *   --brand          #d6452b / #ef6a4f                 caret, clichés
+ *   --brand-soft     rgba(214, 69, 43, 0.1) / rgba(239, 106, 79, 0.14)      clichés
+ *   --ai             #6650e0 / #9d8cff                 links, hints, streaming caret, section button, coach notes
+ *   --ai-soft        rgba(102, 80, 224, 0.1) / rgba(157, 140, 255, 0.14)    selection matches
+ *
+ *   Tracked changes
+ *   --ins            #17703f / #7fd6a0
+ *   --ins-bg         #e3f3e8 / rgba(64, 160, 100, 0.18)
+ *   --del            #b4372a / #f08e80
+ *   --del-bg         #fbe7e3 / rgba(220, 80, 60, 0.16)
+ *
+ *   Note categories
+ *   --c-clarity      #2f6fde / #6f9ff5
+ *   --c-concision    #b7791f / #e0a948
+ *   --c-structure    #7b4bd6 / #a988f0
+ *   --c-evidence     #d6452b / #ef6a4f
+ *   --c-tone         #0f8f87 / #3cc1b8
+ *   --c-grammar      #c2367d / #ec6aa9
+ *   --c-style        #5b6b7c / #93a3b4
+ *   --c-numbers      #2b8a3e / #51cf66
+ *   --c-factcheck    #e8590c / #ff922b
+ *   --c-logic        #5f3dc4 / #9775fa
+ *   --c-consistency  #1864ab / #4dabf7
+ *   --c-compliance   #c92a2a / #ff6b6b
+ *   --c-procedure    #5c940d / #94d82d
+ *   (coach notes use --ai)
+ *
+ *   Fonts, the same in both themes
+ *   --f-write        the writer's font; var(--f-text): 'Source Serif 4', 'Source Serif Pro', Charter,
+ *                    'Iowan Old Style', Georgia, serif
+ *   --f-ui           'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif
+ *   --f-mono         'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace
+ *
+ * Not needed: the prototype also defines --ghost (#a49f94 / #6f6b63), but its ghost text
+ * is coloured with --faint, as here. Focus mode dims with a fixed opacity, not a property.
+ * --note-c is set in this file, per note category.
+ *
+ * CodeMirror's own parts (.cm-editor, .cm-content, the cursor, the selection) are styled
+ * under .editor, the class of the element the app mounts the editor in, as in the
+ * prototype: the extra class lets them win over CodeMirror's base theme. Warnings change colour
+ * under the `dark` class the app puts on <html> in dark mode.
+ */
+
+/* biome-ignore-all lint/complexity/noImportantStyles: CodeMirror's base theme sets the scroller's overflow, the
+   lines' padding and the selection's colour with more specific selectors than these. */
+
+/* ───────────────────────────────────────── the writing surface */
+
+.editor .cm-editor {
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--f-write);
+  font-size: 20px;
+  line-height: 1.72;
+}
+.editor .cm-editor.cm-focused {
+  outline: none;
+}
+.editor .cm-scroller {
+  overflow: visible !important;
+  font-family: inherit;
+  line-height: inherit;
+}
+.editor .cm-content {
+  padding: 8px 0 0;
+  caret-color: var(--brand);
+  max-width: 100%;
+}
+.editor .cm-line {
+  padding: 0;
+}
+.editor .cm-cursor {
+  border-left: 2px solid var(--brand);
+}
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground,
+.editor ::selection {
+  background: var(--sel) !important;
+}
+.editor .cm-placeholder {
+  color: var(--faint);
+  font-style: italic;
+}
+.editor .cm-selectionMatch {
+  background: var(--ai-soft);
+}
+
+@media (max-width: 860px) {
+  .editor .cm-editor {
+    font-size: 18px;
+  }
+}
+
+/* Markdown, typeset: syntax marks recede, the words come forward. */
+
+.md-h {
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.md-h1 {
+  font-size: 1.6em;
+}
+.md-h2 {
+  font-size: 1.32em;
+}
+.md-h3 {
+  font-size: 1.1em;
+}
+.ln-h1,
+.ln-h2 {
+  padding-top: 0.7em !important;
+  padding-bottom: 0.1em !important;
+}
+.ln-h3 {
+  padding-top: 0.45em !important;
+}
+.md-strong {
+  font-weight: 700;
+}
+.md-em {
+  font-style: italic;
+}
+.md-strike {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+.md-link {
+  color: var(--ai);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ai) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.md-url {
+  color: var(--faint);
+  font-size: 0.85em;
+}
+.md-quote {
+  font-style: italic;
+  color: var(--ink-2);
+}
+.ln-quote {
+  border-left: 3px solid var(--line-2);
+  padding-left: 18px !important;
+}
+.md-code {
+  font-family: var(--f-mono);
+  font-size: 0.82em;
+  background: var(--paper-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.ln-code {
+  font-family: var(--f-mono);
+  font-size: 15px;
+  background: var(--paper-2);
+  padding: 0 14px !important;
+}
+/* Syntax marks recede even inside headings and emphasis. */
+.editor .md-mark {
+  color: var(--faint);
+  font-weight: 400;
+  font-style: normal;
+}
+.editor .md-h.md-mark {
+  font-size: 0.8em;
+}
+
+/* ───────────────────────────────────────── "Shape this section" */
+
+/* Beside a heading that has only notes under it. */
+.cm-write-section {
+  margin-left: 12px;
+  padding: 2px 10px;
+  vertical-align: 3px;
+  border: 1px solid color-mix(in srgb, var(--ai) 35%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ai) 7%, var(--panel));
+  color: var(--ai);
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.6;
+  cursor: pointer;
+  opacity: 0.75;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+.cm-write-section:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--ai) 14%, var(--panel));
+}
+
+/* ───────────────────────────────────────── images */
+
+/* Pasted images, shown under their Markdown line. */
+.cm-image {
+  padding: 6px 0 12px;
+}
+.cm-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 440px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  background: var(--paper-2);
+}
+.cm-image.broken {
+  display: none;
+}
+
+/* ───────────────────────────────────────── ghost text */
+
+.cm-ghost {
+  color: var(--faint);
+  pointer-events: none;
+}
+.cm-ghost-hint {
+  font-family: var(--f-ui);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ai);
+  opacity: 0.7;
+  vertical-align: 2px;
+}
+
+/* ───────────────────────────────────────── tracked suggestions */
+
+.cm-sug-del {
+  background: var(--del-bg);
+  color: var(--del);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--del) 60%, transparent);
+  border-radius: 3px;
+}
+.cm-sug-ins {
+  position: relative;
+}
+.cm-sug-text {
+  background: var(--ins-bg);
+  color: var(--ins);
+  border-radius: 3px;
+  padding: 0 2px;
+  white-space: pre-wrap;
+}
+.cm-sug-ins.streaming .cm-sug-text::after {
+  content: "▍";
+  color: var(--ai);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.cm-sug-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: 2px;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}
+.cm-sug-bar button {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+.cm-sug-bar .cm-sug-accept {
+  background: var(--ins);
+  color: #fff;
+  border-color: transparent;
+}
+.cm-sug-bar .cm-sug-reject:hover {
+  color: var(--del);
+}
+.cm-sug-label {
+  color: var(--muted-foreground);
+  margin-right: 2px;
+}
+.cm-sug-warn {
+  color: #9a5b00;
+  background: #fff3d6;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 500;
+}
+
+/* Pinpoint changes: a tiny ✓ ✕ after each changed spot. */
+.cm-sug-ins.compact .cm-sug-text:empty {
+  padding: 0;
+}
+.cm-sug-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 3px;
+  vertical-align: 1px;
+  font-family: var(--f-ui);
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.cm-sug-ins.compact:hover .cm-sug-mini,
+.cm-sug-mini:hover {
+  opacity: 1;
+}
+.cm-sug-mini button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.cm-sug-mini .cm-sug-accept {
+  color: var(--ins);
+}
+.cm-sug-mini .cm-sug-accept:hover {
+  background: var(--ins);
+  color: #fff;
+  border-color: transparent;
+}
+.cm-sug-mini .cm-sug-reject:hover {
+  color: var(--del);
+}
+.cm-sug-mini .cm-sug-warn {
+  cursor: help;
+  padding: 0 2px;
+}
+/* Warnings in dark mode. */
+.dark .cm-sug-warn {
+  color: #f3c46b;
+  background: rgba(224, 169, 72, 0.16);
+}
+
+/* ───────────────────────────────────────── review notes in the text */
+
+.cm-note {
+  border-bottom: 2px solid var(--note-c, var(--c-clarity));
+  background: color-mix(in srgb, var(--note-c, var(--c-clarity)) 7%, transparent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cm-note-active {
+  background: color-mix(in srgb, var(--note-c, var(--c-clarity)) 20%, transparent);
+}
+.cm-note-clarity {
+  --note-c: var(--c-clarity);
+}
+.cm-note-concision {
+  --note-c: var(--c-concision);
+}
+.cm-note-structure {
+  --note-c: var(--c-structure);
+}
+.cm-note-evidence {
+  --note-c: var(--c-evidence);
+}
+.cm-note-tone {
+  --note-c: var(--c-tone);
+}
+.cm-note-grammar {
+  --note-c: var(--c-grammar);
+}
+.cm-note-style {
+  --note-c: var(--c-style);
+}
+.cm-note-numbers {
+  --note-c: var(--c-numbers);
+}
+.cm-note-factcheck {
+  --note-c: var(--c-factcheck);
+}
+.cm-note-logic {
+  --note-c: var(--c-logic);
+}
+.cm-note-consistency {
+  --note-c: var(--c-consistency);
+}
+.cm-note-compliance {
+  --note-c: var(--c-compliance);
+}
+.cm-note-procedure {
+  --note-c: var(--c-procedure);
+}
+.cm-note-coach {
+  --note-c: var(--ai);
+}
+
+/* ───────────────────────────────────────── writing analysis */
+
+.cm-an {
+  border-radius: 2px;
+}
+.cm-an-vlong {
+  background: rgba(214, 69, 43, 0.16);
+}
+.cm-an-long {
+  background: rgba(214, 160, 30, 0.2);
+}
+.cm-an-passive {
+  box-shadow: inset 0 -2px 0 #2fa36b;
+}
+.cm-an-adverb {
+  box-shadow: inset 0 -2px 0 #2f6fde;
+}
+.cm-an-weak {
+  box-shadow: inset 0 -2px 0 #9b6bd6;
+}
+.cm-an-cliche {
+  box-shadow: inset 0 -2px 0 var(--brand);
+  background: var(--brand-soft);
+}
+
+/* ───────────────────────────────────────── focus mode */
+
+.cm-dim {
+  opacity: 0.28;
+  transition: opacity 0.25s;
+}

@@ -4,15 +4,18 @@
 
 Margin helps you write articles that hold up. You do the writing; Margin edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). Phase 1, the engine (`packages/core`), is done; the app around it comes next.
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop — library, editor, versions, export — with the AI features arriving next (see [the plan](docs/plans/writing-app.md)).
 
 ## What's here
 
 ```
 packages/
   core/       the engine — checks, diffs, prompts, the LLM client and AI tasks
+  db/         the library — schema, migrations and repositories (SQLite; Postgres with the server)
+  editor/     the CodeMirror editor — Markdown, ghost text, tracked suggestions, notes, images
+  ui/         the app in React and shadcn/ui, behind a Backend interface
 apps/
-  desktop/    Tauri app for Mac and Windows            (packaging done; the editor comes in phase 3)
+  desktop/    Tauri app for Mac and Windows
   server/     self-hosted server with Postgres         (phase 4)
   web/        the app in a browser                     (phase 4)
 docs/

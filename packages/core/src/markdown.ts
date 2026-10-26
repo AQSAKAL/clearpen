@@ -11,6 +11,18 @@ function safeUrl(url: string): string {
   return /^(https?:\/\/|mailto:|#|\/(?!\/))/i.test(u) ? u : '#';
 }
 
+// Where an image's pixels come from. Articles store images as relative paths
+// (`media/<hash>.png`); the app maps them to something it can show, or inlines
+// them as data URLs for export. Set only for the length of one `toHTML` call.
+let imageSrc: ((src: string) => string | null) | undefined;
+const SAFE_IMAGE = /^(https?:\/\/|data:image\/(png|jpeg|gif|webp);base64,|blob:|asset:|\/(?!\/))/i;
+
+function image(alt: string, url: string): string {
+  const src = imageSrc ? imageSrc(url.trim()) : safeUrl(url);
+  if (src === null) return esc(alt);
+  return `<img src="${esc(SAFE_IMAGE.test(src) ? src : '#')}" alt="${esc(alt)}">`;
+}
+
 function emphasis(s: string): string {
   return s
     .replace(
@@ -32,9 +44,7 @@ function inline(src: string): string {
   const hold = (html: string) => `\u0000${slots.push(html) - 1}\u0000`;
   let s = String(src).replace(/\u0000/g, '');
   s = s.replace(/`([^`]+)`/g, (_, c: string) => hold(`<code>${esc(c)}</code>`));
-  s = s.replace(/!\[([^[\]]*)\]\(([^()\s]+)(?:\s+"[^"]*")?\)/g, (_, alt: string, url: string) =>
-    hold(`<img src="${esc(safeUrl(url))}" alt="${esc(alt)}">`),
-  );
+  s = s.replace(/!\[([^[\]]*)\]\(([^()\s]+)(?:\s+"[^"]*")?\)/g, (_, alt: string, url: string) => hold(image(alt, url)));
   s = s.replace(/\[([^[\]]+)\]\(([^()\s]+)\)/g, (_, label: string, url: string) =>
     hold(`<a href="${esc(safeUrl(url))}">${emphasis(esc(label))}</a>`),
   );
@@ -211,12 +221,22 @@ function renderBlocks(lines: string[]): string {
   return out.join('\n');
 }
 
-export function toHTML(md: string): string {
-  return renderBlocks(String(md).replace(/\r\n?/g, '\n').split('\n'));
+export interface MarkdownOptions {
+  /** Maps an image's Markdown source to the URL to show; null leaves just its alt text. */
+  imageSrc?: (src: string) => string | null;
+}
+
+export function toHTML(md: string, opts: MarkdownOptions = {}): string {
+  imageSrc = opts.imageSrc;
+  try {
+    return renderBlocks(String(md).replace(/\r\n?/g, '\n').split('\n'));
+  } finally {
+    imageSrc = undefined;
+  }
 }
 
 /** A complete, self-contained HTML page for an article. */
-export function toDocument(title: string, md: string): string {
+export function toDocument(title: string, md: string, opts: MarkdownOptions = {}): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -239,7 +259,7 @@ export function toDocument(title: string, md: string): string {
 </style>
 </head>
 <body>
-${title ? `<h1>${esc(title)}</h1>\n` : ''}${toHTML(md)}
+${title ? `<h1>${esc(title)}</h1>\n` : ''}${toHTML(md, opts)}
 </body>
 </html>
 `;

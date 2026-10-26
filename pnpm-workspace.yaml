@@ -1,3 +1,11 @@
 packages:
   - apps/*
   - packages/*
+
+# esbuild (used by drizzle-kit and Vite's tooling) runs from its prebuilt
+# platform package, so its install script isn't needed.
+allowBuilds:
+  esbuild: false
+
+minimumReleaseAgeExclude:
+  - sql.js@1.15.2

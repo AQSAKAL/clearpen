@@ -35,3 +35,42 @@ export function altFromFileName(name: string): string {
     ? ''
     : base;
 }
+
+/** An image's Markdown source in an article: `media/<first 24 hex of its sha-256>.<ext>`. */
+export const MEDIA_SRC = /^media\/([0-9a-f]{24})\.(png|jpg|gif|webp)$/;
+
+export class ImageError extends Error {}
+
+export interface PreparedImage {
+  bytes: Uint8Array<ArrayBuffer>;
+  ext: ImageExt;
+  type: string;
+  sha256: string;
+  /** The file name to store it under, and the tail of its Markdown source. */
+  name: string;
+  src: string;
+}
+
+/** Checks an image file and works out where it's stored. Throws `ImageError` with a sentence for the writer. */
+export async function prepareImage(file: Blob): Promise<PreparedImage> {
+  if (file.size > MAX_IMAGE_BYTES) throw new ImageError('Images can be up to 15 MB.');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const ext = sniffImage(bytes);
+  if (!ext) throw new ImageError('Only PNG, JPEG, GIF and WebP images can be added.');
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  const sha256 = Array.from(digest, (x) => x.toString(16).padStart(2, '0')).join('');
+  const name = `${sha256.slice(0, 24)}.${ext}`;
+  return { bytes, ext, type: IMAGE_TYPES[ext], sha256, name, src: `media/${name}` };
+}
+
+/**
+ * The text to put at [from, to) so `images` (Markdown lines) sit in a
+ * paragraph of their own: a blank line before and after, never piled up.
+ */
+export function imageBlock(text: string, from: number, to: number, images: string[]): string {
+  const before = text.slice(0, from);
+  const after = text.slice(to);
+  const lead = !before.trim() ? '' : /\n\n$/.test(before) ? '' : /\n$/.test(before) ? '\n' : '\n\n';
+  const trail = !after.trim() ? '\n' : /^\n\n/.test(after) ? '' : /^\n/.test(after) ? '\n' : '\n\n';
+  return `${lead}${images.join('\n\n')}${trail}`;
+}

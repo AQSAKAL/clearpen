@@ -1,15 +1,58 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Margin's window may do: open its library database, and talk to Ollama on this machine. Nothing else leaves the computer.",
+  "description": "What Margin's window may do: open its library database and its images folder, save files where the writer chooses, and talk to Ollama on this machine. Nothing else leaves the computer.",
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-destroy",
+    "core:window:allow-start-dragging",
     "sql:default",
     "sql:allow-execute",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "http://127.0.0.1:11434/*" }, { "url": "http://localhost:11434/*" }]
-    }
+      "allow": [
+        {
+          "url": "http://127.0.0.1:11434/*"
+        },
+        {
+          "url": "http://localhost:11434/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        {
+          "path": "$APPCONFIG/media"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "$APPCONFIG/media/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$APPCONFIG/media/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        {
+          "path": "$APPCONFIG/media/*"
+        }
+      ]
+    },
+    "fs:allow-write-text-file",
+    "dialog:allow-save"
   ]
 }

@@ -1,0 +1,29 @@
+{
+  "name": "@margin/editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Margin's editor: CodeMirror 6 with Markdown, ghost text, tracked suggestions, margin notes and images.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./editor.css": "./src/editor.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@margin/core": "workspace:*"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.4"
+  }
+}

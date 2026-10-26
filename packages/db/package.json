@@ -1,0 +1,25 @@
+{
+  "name": "@margin/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Margin's library: schema, migrations and repositories. SQLite for now; Postgres arrives with the server.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate && node scripts/embed-migrations.mjs"
+  },
+  "dependencies": {
+    "@margin/core": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "drizzle-kit": "^0.31.11"
+  }
+}
