@@ -1,0 +1,25 @@
+{
+  "name": "margin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An open-source writing app with an editor in the margin — offline, on Mac, Windows and the web.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.3",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}
