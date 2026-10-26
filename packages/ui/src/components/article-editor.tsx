@@ -2,8 +2,8 @@
 // text; every change is queued for autosave, and the text is only reloaded
 // when a different article opens.
 
-import { altFromFileName, countWords, ImageError, imageBlock } from '@margin/core';
-import { createEditor, type MarginEditor } from '@margin/editor';
+import { altFromFileName, countWords, ImageError, imageBlock } from '@clearpen/core';
+import { type ClearpenEditor, createEditor } from '@clearpen/editor';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { usePage } from '../editor-ref.tsx';
@@ -38,11 +38,11 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
   // One editor for the life of the page.
   useEffect(() => {
     if (!host.current) return;
-    const recount = (ed: MarginEditor) => {
+    const recount = (ed: ClearpenEditor) => {
       clearTimeout(countsTimer.current);
       countsTimer.current = setTimeout(() => latest.current.onCounts(countsOf(ed.getText())), 120);
     };
-    const ed: MarginEditor = createEditor(host.current, {
+    const ed: ClearpenEditor = createEditor(host.current, {
       doc: '',
       placeholder: 'Start writing…',
       resolveImage: (src) => backend.media.url(src),
@@ -66,7 +66,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
     });
     ref.current = ed;
 
-    async function addImages(ed: MarginEditor, files: File[], from: number, to: number) {
+    async function addImages(ed: ClearpenEditor, files: File[], from: number, to: number) {
       const forDoc = docId.current;
       const lines: string[] = [];
       for (const file of files) {

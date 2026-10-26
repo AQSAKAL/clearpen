@@ -3,7 +3,7 @@
 // the mouse lets go, sits above the selection (below it near the top of the
 // window), and keeps the editor's selection while you use it.
 
-import { intentOf, type Lens, type RewriteAction } from '@margin/core';
+import { intentOf, type Lens, type RewriteAction } from '@clearpen/core';
 import { ChevronDownIcon, SparklesIcon } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAI } from '../ai.tsx';

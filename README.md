@@ -1,8 +1,8 @@
-# Margin
+# Clearpen
 
 **An open-source writing app with an editor in the margin — offline, on Mac, Windows and the web.**
 
-Margin helps you write articles that hold up. You do the writing; Margin edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
+Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
 
 > **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop — library, editor, versions, export — with the AI features arriving next (see [the plan](docs/plans/writing-app.md)).
 
@@ -40,7 +40,7 @@ ollama pull qwen3:8b
 
 ## Principles
 
-1. **You write; Margin edits and helps you think.** The AI never writes your article from scratch — no drafted sections, paragraphs, openings or conclusions. It edits what you wrote, outlines logic and argument, and checks facts and reasoning. The one exception is the next logical sentence: when you finish a sentence and pause, Margin first checks whether your paragraph has made its point. Only if something is missing does it suggest the one sentence that supplies it — in grey, used only if you accept it, and never twice in a row.
+1. **You write; Clearpen edits and helps you think.** The AI never writes your article from scratch — no drafted sections, paragraphs, openings or conclusions. It edits what you wrote, outlines logic and argument, and checks facts and reasoning. The one exception is the next logical sentence: when you finish a sentence and pause, Clearpen first checks whether your paragraph has made its point. Only if something is missing does it suggest the one sentence that supplies it — in grey, used only if you accept it, and never twice in a row.
 2. **Your words are yours.** Local by default; nothing leaves your machine unless you configure it to; everything exports to plain Markdown.
 3. **Never lose a word.** Durable storage, versions, a trash, backups.
 4. **AI proposes; you decide.** Pinpoint edits you accept one by one. Checks that say where their knowledge came from. Arithmetic done by code, never by a model.

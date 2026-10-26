@@ -1,4 +1,4 @@
-// Every prompt Margin sends, in one place.
+// Every prompt Clearpen sends, in one place.
 //
 // Rules of thumb that held up in testing with 8–12B local models:
 // - Say exactly what to output and nothing else ("ONLY the rewritten passage").
@@ -18,7 +18,7 @@ export interface ChatMessage {
 /** A JSON Schema, passed to the model server to constrain its output. */
 export type JsonSchema = Record<string, unknown>;
 
-/** What the writer has told Margin about the article. */
+/** What the writer has told Clearpen about the article. */
 export interface Brief {
   topic?: string;
   audience?: string;
@@ -60,8 +60,8 @@ const withBrief = (brief: Brief | undefined, before: string, after: string) =>
 
 // ─────────────────────────────────────────────────────────── the next logical sentence
 
-// The one exception to "Margin never writes for you": when the author
-// finishes a sentence and pauses, Margin may suggest the one sentence that
+// The one exception to "Clearpen never writes for you": when the author
+// finishes a sentence and pauses, Clearpen may suggest the one sentence that
 // supplies the part their paragraph is missing — in grey, used only if they
 // accept it. Judging and writing are separate calls: a model about to write a
 // sentence always finds a reason to. The judge only quotes; code decides (see
@@ -249,7 +249,7 @@ export const editsSchema: JsonSchema = {
 
 // ─────────────────────────────────────────────────────────── thinking aids
 
-// Margin never writes the author's prose. It helps them think: the point a
+// Clearpen never writes the author's prose. It helps them think: the point a
 // section must make, the steps of the argument, the evidence to find, the
 // objection to answer, the questions only they can answer. Notes, not prose.
 const COACH_SYSTEM = `You are a writing coach and a sharp editor. You NEVER write the author's prose: no paragraphs, no ready-to-use sentences, no openings, endings, examples or transitions written out. Writing is the author's job; yours is to help them think. You lay out logic and argument as short notes — fragments of at most 15 words, in your voice as a coach, never in the author's voice. Never invent facts, statistics, studies, quotes, people or anecdotes: for evidence, say what kind would support the point and where the author might find it; for examples, point to the kind of experience the author could draw on. You answer only with JSON.`;

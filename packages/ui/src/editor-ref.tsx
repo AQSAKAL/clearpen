@@ -2,7 +2,7 @@
 // editor holding the text, and the title as typed, which may be newer than
 // the last save.
 
-import type { EditorUpdate, MarginEditor, Suggestion } from '@margin/editor';
+import type { ClearpenEditor, EditorUpdate, Suggestion } from '@clearpen/editor';
 import { createContext, type ReactNode, type RefObject, useContext, useMemo, useRef } from 'react';
 
 export interface PageEvents {
@@ -18,7 +18,7 @@ export interface PageEvents {
 }
 
 export interface Page {
-  editor: RefObject<MarginEditor | null>;
+  editor: RefObject<ClearpenEditor | null>;
   title: RefObject<string>;
   /** Replaces the title as if the writer typed it. */
   setTitle: RefObject<((title: string) => void) | null>;
@@ -30,7 +30,7 @@ export interface Page {
 const PageContext = createContext<Page | null>(null);
 
 export function EditorRefProvider({ children }: { children: ReactNode }) {
-  const editor = useRef<MarginEditor | null>(null);
+  const editor = useRef<ClearpenEditor | null>(null);
   const title = useRef('');
   const setTitle = useRef<((title: string) => void) | null>(null);
   const page = useMemo<Page>(() => {

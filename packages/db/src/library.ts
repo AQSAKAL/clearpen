@@ -2,7 +2,7 @@
 // Explicit queries per operation (no ORM relations), validated here so every
 // backend stores the same thing. Deletes are tombstones until purged.
 
-import { type Brief, countWords, type Meta, normaliseMeta } from '@margin/core';
+import { type Brief, countWords, type Meta, normaliseMeta } from '@clearpen/core';
 import { and, asc, count, desc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { connect, type Db, type SqlDriver } from './driver.ts';
 import { now, uuidv7 } from './ids.ts';

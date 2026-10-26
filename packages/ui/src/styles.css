@@ -2,14 +2,14 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@margin/editor/editor.css";
+@import "@clearpen/editor/editor.css";
 @plugin "@tailwindcss/typography";
 
 @source "./";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Margin's palette — paper and ink — and shadcn's tokens drawn from it. */
+/* Clearpen's palette — paper and ink — and shadcn's tokens drawn from it. */
 :root {
   --paper: #fbfaf7;
   --paper-2: #f4f2ec;

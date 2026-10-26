@@ -1,8 +1,8 @@
 {
-  "name": "@margin/core",
+  "name": "@clearpen/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Margin's engine: checks, diffs, prompts, the LLM client and AI tasks. Runs anywhere JavaScript does.",
+  "description": "Clearpen's engine: checks, diffs, prompts, the LLM client and AI tasks. Runs anywhere JavaScript does.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {

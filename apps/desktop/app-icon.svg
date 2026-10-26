@@ -1,22 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <title>Margin</title>
-  <!-- Margin's mark: the M and the margin rule, on paper. Source for `pnpm tauri icon app-icon.svg`. -->
+  <title>Clearpen</title>
+  <!-- Clearpen's mark: a C and the margin rule, on paper. Source for `pnpm tauri icon app-icon.svg`. -->
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fffdf9"/>
       <stop offset="1" stop-color="#f1ede4"/>
     </linearGradient>
+    <!-- The C's opening, on the right. -->
+    <clipPath id="open">
+      <path clip-rule="evenodd" d="M0 0H1024V1024H0Z M470 512 L720 352 L720 672 Z"/>
+    </clipPath>
   </defs>
   <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#paper)" stroke="#e2ddd2" stroke-width="4"/>
-  <g transform="translate(7 0)" fill="#1d1c1a">
-    <rect x="283" y="324" width="34" height="376"/>
-    <polygon points="286,324 352,324 486,700 420,700"/>
-    <polygon points="456,700 486,700 610,324 580,324"/>
-    <rect x="574" y="324" width="72" height="376"/>
-    <rect x="240" y="680" width="120" height="20"/>
-    <rect x="540" y="680" width="150" height="20"/>
-    <rect x="240" y="324" width="112" height="20"/>
-    <rect x="574" y="324" width="116" height="20"/>
-    <rect x="730" y="262" width="40" height="500" rx="20" fill="#d6452b"/>
+  <g transform="translate(34 0)" fill="#1d1c1a">
+    <!-- A serif C: thick on the left, thin at top and bottom, with a beak at the top end. -->
+    <path clip-path="url(#open)" fill-rule="evenodd" d="M465 316 a195 196 0 1 0 0.01 0Z M484 340 a136 172 0 1 0 0.01 0Z"/>
+    <path d="M622 386 L650 352 L650 470 L630 470 Q 622 420 600 396 Z"/>
   </g>
+  <rect x="730" y="262" width="40" height="500" rx="20" fill="#d6452b"/>
 </svg>

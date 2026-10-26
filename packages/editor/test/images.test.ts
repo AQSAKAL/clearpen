@@ -3,10 +3,10 @@
 
 import { describe, expect, test, vi } from 'vitest';
 import { allowedSource, loadableUrl } from '../src/images.ts';
-import type { MarginEditor } from '../src/index.ts';
+import type { ClearpenEditor } from '../src/index.ts';
 import { all, mount } from './helpers.ts';
 
-const srcs = (ed: MarginEditor) => all(ed, '.cm-image img').map((img) => img.getAttribute('src'));
+const srcs = (ed: ClearpenEditor) => all(ed, '.cm-image img').map((img) => img.getAttribute('src'));
 
 describe('inline images', () => {
   test('a relative media/ path is shown through resolveImage, under its line', () => {

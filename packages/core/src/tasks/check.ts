@@ -1,7 +1,7 @@
 // Checks a passage — its facts, its logic or its consistency with the draft —
 // and streams a verdict per claim. Never rewrites anything.
 //
-// Margin's exact checks run first and their results are handed to the model
+// Clearpen's exact checks run first and their results are handed to the model
 // as ground truth. Corrections the fact-checker wants to make are asked again,
 // neutrally, before anyone sees them: asked to "find errors", a small model
 // invents some; asked plainly whether its own correction is true, it usually

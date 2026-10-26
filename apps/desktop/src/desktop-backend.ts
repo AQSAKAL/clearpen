@@ -1,10 +1,10 @@
-// Margin on the desktop: the library in one SQLite file, images in a folder
+// Clearpen on the desktop: the library in one SQLite file, images in a folder
 // beside it, and models from Ollama on this machine. Both live in the app's
 // folder: ~/Library/Application Support/<identifier>/ on a Mac.
 
-import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@margin/core';
-import { openLibrary, type SqlDriver } from '@margin/db';
-import { type Backend, localAI } from '@margin/ui';
+import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@clearpen/core';
+import { openLibrary, type SqlDriver } from '@clearpen/db';
+import { type Backend, localAI } from '@clearpen/ui';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appConfigDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';

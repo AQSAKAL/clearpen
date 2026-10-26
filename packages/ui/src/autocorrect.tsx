@@ -1,10 +1,10 @@
-// Autocorrect: Margin fixes typos as the writer types. The moment a word ends,
+// Autocorrect: Clearpen fixes typos as the writer types. The moment a word ends,
 // exact rules — a capital to start a sentence, "i" → "I", "teh" → "the". The
 // moment a sentence ends, the model proofreads it, and its small, safe fixes
 // land behind the cursor while the writer types on. Each fix is its own undo
-// step, and once undone Margin leaves those words alone.
+// step, and once undone Clearpen leaves those words alone.
 
-import { finishedSentence, looksEnglish, quickFix } from '@margin/core';
+import { finishedSentence, looksEnglish, quickFix } from '@clearpen/core';
 import { useEffect, useRef } from 'react';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';

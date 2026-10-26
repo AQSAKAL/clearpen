@@ -1,6 +1,6 @@
 // The library on Node's built-in SQLite (tests, scripts and a future Node
 // server), through the same driver interface the desktop app gives the Tauri
-// SQL plugin. Import it as `@margin/db/node`; it isn't for browsers.
+// SQL plugin. Import it as `@clearpen/db/node`; it isn't for browsers.
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import type { SqlDriver } from './driver.ts';
 

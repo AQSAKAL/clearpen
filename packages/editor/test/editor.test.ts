@@ -1,7 +1,7 @@
 // The rest of the API: text and selection, AI edits, updates, focus mode and pasted images.
 
 import { describe, expect, test, vi } from 'vitest';
-import type { MarginEditor } from '../src/index.ts';
+import type { ClearpenEditor } from '../src/index.ts';
 import { all, mount } from './helpers.ts';
 
 describe('text and selection', () => {
@@ -86,7 +86,7 @@ describe('focus mode', () => {
 });
 
 describe('pasted images', () => {
-  const paste = (ed: MarginEditor, { image = false, text = '' }) => {
+  const paste = (ed: ClearpenEditor, { image = false, text = '' }) => {
     const data = new DataTransfer();
     if (image) data.items.add(new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'chart.png', { type: 'image/png' }));
     if (text) data.setData('text/plain', text);

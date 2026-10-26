@@ -8,9 +8,9 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    // @margin/ui's components import each other by package name.
+    // @clearpen/ui's components import each other by package name.
     alias: [
-      { find: /^@margin\/ui(?=\/|$)/, replacement: fileURLToPath(new URL('../../packages/ui/src', import.meta.url)) },
+      { find: /^@clearpen\/ui(?=\/|$)/, replacement: fileURLToPath(new URL('../../packages/ui/src', import.meta.url)) },
     ],
   },
   clearScreen: false, // keep Rust's errors on screen

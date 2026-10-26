@@ -1,4 +1,4 @@
-// The next logical sentence — the one place Margin writes, and only one
+// The next logical sentence — the one place Clearpen writes, and only one
 // sentence at a time. The rules that keep it from becoming a rabbit hole:
 //
 // - Ask only after a finished sentence at the end of a line of prose, after a

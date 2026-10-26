@@ -57,7 +57,7 @@ test('after a finished sentence and a pause, the missing sentence appears in gre
   fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
   await waitFor(() => assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT} ${NEXT}`));
 
-  // Straight after taking one, Margin waits for words of the writer's own.
+  // Straight after taking one, Clearpen waits for words of the writer's own.
   type(view, ' Ok.');
   await new Promise((r) => setTimeout(r, 1200));
   assert.equal(ghost(), '');

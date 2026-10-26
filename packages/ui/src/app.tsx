@@ -1,8 +1,8 @@
-// Margin's window: the library on the left, the page on the right. Loads the
+// Clearpen's window: the library on the left, the page on the right. Loads the
 // settings and the library, opens the right article, and runs the commands
 // from the ⋯ menu and the keyboard.
 
-import type { Version } from '@margin/db';
+import type { Version } from '@clearpen/db';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AIProvider } from './ai.tsx';
@@ -101,7 +101,7 @@ function Failure({ message }: { message: string }) {
     <div className="grid h-full place-items-center bg-background p-8">
       <div className="max-w-md text-center">
         <Logo className="mb-4 justify-center" />
-        <p className="font-medium">Margin couldn’t open your library.</p>
+        <p className="font-medium">Clearpen couldn’t open your library.</p>
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>
       </div>
     </div>

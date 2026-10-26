@@ -1,6 +1,6 @@
 // Autocorrect's fixes in the text: each one its own undo step, underlined for
 // a moment so the writer sees what changed. Undo a fix and those words are
-// the writer's: Margin doesn't correct them again.
+// the writer's: Clearpen doesn't correct them again.
 
 import { Annotation, type ChangeDesc, type EditorState, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView } from '@codemirror/view';

@@ -1,5 +1,5 @@
-// @margin/ui — Margin's interface. Mount `<App backend={…} />` with a Backend
-// for the platform, and import '@margin/ui/styles.css' once.
+// @clearpen/ui — Clearpen's interface. Mount `<App backend={…} />` with a Backend
+// for the platform, and import '@clearpen/ui/styles.css' once.
 
 import './fonts.ts';
 

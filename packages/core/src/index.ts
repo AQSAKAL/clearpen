@@ -1,4 +1,4 @@
-// @margin/core — Margin's engine. Pure TypeScript with no platform APIs: the
+// @clearpen/core — Clearpen's engine. Pure TypeScript with no platform APIs: the
 // same code runs inside the desktop app, the self-hosted server and the cloud.
 
 export * from './analysis.ts';

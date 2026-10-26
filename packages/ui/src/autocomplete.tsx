@@ -1,12 +1,12 @@
 // The next logical sentence. When the writer finishes a sentence and pauses,
-// Margin asks whether the paragraph has made its point. If it has, a small
+// Clearpen asks whether the paragraph has made its point. If it has, a small
 // "¶ point made" appears (Tab starts a new paragraph); if not, one sentence
 // in grey supplies the missing part, appearing as the model writes it. Tab
 // keeps it; typing on ignores it.
-// After a suggestion is taken, Margin waits for words of the writer's own,
+// After a suggestion is taken, Clearpen waits for words of the writer's own,
 // so Tab can never write a paragraph.
 
-import { NEXT_SENTENCE_PAUSE_MS, nextSentenceSpot, OWN_WORDS_BETWEEN, sectionAt } from '@margin/core';
+import { NEXT_SENTENCE_PAUSE_MS, nextSentenceSpot, OWN_WORDS_BETWEEN, sectionAt } from '@clearpen/core';
 import { useEffect, useRef } from 'react';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';

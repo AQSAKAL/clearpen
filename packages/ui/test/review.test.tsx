@@ -1,4 +1,4 @@
-// Review, checks and Insights, end to end on a scripted model: Margin's own
+// Review, checks and Insights, end to end on a scripted model: Clearpen's own
 // findings first, the model's notes after, all in the margin.
 
 import assert from 'node:assert/strict';
@@ -70,13 +70,13 @@ async function launch(replies: Reply[]) {
 
 const margin = () => within(screen.getByRole('complementary', { name: 'Notes' }));
 
-test('Review pins Margin’s own findings first, then the editor’s notes', async () => {
+test('Review pins Clearpen’s own findings first, then the editor’s notes', async () => {
   const { user, view } = await launch([REVIEW]);
   await user.click(screen.getByRole('button', { name: /Review/ }));
 
   // The table total is worked out by code, and says so.
   await waitFor(() => assert.ok(margin().getByText(/add up to \$8,500/)));
-  assert.ok(margin().getAllByText('Calculated by Margin, not the AI.').length >= 1);
+  assert.ok(margin().getAllByText('Calculated by Clearpen, not the AI.').length >= 1);
   // The model's note follows, and the summary counts them all.
   await waitFor(() => assert.ok(margin().getByText(/Padding/)));
   assert.ok(margin().getByText(/A clear case/));

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@margin/ui/lib/utils"
+import { cn } from "@clearpen/ui/lib/utils"
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 

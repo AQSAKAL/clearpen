@@ -1,5 +1,5 @@
-import '@margin/ui/styles.css';
-import { App, type Backend } from '@margin/ui';
+import '@clearpen/ui/styles.css';
+import { App, type Backend } from '@clearpen/ui';
 import { isTauri } from '@tauri-apps/api/core';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 async function backend(): Promise<Backend> {
   if (isTauri()) return (await import('./desktop-backend.ts')).createDesktopBackend();
   if (import.meta.env.DEV) return (await import('./browser-backend.ts')).createBrowserBackend();
-  throw new Error('Margin runs as the desktop app.');
+  throw new Error('Clearpen runs as the desktop app.');
 }
 
 const root = document.getElementById('root')!;
@@ -22,6 +22,6 @@ backend()
   )
   .catch((err) => {
     console.error(err);
-    root.textContent = `Margin couldn’t open your library: ${err instanceof Error ? err.message : String(err)}`;
+    root.textContent = `Clearpen couldn’t open your library: ${err instanceof Error ? err.message : String(err)}`;
     root.className = 'p-8 text-sm';
   });

@@ -1,6 +1,6 @@
 // The trash: articles you deleted, until you restore them or delete them for good.
 
-import type { DocumentSummary } from '@margin/db';
+import type { DocumentSummary } from '@clearpen/db';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAsk } from '../ask.tsx';

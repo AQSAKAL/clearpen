@@ -38,7 +38,7 @@ export async function* edit(llm: LLMClient, input: EditInput, opts: TaskOptions 
     throw new InputError('That selection is too long to edit in one go — try a section at a time.', 413);
   const instruction = input.instruction.trim();
   if (!instruction) throw new InputError('Say what to do with it.');
-  // Margin edits; it doesn't write new material from scratch.
+  // Clearpen edits; it doesn't write new material from scratch.
   if (asksToWrite(instruction)) {
     yield { type: 'done', count: 0, missed: 0, declined: 'That asks for new writing, not an edit.' };
     return;

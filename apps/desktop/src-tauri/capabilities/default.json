@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Margin's window may do: open its library database and its images folder, save files where the writer chooses, and talk to Ollama on this machine. Nothing else leaves the computer.",
+  "description": "What Clearpen's window may do: open its library database and its images folder, save files where the writer chooses, and talk to Ollama on this machine. Nothing else leaves the computer.",
   "windows": ["main"],
   "permissions": [
     "core:default",

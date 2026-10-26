@@ -2,7 +2,7 @@
 // article, and autosave. Saves are queued per article and sent after a short
 // pause; a failed save keeps its changes and retries with a growing delay.
 
-import type { Document, DocumentPatch, DocumentSummary, NewDocument, Project } from '@margin/db';
+import type { Document, DocumentPatch, DocumentSummary, NewDocument, Project } from '@clearpen/db';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Backend } from './backend.ts';
 

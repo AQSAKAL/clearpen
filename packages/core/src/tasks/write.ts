@@ -1,5 +1,5 @@
 // Tasks that stream text: edits of the author's own passage, and answers
-// about the draft. Margin never drafts the author's prose — for
+// about the draft. Clearpen never drafts the author's prose — for
 // help with what to write, see `think`.
 
 import { type Hunk, hunks } from '../diff.ts';

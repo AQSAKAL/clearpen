@@ -128,7 +128,7 @@ test('ordinary sentences are left alone', () => {
     'It is the first step in a long process of change.',
     'Our churn is 4% and our renewal rate is 96%, so the base is sticky.',
     'Developers spend 73% of their time reading code, according to a study by Minelli (2015).',
-    'Margin is a calm editor. Margins in the editor show notes.',
+    'Clearpen is a calm editor. Margins in the editor show notes.',
   ];
   for (const text of clean) assert.deepEqual(runChecks(text, { genre: 'article' }).findings, [], text);
   assert.deepEqual(runChecks('The vendor guarantees 99.9% uptime under the SLA.', { genre: 'business' }).findings, []);

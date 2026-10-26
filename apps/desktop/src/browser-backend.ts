@@ -2,9 +2,9 @@
 // real library code on SQLite compiled to WebAssembly, held in memory, with
 // Ollama reached directly (it allows localhost origins). Never in a build.
 
-import { createLLM, createOllama, prepareImage } from '@margin/core';
-import { openLibrary, type SqlDriver } from '@margin/db';
-import { type Backend, localAI } from '@margin/ui';
+import { createLLM, createOllama, prepareImage } from '@clearpen/core';
+import { openLibrary, type SqlDriver } from '@clearpen/db';
+import { type Backend, localAI } from '@clearpen/ui';
 import initSqlJs, { type BindParams } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 

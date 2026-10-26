@@ -10,12 +10,12 @@ export const IMAGE_TYPES: Record<ImageExt, string> = {
   webp: 'image/webp',
 };
 
-/** The largest image Margin stores. */
+/** The largest image Clearpen stores. */
 export const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 const ascii = (b: Uint8Array, from: number, to: number) => String.fromCharCode(...b.subarray(from, to));
 
-/** The image format of `bytes`, or null if it isn't one Margin accepts. */
+/** The image format of `bytes`, or null if it isn't one Clearpen accepts. */
 export function sniffImage(bytes: Uint8Array): ImageExt | null {
   if (bytes.length < 12) return null;
   if (bytes[0] === 0x89 && ascii(bytes, 1, 4) === 'PNG') return 'png';

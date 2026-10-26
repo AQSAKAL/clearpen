@@ -115,7 +115,7 @@ export interface EditorOptions {
 }
 
 /** What createEditor returns: everything the app needs, without touching CodeMirror. */
-export interface MarginEditor {
+export interface ClearpenEditor {
   /** The CodeMirror view, for what the API doesn't cover. */
   readonly view: EditorView;
 

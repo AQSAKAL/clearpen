@@ -1,4 +1,4 @@
-// @margin/editor — Margin's writing surface: CodeMirror 6, dressed for prose,
+// @clearpen/editor — Clearpen's writing surface: CodeMirror 6, dressed for prose,
 // with the hooks the AI features need. The app only ever talks to the small
 // API that createEditor() returns.
 
@@ -24,16 +24,16 @@ import {
   suggestionField,
   updateSuggestion,
 } from './suggestions.ts';
-import type { EditorOptions, MarginEditor } from './types.ts';
+import type { ClearpenEditor, EditorOptions } from './types.ts';
 
 export type {
   AnalysisRange,
+  ClearpenEditor,
   EditorFix,
   EditorNote,
   EditorOptions,
   EditorUpdate,
   Ghost,
-  MarginEditor,
   Suggestion,
   SuggestionInput,
   SuggestionStatus,
@@ -69,7 +69,7 @@ function typedRanges(u: ViewUpdate): { from: number; to: number }[] {
 }
 
 /** Creates the writing surface inside `parent`. */
-export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): MarginEditor {
+export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): ClearpenEditor {
   // The widgets' buttons go through the API, which exists by the time they're clicked.
   const sugField = suggestionField({
     accept: (id) => api.acceptSuggestion(id),
@@ -173,7 +173,7 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Mar
 
   let seq = 0;
   let destroyed = false;
-  const api: MarginEditor = {
+  const api: ClearpenEditor = {
     view,
     getText: () => view.state.doc.toString(),
     setText(text) {

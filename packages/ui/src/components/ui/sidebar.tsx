@@ -1,28 +1,28 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@margin/ui/lib/utils"
+import { cn } from "@clearpen/ui/lib/utils"
 import { Slot } from "radix-ui"
 
-import { useIsMobile } from "@margin/ui/hooks/use-mobile"
-import { Button } from "@margin/ui/components/ui/button"
-import { Input } from "@margin/ui/components/ui/input"
-import { Separator } from "@margin/ui/components/ui/separator"
+import { useIsMobile } from "@clearpen/ui/hooks/use-mobile"
+import { Button } from "@clearpen/ui/components/ui/button"
+import { Input } from "@clearpen/ui/components/ui/input"
+import { Separator } from "@clearpen/ui/components/ui/separator"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@margin/ui/components/ui/sheet"
-import { Skeleton } from "@margin/ui/components/ui/skeleton"
+} from "@clearpen/ui/components/ui/sheet"
+import { Skeleton } from "@clearpen/ui/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@margin/ui/components/ui/tooltip"
+} from "@clearpen/ui/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
-// Margin: the library is 264px wide, toggles with ⌘\ (⌘B is bold in the
+// Clearpen: the library is 264px wide, toggles with ⌘\ (⌘B is bold in the
 // editor), and remembers its state in the library's settings, not a cookie.
 const SIDEBAR_WIDTH = "16.5rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"

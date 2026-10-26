@@ -1,11 +1,11 @@
-// Margin notes — the review's notes, a check's verdicts, Margin's own
+// Margin notes — the review's notes, a check's verdicts, Clearpen's own
 // findings — stay pinned to the passage they're about while the writer edits.
 
 import type { Span } from './anchor.ts';
 import type { Category, Finding } from './checks.ts';
 import type { Lens } from './intent.ts';
 
-/** The categories of Margin's own findings each check lens shows first. */
+/** The categories of Clearpen's own findings each check lens shows first. */
 export const LENS_CATEGORIES: Record<Lens, Category[]> = {
   factcheck: ['factcheck', 'numbers'],
   logic: ['logic'],

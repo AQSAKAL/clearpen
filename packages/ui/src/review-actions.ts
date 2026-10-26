@@ -1,4 +1,4 @@
-// Review and Check. Both start with Margin's own checks — exact, instant and
+// Review and Check. Both start with Clearpen's own checks — exact, instant and
 // offline — and pin those first; the model's notes and verdicts follow.
 // Nothing in the text changes: notes go in the margin.
 
@@ -10,7 +10,7 @@ import {
   LENS_CATEGORIES,
   type Lens,
   runChecks,
-} from '@margin/core';
+} from '@clearpen/core';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useAI } from './ai.tsx';
@@ -52,7 +52,7 @@ const PASSED: Record<Lens, [string, string]> = {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Margin's own findings as notes, saying they came from code, not the AI. */
+/** Clearpen's own findings as notes, saying they came from code, not the AI. */
 const ownNotes = (findings: Finding[]): NoteInput[] =>
   findings.map((f) => ({
     from: f.from,
@@ -145,7 +145,7 @@ export function useReviewActions(openNotes: () => void) {
             if (ev.type === 'notice') notes.setSummary({ label: ev.text });
             else if (ev.type === 'done') done = ev;
             else if (ev.item.ok) passed++;
-            // Margin's exact arithmetic wins where it covers the same words.
+            // Clearpen's exact arithmetic wins where it covers the same words.
             else if (!notes.overlaps(ev.item.from, ev.item.to, ['numbers'])) {
               const it = ev.item;
               flagged += notes.add(

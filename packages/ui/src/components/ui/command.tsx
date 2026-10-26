@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
-import { cn } from "@margin/ui/lib/utils"
+import { cn } from "@clearpen/ui/lib/utils"
 
 import {
   Dialog,
@@ -10,11 +10,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@margin/ui/components/ui/dialog"
+} from "@clearpen/ui/components/ui/dialog"
 import {
   InputGroup,
   InputGroupAddon,
-} from "@margin/ui/components/ui/input-group"
+} from "@clearpen/ui/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
 
 function Command({

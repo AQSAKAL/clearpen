@@ -1,7 +1,7 @@
 // One note: what it's about, what's wrong, a fix to apply, and where the
 // note came from.
 
-import { CATEGORY_LABELS, warning } from '@margin/core';
+import { CATEGORY_LABELS, warning } from '@clearpen/core';
 import { XIcon } from 'lucide-react';
 import { forwardRef } from 'react';
 import { cn } from '../lib/utils.ts';
@@ -9,8 +9,8 @@ import { type NotesSummary, type Origin, useNotes } from '../notes.tsx';
 import { Button } from './ui/button.tsx';
 
 export const ORIGIN: Record<Origin, string> = {
-  software: 'Calculated by Margin, not the AI.',
-  rule: 'Spotted by Margin’s rules, not the AI.',
+  software: 'Calculated by Clearpen, not the AI.',
+  rule: 'Spotted by Clearpen’s rules, not the AI.',
   knowledge: 'From the model’s own knowledge — it can’t browse. Verify before you publish.',
   verified:
     'From the model’s own knowledge, confirmed when asked again — it can’t browse, so verify before you publish.',

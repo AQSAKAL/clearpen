@@ -2,16 +2,16 @@
 // and everything torn down after each test.
 
 import { afterEach } from 'vitest';
-import { createEditor, type EditorOptions, type MarginEditor } from '../src/index.ts';
+import { type ClearpenEditor, createEditor, type EditorOptions } from '../src/index.ts';
 
-const open: MarginEditor[] = [];
+const open: ClearpenEditor[] = [];
 
 afterEach(() => {
   for (const ed of open.splice(0)) ed.destroy();
   document.body.innerHTML = '';
 });
 
-export function mount(doc: string, opts: EditorOptions = {}): MarginEditor {
+export function mount(doc: string, opts: EditorOptions = {}): ClearpenEditor {
   const parent = document.createElement('div');
   parent.className = 'editor';
   document.body.append(parent);
@@ -24,7 +24,7 @@ export function mount(doc: string, opts: EditorOptions = {}): MarginEditor {
 const mac = /Mac/.test(navigator.platform);
 
 /** Presses a key in the editor; true when a binding took it (and so stopped the browser's default). */
-export function press(ed: MarginEditor, key: string, { mod = false, shift = false } = {}): boolean {
+export function press(ed: ClearpenEditor, key: string, { mod = false, shift = false } = {}): boolean {
   const ev = new KeyboardEvent('keydown', {
     key,
     bubbles: true,
@@ -42,6 +42,6 @@ export function mousedown(el: Element): void {
   el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 }
 
-export const all = (ed: MarginEditor, selector: string): Element[] => [
+export const all = (ed: ClearpenEditor, selector: string): Element[] => [
   ...ed.view.contentDOM.querySelectorAll(selector),
 ];

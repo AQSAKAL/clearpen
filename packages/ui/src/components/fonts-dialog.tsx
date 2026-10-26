@@ -70,7 +70,7 @@ export function FontsDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Fonts</DialogTitle>
-          <DialogDescription>Fonts come with Margin, so they work offline.</DialogDescription>
+          <DialogDescription>Fonts come with Clearpen, so they work offline.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-5">
           <FontPicker

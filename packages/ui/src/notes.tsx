@@ -1,10 +1,10 @@
 // Notes on the open article: the review's notes, a check's verdicts and
-// Margin's own findings. The editor keeps each one pinned to its passage
+// Clearpen's own findings. The editor keeps each one pinned to its passage
 // (and underlines it); this keeps what the note says, and the summary above
 // the notes. Notes belong to the article on screen and go when it closes.
 
-import { relocate, type Span } from '@margin/core';
-import type { EditorNote } from '@margin/editor';
+import { relocate, type Span } from '@clearpen/core';
+import type { EditorNote } from '@clearpen/editor';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { usePage } from './editor-ref.tsx';

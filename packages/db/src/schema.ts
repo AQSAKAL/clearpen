@@ -4,7 +4,7 @@
 // carries created/updated/deleted times (deletes are tombstones) and `rev`,
 // the change counter a server will assign once sync exists.
 
-import type { Brief, Meta } from '@margin/core';
+import type { Brief, Meta } from '@clearpen/core';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 const stamps = {

@@ -13,7 +13,7 @@ async function rejects(p: Promise<unknown>, status: number) {
 }
 
 test('migrations apply once and survive reopening the file', async () => {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'margin-db-')), 'library.db');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'clearpen-db-')), 'library.db');
   const first = nodeDriver(file);
   const lib = await openLibrary(first);
   await lib.documents.create({ title: 'Kept' });

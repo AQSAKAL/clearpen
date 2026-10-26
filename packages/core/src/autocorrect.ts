@@ -1,4 +1,4 @@
-// Autocorrect: Margin fixes the writer's slips as they type — their own words,
+// Autocorrect: Clearpen fixes the writer's slips as they type — their own words,
 // spelled right, never new ones. Two layers:
 //
 // - As each word ends, exact rules that need no model: a capital to start a
@@ -142,7 +142,7 @@ const ENGLISH = new Set(
   ),
 );
 
-/** Is `text` English, as far as its words tell? Too little to tell counts as English, Margin's default. */
+/** Is `text` English, as far as its words tell? Too little to tell counts as English, Clearpen's default. */
 export function looksEnglish(text: string): boolean {
   const words = (text.toLowerCase().match(/\p{L}+/gu) ?? []).slice(-60);
   if (words.length < 8) return true;

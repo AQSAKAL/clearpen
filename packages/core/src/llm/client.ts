@@ -1,4 +1,4 @@
-// The one object the rest of Margin talks to: a model server plus which model
+// The one object the rest of Clearpen talks to: a model server plus which model
 // plays which role, with protection against a model that goes quiet.
 
 import type { ChatRequest, LLMProvider, StreamInfo } from './types.ts';

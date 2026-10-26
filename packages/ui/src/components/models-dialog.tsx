@@ -1,7 +1,7 @@
 // Which model does which job. Each role can use its own model; "Automatic"
 // picks the best one installed.
 
-import type { LLMStatus, Role } from '@margin/core';
+import type { LLMStatus, Role } from '@clearpen/core';
 import { useEffect, useState } from 'react';
 import type { ModelChoice } from '../backend.ts';
 import { useLibrary } from '../library.tsx';
@@ -54,7 +54,7 @@ export function ModelsDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               ? 'Looking for models…'
               : status.ok
                 ? `Connected to ${where}. Everything runs on this computer.`
-                : `${status.error || 'No models found.'} Margin’s AI features need Ollama and a model, for example qwen3:8b.`}
+                : `${status.error || 'No models found.'} Clearpen’s AI features need Ollama and a model, for example qwen3:8b.`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-5">

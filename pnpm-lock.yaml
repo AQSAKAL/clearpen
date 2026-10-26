@@ -20,13 +20,13 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@margin/core':
+      '@clearpen/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@margin/db':
+      '@clearpen/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@margin/ui':
+      '@clearpen/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tauri-apps/api':
@@ -87,7 +87,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@margin/core':
+      '@clearpen/core':
         specifier: workspace:*
         version: link:../core
       drizzle-orm:
@@ -124,7 +124,7 @@ importers:
       '@lezer/highlight':
         specifier: ^1.2.5
         version: 1.2.5
-      '@margin/core':
+      '@clearpen/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -158,13 +158,13 @@ importers:
       '@fontsource-variable/source-serif-4':
         specifier: ^5.3.1
         version: 5.3.1
-      '@margin/core':
+      '@clearpen/core':
         specifier: workspace:*
         version: link:../core
-      '@margin/db':
+      '@clearpen/db':
         specifier: workspace:*
         version: link:../db
-      '@margin/editor':
+      '@clearpen/editor':
         specifier: workspace:*
         version: link:../editor
       '@tailwindcss/typography':

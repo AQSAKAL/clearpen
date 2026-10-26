@@ -31,7 +31,7 @@ export function intentOf(instruction: string): Intent | null {
 
 // ─────────────────────────────────────────────────────────── edit, don't write
 
-// Margin edits what the author wrote; it never writes new material from
+// Clearpen edits what the author wrote; it never writes new material from
 // scratch. A prompt alone doesn't hold a small model to that, so the line is
 // drawn in code: once on the request, once on what comes back.
 const STRUCTURE =

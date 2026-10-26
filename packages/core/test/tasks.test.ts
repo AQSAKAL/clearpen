@@ -209,7 +209,7 @@ test('structured answers are normalised into safe shapes', async () => {
 
 // ─────────────────────────────────────────────────────────── you write
 
-test('Margin has no way to write the author’s prose', () => {
+test('Clearpen has no way to write the author’s prose', () => {
   for (const name of ['draft', 'continueWriting', 'draftMessages', 'continueMessages', 'tidySectionBody']) {
     assert.ok(!(name in core), `${name} must not exist`);
   }

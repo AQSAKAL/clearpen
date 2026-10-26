@@ -11,8 +11,8 @@ import {
   type RewriteDone,
   streamingRewrite,
   warning,
-} from '@margin/core';
-import type { MarginEditor } from '@margin/editor';
+} from '@clearpen/core';
+import type { ClearpenEditor } from '@clearpen/editor';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';
@@ -62,14 +62,14 @@ export interface Span {
 }
 
 /** The ids of a group's suggestions still waiting for a decision. */
-const left = (ed: MarginEditor, group: string) =>
+const left = (ed: ClearpenEditor, group: string) =>
   ed
     .suggestions()
     .filter((s) => s.group === group)
     .map((s) => s.id);
 
 /** Text around a passage, so the model edits in keeping with the rest. */
-const surroundings = (ed: MarginEditor, { from, to }: Span) => ({
+const surroundings = (ed: ClearpenEditor, { from, to }: Span) => ({
   before: ed.slice(Math.max(0, from - 3000), from),
   after: ed.slice(to, Math.min(ed.length(), to + 1000)),
 });
@@ -83,11 +83,11 @@ export function useEditActions(mod: string) {
   const notes = current?.brief.notes ?? '';
 
   // The group of suggestions the pill is about, while any of them is left.
-  const pending = useRef<{ ed: MarginEditor; group: string; label: string; message: number } | null>(null);
+  const pending = useRef<{ ed: ClearpenEditor; group: string; label: string; message: number } | null>(null);
 
   /** "Shortened: 4 changes · Accept all · Reject all", until they're all decided. */
   const groupStatus = useCallback(
-    (ed: MarginEditor, group: string, n: number, label: string) => {
+    (ed: ClearpenEditor, group: string, n: number, label: string) => {
       const message = status.show({
         text: `${label}: ${n} change${n === 1 ? '' : 's'}`,
         sticky: true,
@@ -227,7 +227,7 @@ export function useEditActions(mod: string) {
           throw err;
         }
         if (!count && declined)
-          status.show({ text: `${declined} Margin edits your writing; it doesn’t write it from scratch.`, ms: 7000 });
+          status.show({ text: `${declined} Clearpen edits your writing; it doesn’t write it from scratch.`, ms: 7000 });
         else if (!count) status.show('The AI found nothing to change for that.');
         else groupStatus(ed, group, count, 'Edits');
       });

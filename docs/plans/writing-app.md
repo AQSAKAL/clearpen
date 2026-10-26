@@ -8,7 +8,7 @@ The desktop app installs and runs, but it only shows a check screen. You still w
 
 - **Interface:** shadcn/ui.
 - **Editor:** CodeMirror.
-- **Engine:** `@margin/core`, running inside the app.
+- **Engine:** `@clearpen/core`, running inside the app.
 - **Storage:** projects and articles in the SQLite library.
 
 It brings forward the parts of phases 2 and 3 in [the architecture](../ARCHITECTURE.md) that the desktop app needs.
@@ -32,7 +32,7 @@ packages/core    the engine (exists): checks, prompts, AI tasks
 - **AI tasks stay async generators.** `rewrite`, `edit`, `check`, `review` and `ask` stream events straight into React. There is no SSE layer on the desktop.
 - **Logic the prototype keeps in the browser moves into `core`**, so the web app gets it too:
   - the post-processing in `selection.js` (re-splitting big edits, "unverified figure" warnings);
-  - in `check()`: Margin's own findings per lens first, and model items that overlap a numbers finding suppressed;
+  - in `check()`: Clearpen's own findings per lens first, and model items that overlap a numbers finding suppressed;
   - review notes re-anchored to the current text, and duplicates dropped;
   - `notesMarkdown` and the coach titles.
 
@@ -79,7 +79,7 @@ A TypeScript port of the prototype's `editor-src/index.js` (641 lines), keeping 
 | Dialogs: models, fonts, history, shortcuts, confirmations | `Dialog`, `AlertDialog`, `Select`, `ScrollArea`, `Kbd` |
 | Reader mode | core's Markdown renderer, styled with Tailwind Typography |
 
-- **Theme:** shadcn's tokens, set to Margin's paper-and-ink palette, with light, dark and system modes.
+- **Theme:** shadcn's tokens, set to Clearpen's paper-and-ink palette, with light, dark and system modes.
 - **Layout:** the prototype's three widths (wide, medium, narrow).
 - **On Mac:** the title bar overlays the sidebar.
 - **Fonts:** bundled, so they work offline.
@@ -107,7 +107,7 @@ Each milestone ends with an app you can install and try, all checks passing, and
    - **The paragraph hint:** "¶ point made · Tab for new paragraph" when the paragraph is complete.
    - **The rules:** your own words must come between suggestions, and no suggestion appears while other AI changes are on screen. There's an on/off switch in the ⋯ menu.
 4. **Check and review.**
-   - **Review:** it shows Margin's own checks for the whole draft instantly, then the AI's notes. Cards sit in the margin, or in the Notes tab when narrow.
+   - **Review:** it shows Clearpen's own checks for the whole draft instantly, then the AI's notes. Cards sit in the margin, or in the Notes tab when narrow.
    - **Selection checks:** fact-check, logic and consistency, with the second-opinion pass.
    - **Insights:** stats, reading level, the six highlight kinds, and structure.
 5. **Think.**
@@ -134,7 +134,7 @@ Changes from the prototype or the architecture, for your OK:
    - Trash can be viewed and restored;
    - search covers the full text;
    - a version is saved before accepting AI changes;
-   - Review includes Margin's own checks (compliance and procedure findings were never shown before);
+   - Review includes Clearpen's own checks (compliance and procedure findings were never shown before);
    - the theme can follow the system.
 6. **Kept as in the prototype:** Ask chats live only while the app is open, and every setting moves into the library file.
 

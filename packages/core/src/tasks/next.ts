@@ -1,4 +1,4 @@
-// The next logical sentence — the one place Margin writes, one sentence at a
+// The next logical sentence — the one place Clearpen writes, one sentence at a
 // time. First a verdict: has this paragraph made its point? Only if not, the
 // one sentence that supplies the missing part, streamed as it's written so
 // the writer sees it begin at once. Ask only where `nextSentenceSpot` says

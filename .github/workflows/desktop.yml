@@ -1,6 +1,6 @@
 name: Desktop
 
-# Builds Margin for Mac (one universal app for Apple silicon and Intel) and
+# Builds Clearpen for Mac (one universal app for Apple silicon and Intel) and
 # Windows. Pushing a tag like desktop-v0.1.0 makes a draft GitHub release with
 # the installers attached; running the workflow by hand only builds them and
 # keeps them as workflow artifacts.
@@ -78,14 +78,14 @@ jobs:
           tauriScript: pnpm tauri
           args: ${{ matrix.args }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: Margin __VERSION__
+          releaseName: Clearpen __VERSION__
           releaseBody: |
             An early, unsigned build of the desktop app.
 
-            - **Mac:** open the .dmg and drag Margin to Applications. The first time, macOS says it can't check the app: open System Settings → Privacy & Security and choose Open Anyway.
+            - **Mac:** open the .dmg and drag Clearpen to Applications. The first time, macOS says it can't check the app: open System Settings → Privacy & Security and choose Open Anyway.
             - **Windows:** run the -setup.exe. If SmartScreen warns you, choose More info → Run anyway.
 
-            Margin uses [Ollama](https://ollama.com) for its AI features.
+            Clearpen uses [Ollama](https://ollama.com) for its AI features.
           releaseDraft: true
           prerelease: true
           uploadWorkflowArtifacts: true

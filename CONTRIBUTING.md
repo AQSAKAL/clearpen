@@ -1,4 +1,4 @@
-# Contributing to Margin
+# Contributing to Clearpen
 
 Thank you for helping. A few things make contributions easy to accept.
 
@@ -23,4 +23,4 @@ pnpm check   # must pass before you open a pull request
 
 ## Licence and CLA
 
-Margin is licensed under the AGPL-3.0-or-later. Contributions are accepted under a contributor licence agreement, which lets the project also offer Margin as a hosted service. You'll be asked to sign it on your first pull request. (The CLA text is being finalised.)
+Clearpen is licensed under the AGPL-3.0-or-later. Contributions are accepted under a contributor licence agreement, which lets the project also offer Clearpen as a hosted service. You'll be asked to sign it on your first pull request. (The CLA text is being finalised.)

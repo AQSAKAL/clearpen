@@ -2,7 +2,7 @@
 // request's last message, and streamed in small chunks like a real model.
 // The real AI tasks run on top of it, so tests exercise core and UI together.
 
-import { type ChatRequest, createLLM, type LLMClient, type LLMProvider } from '@margin/core';
+import { type ChatRequest, createLLM, type LLMClient, type LLMProvider } from '@clearpen/core';
 
 export interface Reply {
   when: RegExp;

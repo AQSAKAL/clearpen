@@ -1,4 +1,4 @@
-// @margin/db — Margin's library: schema, migrations and repositories.
+// @clearpen/db — Clearpen's library: schema, migrations and repositories.
 
 export * from './driver.ts';
 export * from './ids.ts';

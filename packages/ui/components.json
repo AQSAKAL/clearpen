@@ -12,10 +12,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@margin/ui/components",
-    "utils": "@margin/ui/lib/utils",
-    "ui": "@margin/ui/components/ui",
-    "lib": "@margin/ui/lib",
-    "hooks": "@margin/ui/hooks"
+    "components": "@clearpen/ui/components",
+    "utils": "@clearpen/ui/lib/utils",
+    "ui": "@clearpen/ui/components/ui",
+    "lib": "@clearpen/ui/lib",
+    "hooks": "@clearpen/ui/hooks"
   }
 }

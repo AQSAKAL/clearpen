@@ -1,9 +1,9 @@
 // "◇ Shape this section": a heading with only notes (or nothing) under it gets
 // a button to shape its argument. The coach lays out the logic; the writer writes.
 
+import { sectionsOf } from '@clearpen/core';
 import { type EditorState, type Range, StateField } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view';
-import { sectionsOf } from '@margin/core';
 import { addSuggestion, removeSuggestion } from './suggestions.ts';
 import type { EditorOptions, Suggestion } from './types.ts';
 

@@ -1,8 +1,8 @@
 // Getting an article out: Markdown, rich text and standalone HTML. Exports
 // that leave the app carry their images inside them as data URLs.
 
-import { escapeHTML, toDocument, toHTML } from '@margin/core';
-import { slugify } from '@margin/db';
+import { escapeHTML, toDocument, toHTML } from '@clearpen/core';
+import { slugify } from '@clearpen/db';
 import type { Backend } from '../backend.ts';
 
 export const markdownOf = (title: string, content: string) => (title.trim() ? `# ${title.trim()}\n\n` : '') + content;

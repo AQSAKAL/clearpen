@@ -2,7 +2,7 @@
 // and highlights in the text for long sentences, passive voice, adverbs,
 // filler and clichés.
 
-import { countByKind, type HighlightKind, headings, highlights, stats } from '@margin/core';
+import { countByKind, type HighlightKind, headings, highlights, stats } from '@clearpen/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '../editor-ref.tsx';
 import { cn } from '../lib/utils.ts';

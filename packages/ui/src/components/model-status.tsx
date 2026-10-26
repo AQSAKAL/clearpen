@@ -1,7 +1,7 @@
 // Whether a model is ready, checked now, every minute and whenever the
 // choice of models changes. Click it to choose models.
 
-import type { LLMStatus } from '@margin/core';
+import type { LLMStatus } from '@clearpen/core';
 import { useEffect, useState } from 'react';
 import { cn } from '../lib/utils.ts';
 import { useLibrary } from '../library.tsx';
@@ -36,7 +36,7 @@ export function ModelStatus({ onOpen }: { onOpen(): void }) {
     ? ''
     : status.ok
       ? `${status.provider === 'ollama' ? 'Ollama' : status.provider} at ${status.baseUrl} · ${status.models.length} model${status.models.length === 1 ? '' : 's'} installed`
-      : 'Margin’s AI features need a model. Install Ollama from ollama.com and pull one, for example qwen3:8b.';
+      : 'Clearpen’s AI features need a model. Install Ollama from ollama.com and pull one, for example qwen3:8b.';
 
   return (
     <Tooltip>

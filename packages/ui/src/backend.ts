@@ -20,8 +20,8 @@ import type {
   Role,
   TaskOptions,
   TokenEvent,
-} from '@margin/core';
-import type { Library } from '@margin/db';
+} from '@clearpen/core';
+import type { Library } from '@clearpen/db';
 
 export interface StoredImage {
   /** The Markdown source to write: `media/<hash>.<ext>`. */

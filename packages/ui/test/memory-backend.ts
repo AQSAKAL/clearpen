@@ -1,9 +1,9 @@
 // A Backend for tests: the real library on in-memory SQLite, images in a Map,
 // saved files recorded instead of written, and a model that's always there.
 
-import { prepareImage } from '@margin/core';
-import { openLibrary } from '@margin/db';
-import { nodeDriver } from '@margin/db/node';
+import { prepareImage } from '@clearpen/core';
+import { openLibrary } from '@clearpen/db';
+import { nodeDriver } from '@clearpen/db/node';
 import type { Backend } from '../src/backend.ts';
 import { localAI } from '../src/local-ai.ts';
 import { fakeModel, type Reply } from './fake-model.ts';

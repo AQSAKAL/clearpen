@@ -2,7 +2,7 @@
 // drag-to-move, and the trash. Shadcn's Sidebar does the layout, the ⌘\
 // toggle and the narrow-window sheet.
 
-import type { DocumentSummary, Project } from '@margin/db';
+import type { DocumentSummary, Project } from '@clearpen/db';
 import {
   ChevronRightIcon,
   FilePlusIcon,
@@ -46,13 +46,14 @@ import {
 } from './ui/sidebar.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
-const DRAG_TYPE = 'text/x-margin-doc';
+const DRAG_TYPE = 'text/x-clearpen-doc';
 
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn('flex items-center font-serif text-[21px] font-semibold tracking-tight', className)}>
-      M<span aria-hidden className="mx-[3px] ml-[2px] inline-block h-[19px] w-[2px] rounded-full bg-brand" />
-      argin
+      Clear
+      <span aria-hidden className="mx-[2px] inline-block h-[19px] w-[2px] rounded-full bg-brand" />
+      pen
     </span>
   );
 }

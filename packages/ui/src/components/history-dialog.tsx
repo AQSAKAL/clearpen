@@ -1,6 +1,6 @@
 // Versions of the open article: pick one, read it, restore it.
 
-import type { Version, VersionSummary } from '@margin/db';
+import type { Version, VersionSummary } from '@clearpen/db';
 import { useEffect, useState } from 'react';
 import { formatDateTime } from '../lib/time.ts';
 import { cn } from '../lib/utils.ts';
@@ -52,7 +52,7 @@ export function HistoryDialog({
         <DialogHeader>
           <DialogTitle>Version history</DialogTitle>
           <DialogDescription>
-            Margin saves a version every ten minutes while you write, and whenever you save one yourself.
+            Clearpen saves a version every ten minutes while you write, and whenever you save one yourself.
           </DialogDescription>
         </DialogHeader>
         <div className="grid h-[60vh] gap-3 sm:grid-cols-[220px_1fr]">

@@ -1,8 +1,8 @@
 {
-  "name": "@margin/db",
+  "name": "@clearpen/db",
   "version": "0.0.0",
   "private": true,
-  "description": "Margin's library: schema, migrations and repositories. SQLite for now; Postgres arrives with the server.",
+  "description": "Clearpen's library: schema, migrations and repositories. SQLite for now; Postgres arrives with the server.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {
@@ -15,7 +15,7 @@
     "generate": "drizzle-kit generate && node scripts/embed-migrations.mjs"
   },
   "dependencies": {
-    "@margin/core": "workspace:*",
+    "@clearpen/core": "workspace:*",
     "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {

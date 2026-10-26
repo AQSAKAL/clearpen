@@ -1,4 +1,4 @@
-# Margin — architecture
+# Clearpen — architecture
 
 *Proposal, 26 October 2026. Status: for review.*
 ✅ = decided · 🟡 = recommended, needs sign-off
@@ -10,14 +10,14 @@ An open-source writing app that:
 - runs on **Mac and Windows** (Linux comes free) and **in the browser**;
 - **works offline** — writing, AI help and checks all run on your machine by default;
 - can be **self-hosted** — `docker compose up` gives a team or a single writer a server with Postgres;
-- has a **hosted cloud version, Margin Cloud**, run by the project owner — sync, a web editor, and hosting for published sites;
-- **publishes to your own site** — a project like *example.com* becomes a website, hosted by Margin Cloud on your own domain, or deployed anywhere else.
+- has a **hosted cloud version, Clearpen Cloud**, run by the project owner — sync, a web editor, and hosting for published sites;
+- **publishes to your own site** — a project like *example.com* becomes a website, hosted by Clearpen Cloud on your own domain, or deployed anywhere else.
 
 Principles that every decision below follows:
 
-1. **You write; Margin edits and helps you think.** The AI never writes the article from scratch — no drafted sections, paragraphs, openings or conclusions. It edits what the author wrote (improve, tighten, simplify, change tone, fix) as pinpoint changes they accept or reject; it outlines logic and argument (headings, notes, the steps of a section, evidence to find, objections, questions); and it checks facts and reasoning. Requests for new writing are declined in code, not just in the prompt. The one exception is the **next logical sentence** ✅: when the author finishes a sentence and pauses, Margin first checks whether the paragraph has made its point — a judge names the sentences that state it, support it and draw its meaning, and code decides. If it has, Margin says so ("¶ point made · Tab for new paragraph") and suggests nothing; if not, it may suggest the one sentence that supplies the missing part — never word by word, one sentence at a time, shown in grey, used only if accepted. After a suggestion is taken, Margin waits for a sentence of the author's own before suggesting again, so Tab can never write a paragraph. The suggestion streams in as it's written.
+1. **You write; Clearpen edits and helps you think.** The AI never writes the article from scratch — no drafted sections, paragraphs, openings or conclusions. It edits what the author wrote (improve, tighten, simplify, change tone, fix) as pinpoint changes they accept or reject; it outlines logic and argument (headings, notes, the steps of a section, evidence to find, objections, questions); and it checks facts and reasoning. Requests for new writing are declined in code, not just in the prompt. The one exception is the **next logical sentence** ✅: when the author finishes a sentence and pauses, Clearpen first checks whether the paragraph has made its point — a judge names the sentences that state it, support it and draw its meaning, and code decides. If it has, Clearpen says so ("¶ point made · Tab for new paragraph") and suggests nothing; if not, it may suggest the one sentence that supplies the missing part — never word by word, one sentence at a time, shown in grey, used only if accepted. After a suggestion is taken, Clearpen waits for a sentence of the author's own before suggesting again, so Tab can never write a paragraph. The suggestion streams in as it's written.
 
-   **Autocorrect** ✅ fixes the author's slips as they type, which is editing, not writing: their own words, spelled right. As each word ends, exact rules make the fix with no model: a capital to start a sentence, "i" → "I", and slips with one reading ("teh", "dont"). As each sentence ends, the model proofreads it (mi → my, then → than), and code keeps only small, safe fixes. It never touches a name, a number, a link, code or Markdown. It never changes British spelling to American or tidies slang. If the model rewrote the sentence instead of fixing it, nothing changes. Each fix is its own undo step and is underlined for a moment. Undo a fix, and Margin leaves those words alone.
+   **Autocorrect** ✅ fixes the author's slips as they type, which is editing, not writing: their own words, spelled right. As each word ends, exact rules make the fix with no model: a capital to start a sentence, "i" → "I", and slips with one reading ("teh", "dont"). As each sentence ends, the model proofreads it (mi → my, then → than), and code keeps only small, safe fixes. It never touches a name, a number, a link, code or Markdown. It never changes British spelling to American or tidies slang. If the model rewrote the sentence instead of fixing it, nothing changes. Each fix is its own undo step and is underlined for a moment. Undo a fix, and Clearpen leaves those words alone.
 2. **Your words are yours.** Local by default; nothing leaves the machine unless you configure it to; everything exports to plain Markdown at any time.
 3. **Never lose a word.** Durable storage on a real disk, versions, a trash, automatic backups.
 4. **AI proposes; you decide.** Pinpoint edits you accept or reject, checks that say where their knowledge came from, arithmetic done by code — never by the model.
@@ -25,7 +25,7 @@ Principles that every decision below follows:
 
 ## Four ways to run it
 
-| | Desktop app | Self-hosted server | Margin Cloud ✅ | Web app |
+| | Desktop app | Self-hosted server | Clearpen Cloud ✅ | Web app |
 |---|---|---|---|---|
 | Who runs it | you | you | the project owner | — |
 | Shell | Tauri 2 ✅ | Node (Hono) in Docker | the same server, plus cloud services | Browser |
@@ -35,13 +35,13 @@ Principles that every decision below follows:
 | Offline | yes, fully | — | — | v2 (local cache + outbox) |
 | Accounts | none (sign in to sync) | yes | yes | yes |
 
-The self-hosted server and Margin Cloud run **the same open-source server**. The cloud adds services only a hosted product needs — tenancy and quotas, billing, site hosting, custom domains, managed AI — which live in their own private repository and plug into the server through defined interfaces.
+The self-hosted server and Clearpen Cloud run **the same open-source server**. The cloud adds services only a hosted product needs — tenancy and quotas, billing, site hosting, custom domains, managed AI — which live in their own private repository and plug into the server through defined interfaces.
 
 ## Storage
 
 **Self-hosted: Postgres ✅.** Concurrent users, real backups (`pg_dump`), full-text search, `pgvector` later for "search my notes by meaning".
 
-**Desktop: one SQLite file 🟡** — e.g. `~/Library/Application Support/Margin/library.db`, accessed through Tauri's SQL plugin (Rust, `sqlx`).
+**Desktop: one SQLite file 🟡** — e.g. `~/Library/Application Support/Clearpen/library.db`, accessed through Tauri's SQL plugin (Rust, `sqlx`).
 
 Why not Postgres on the desktop too? We looked at PGlite (Postgres compiled to WebAssembly). Inside a Tauri app it can only store data in the webview's IndexedDB, not a file. That storage has been reported to [not survive app updates in Tauri](https://releases.powersync.com/announcements/ann_mPwGQpcccCyvL), and PGlite is still [marked alpha](https://github.com/electric-sql/pglite). A writing app can't risk its only copy of someone's work on that. Running real Postgres beside the app would add a background process and 40+ MB. SQLite is a single durable file, battle-tested, and easy to back up or move.
 
@@ -122,7 +122,7 @@ A **project is a publication**. Its settings hold:
 - SEO fields (generated today by *Publish*);
 - RSS and sitemap.
 
-Margin builds a static site — fast, cheap to host, secure — and publishes it to a target. **Margin Cloud is the default target** ✅. The others stay available, so open-source users never depend on the cloud:
+Clearpen builds a static site — fast, cheap to host, secure — and publishes it to a target. **Clearpen Cloud is the default target** ✅. The others stay available, so open-source users never depend on the cloud:
 
 - GitHub Pages or Cloudflare Pages (git push or API);
 - Netlify (API);
@@ -131,17 +131,17 @@ Margin builds a static site — fast, cheap to host, secure — and publishes it
 
 Drafts stay private. Scheduled posts go out from the cloud or a self-hosted server, or the next time the desktop app is open. Export to Ghost or WordPress comes later.
 
-## Margin Cloud: hosting your site on your domain
+## Clearpen Cloud: hosting your site on your domain
 
 ### Connecting a domain
 
 What a writer sees, in project settings → **Domain**:
 
 1. **Instant address.** Every site gets `yourname.<cloud-domain>` the moment it's first published.
-2. **Add a domain.** You type `example.com`. Margin shows exactly three DNS records to add at your registrar, with copy buttons:
+2. **Add a domain.** You type `example.com`. Clearpen shows exactly three DNS records to add at your registrar, with copy buttons:
    - `A  @  →  <our IPv4>` (and an `AAAA` record for IPv6) — works at **every** registrar, including GoDaddy and Namecheap;
    - `CNAME  www  →  sites.<cloud-domain>`;
-   - `TXT  _margin  →  <token>` — proves the domain is yours.
+   - `TXT  _clearpen  →  <token>` — proves the domain is yours.
 3. **Live status.** The page checks DNS by itself and moves through *waiting for DNS* → *verified* → *secured with HTTPS*. Each step says what is wrong if it stalls ("your A record still points to 192.0.2.10, your old host").
 4. **Done, with redirects handled:**
    - you choose `example.com` or `www.example.com` as the main address, and the other permanently redirects (301) to it, keeping the path;
@@ -189,7 +189,7 @@ The whole cloud starts on one Hetzner server, run with Docker Compose — the sa
 | Service | Role |
 |---|---|
 | `caddy` | HTTPS for the app, the API and every custom domain (on-demand TLS); HTTP→HTTPS and apex/www redirects |
-| `server` | the Margin API and web app (Node, Hono) |
+| `server` | the Clearpen API and web app (Node, Hono) |
 | `worker` | builds and publishes sites, runs scheduled posts, checks DNS for domains waiting to connect |
 | `router` | maps a request's host to its site's live build and serves it from object storage, with a local cache |
 | `postgres` | all data; WAL archiving for point-in-time recovery |
@@ -223,7 +223,7 @@ Desktop ↔ your server: local changes go into an outbox and are pushed through 
 ## Open source
 
 - **License 🟡: AGPL-3.0 for the open code, with a contributor licence agreement (CLA).**
-  - **Why AGPL:** anyone who runs a modified Margin as a service must share their changes, so a closed copy can't compete with Margin Cloud. MIT would maximise adoption but allow exactly that.
+  - **Why AGPL:** anyone who runs a modified Clearpen as a service must share their changes, so a closed copy can't compete with Clearpen Cloud. MIT would maximise adoption but allow exactly that.
   - **Why the CLA matters for the cloud:** you own your own code. Once others contribute, though, the cloud must either follow the AGPL for their code too, or hold the rights a CLA grants. Cloud-only services (billing, tenancy, hosting, domains) stay in a private repository and talk to the open server through interfaces. This is the open-core model Cal.com and Plausible use.
   - Have a lawyer look at the licence and CLA before the public launch.
 - **Quality bar:** GitHub with CI (typecheck, lint, unit, Playwright end-to-end), conventional commits, and a `CONTRIBUTING.md`.
@@ -241,7 +241,7 @@ Desktop ↔ your server: local changes go into an outbox and are pushed through 
 | 5 | `apps/desktop` (Tauri): SQLite, keychain, Ollama, menus, auto-update, installers. *Started early: the shell, its permissions and the unsigned Mac/Windows release workflow exist — see `apps/desktop/README.md`.* |
 | 6 | Publishing v1: static site generator, themes, folder and GitHub/Cloudflare Pages targets |
 | 7 | Sync between desktop and a server (self-hosted or cloud) |
-| 8 | Margin Cloud: accounts, site hosting, custom domains with automatic HTTPS and redirects, billing |
+| 8 | Clearpen Cloud: accounts, site hosting, custom domains with automatic HTTPS and redirects, billing |
 | 9 | Offline web app; real-time co-editing if wanted |
 
 ## Decisions needing sign-off
@@ -251,5 +251,5 @@ Desktop ↔ your server: local changes go into an outbox and are pushed through 
 3. **Custom domains:** our own edge with on-demand HTTPS, so bare domains work at every registrar 🟡 (alternative: Cloudflare for SaaS — cheaper and global, but bare domains need its Enterprise plan).
 4. **License:** AGPL-3.0 + CLA, with cloud-only services in a private repository 🟡 (alternative: MIT).
 5. **Names:**
-   - the product name — "Margin" is a common word, so check the GitHub org, domain and trademark;
+   - the product name — "Clearpen" is a common word, so check the GitHub org, domain and trademark;
    - the cloud domain that hosts sites (`<name>.<cloud-domain>`).

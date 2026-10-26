@@ -1,7 +1,7 @@
 // The AI features running in the app itself, on a model client the backend
 // makes (Ollama on this machine, through whatever fetch it needs).
 
-import { check, edit, type LLMClient, nextSentenceStream, proofread, type Role, review, rewrite } from '@margin/core';
+import { check, edit, type LLMClient, nextSentenceStream, proofread, type Role, review, rewrite } from '@clearpen/core';
 import type { AI } from './backend.ts';
 
 const ROLES: Role[] = ['quick', 'coach', 'checker'];

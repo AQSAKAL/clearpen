@@ -84,8 +84,8 @@ test('⌘S saves a version, and the menu exports Markdown', async () => {
   await user.click(screen.getByRole('button', { name: 'More' }));
   await user.click(await screen.findByRole('menuitem', { name: 'Save as Markdown…' }));
   await waitFor(() => assert.equal(backend.saved.length, 1));
-  assert.equal(backend.saved[0]?.name, 'welcome-to-margin.md');
-  assert.match(backend.saved[0]!.contents, /^# Welcome to Margin\n\nMargin is a quiet place/);
+  assert.equal(backend.saved[0]?.name, 'welcome-to-clearpen.md');
+  assert.match(backend.saved[0]!.contents, /^# Welcome to Clearpen\n\nClearpen is a quiet place/);
 });
 
 test('the theme menu switches to dark and back to the system', async () => {

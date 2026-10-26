@@ -1,6 +1,6 @@
 // Reader mode: the article as a reader will see it.
 
-import { toHTML } from '@margin/core';
+import { toHTML } from '@clearpen/core';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLibrary } from '../library.tsx';
 import type { Counts } from './article-editor.tsx';
