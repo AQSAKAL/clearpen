@@ -15,7 +15,7 @@ An open-source writing app that:
 
 Principles that every decision below follows:
 
-1. **You write; Margin helps you think.** The AI never writes the author's prose — no drafted sections, paragraphs, openings or examples. It outlines logic and argument (headings, notes, the steps of a section, evidence to find, objections, questions), checks facts and reasoning, and makes pinpoint edits the author accepts or rejects.
+1. **You write; Margin edits and helps you think.** The AI never writes the article from scratch — no drafted sections, paragraphs, openings or conclusions. It edits what the author wrote (improve, tighten, simplify, change tone, fix) as pinpoint changes they accept or reject; it outlines logic and argument (headings, notes, the steps of a section, evidence to find, objections, questions); and it checks facts and reasoning. Requests for new writing are declined in code, not just in the prompt. The one exception is the **next logical sentence** ✅: when the author finishes a sentence and pauses, Margin first checks whether the paragraph has made its point — a judge quotes the sentences that state it, support it and draw its meaning, and code decides. If it has, Margin says so ("¶ point made · Tab for new paragraph") and suggests nothing; if not, it may suggest the one sentence that supplies the missing part — never word by word, one sentence at a time, shown in grey, used only if accepted. After a suggestion is taken, Margin waits for a sentence of the author's own before suggesting again, so Tab can never write a paragraph.
 2. **Your words are yours.** Local by default; nothing leaves the machine unless you configure it to; everything exports to plain Markdown at any time.
 3. **Never lose a word.** Durable storage on a real disk, versions, a trash, automatic backups.
 4. **AI proposes; you decide.** Pinpoint edits you accept or reject, checks that say where their knowledge came from, arithmetic done by code — never by the model.
@@ -93,6 +93,8 @@ The UI talks to **one `Backend` interface** with two implementations:
 So a feature like *fact-check a selection* is written once in `core` and appears everywhere. Almost everything in today's prototype (`checks.js`, `diff.js`, `integrity.js`, `analysis.js`, `markdown.js`, prompts, anchoring) moves into `packages/core` as it is, with its 38 tests.
 
 **UI stack:** React 19, Vite, Tailwind CSS v4, shadcn/ui (Radix underneath) for every control, TanStack Router and Query, CodeMirror 6 for the editor (shadcn has no editor; CodeMirror works fine inside React).
+
+**The editor keeps the keyboard.** Tab never leaves the editor. It accepts the suggestion or hint that's showing; the "¶ point made" hint inserts a paragraph break in place of the trailing space. Otherwise Tab indents a list item (Shift-Tab outdents), and otherwise it does nothing. Esc then Tab within 1.5 s moves focus on, so keyboard users are never trapped. The reference is the prototype's `margin/editor-src/index.js`: the `aiKeys` Tab binding, `inListItem` and `escapedJustNow`.
 
 ## AI
 

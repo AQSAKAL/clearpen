@@ -112,3 +112,8 @@ export function outlineToMarkdown(outline: Partial<Outline> | null | undefined):
     )
     .join('\n\n');
 }
+
+/** The section the position `pos` is in, or undefined before the first ## heading. */
+export function sectionAt(text: string, pos: number): ArticleSection | undefined {
+  return sectionsOf(text).find((s) => s.headingFrom <= pos && pos <= s.bodyTo);
+}

@@ -1,5 +1,5 @@
-// Tasks that stream text: autocomplete, rewrites of the author's own passage,
-// and answers about the draft. Margin never drafts the author's prose — for
+// Tasks that stream text: edits of the author's own passage, and answers
+// about the draft. Margin never drafts the author's prose — for
 // help with what to write, see `think`.
 
 import { type Hunk, hunks } from '../diff.ts';
@@ -7,7 +7,7 @@ import { warning } from '../integrity.ts';
 import type { LLMClient } from '../llm/client.ts';
 import type { StreamInfo } from '../llm/types.ts';
 import * as P from '../prompts.ts';
-import { tidyCompletion, tidyRewrite, tidyText } from '../tidy.ts';
+import { tidyRewrite, tidyText } from '../tidy.ts';
 import { InputError, MAX_PASSAGE, type NoticeEvent, streamText, type TaskOptions, type TokenEvent } from './common.ts';
 
 export interface TextDone {
@@ -17,22 +17,6 @@ export interface TextDone {
 }
 
 export type TextEvent = NoticeEvent | TokenEvent | TextDone;
-
-/** Autocomplete: the rest of the sentence at the cursor, or nothing. */
-export async function* complete(
-  llm: LLMClient,
-  input: { title?: string; before: string; after?: string },
-  opts: TaskOptions = {},
-): AsyncGenerator<TextEvent> {
-  const info: StreamInfo = {};
-  const raw = yield* streamText(
-    llm,
-    P.completeMessages(input),
-    { ...opts, maxTokens: 48, temperature: 0.45, stop: ['\n\n'] },
-    info,
-  );
-  yield { type: 'done', text: tidyCompletion(raw, input.before), truncated: !!info.truncated };
-}
 
 export interface RewriteInput {
   title?: string;

@@ -7,6 +7,7 @@
 // - Ask for structure with a JSON schema rather than prose instructions.
 // - One focused job per prompt: small models do one job well and five badly.
 
+import { firstWord, notesProgress, paragraphSentences, splitParagraph } from './autocomplete.ts';
 import type { Lens } from './intent.ts';
 
 export interface ChatMessage {
@@ -57,33 +58,79 @@ export function briefBlock(brief: Brief = {}): string {
 const withBrief = (brief: Brief | undefined, before: string, after: string) =>
   brief && briefBlock(brief) ? `${before}${briefBlock(brief)}${after}` : '';
 
-// ─────────────────────────────────────────────────────────── autocomplete
+// ─────────────────────────────────────────────────────────── the next logical sentence
 
-const COMPLETE_SYSTEM = `You are an autocomplete engine inside a writing app. Continue the author's text from exactly where the cursor is, in the same voice, tense and style. Output ONLY the words that come next — never repeat text that is already there, never add commentary, quotation marks around your answer, or code fences. Finish the current sentence, or write at most one more short sentence.`;
+// The one exception to "Margin never writes for you": when the author
+// finishes a sentence and pauses, Margin may suggest the one sentence that
+// supplies the part their paragraph is missing — in grey, used only if they
+// accept it. Judging and writing are separate calls: a model about to write a
+// sentence always finds a reason to. The judge only quotes; code decides (see
+// autocomplete.ts).
+const JUDGE_SYSTEM = `You read the paragraph an author is writing and find, by quoting it exactly, the sentences that do three jobs: the sentence that states the paragraph's point; the sentence that supports it with a reason, evidence, an example or an experience; and the sentence that draws the meaning — why it matters, what follows, or what the reader should take from it. Quote each sentence exactly as written. If no sentence does a job, give "" for it. Do not write or suggest anything. You answer only with JSON.`;
+
+const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
+
+export function judgeMessages({ before = '' }: { before?: string }): ChatMessage[] {
+  const { paragraph } = splitParagraph(before);
+  return [
+    { role: 'system', content: JUDGE_SYSTEM },
+    {
+      role: 'user',
+      content: `The paragraph:
+<<<
+${paragraph}
+>>>
+
+Return JSON {"idea": "the paragraph's idea, in a few words", "point": "the exact sentence that states the point, or """, "support": "the exact sentence that supports it, or """, "meaning": "the exact sentence that draws the meaning, or """}.`,
+    },
+  ];
+}
+
+export const judgeSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    idea: { type: 'string' },
+    point: { type: 'string' },
+    support: { type: 'string' },
+    meaning: { type: 'string' },
+  },
+  required: ['idea', 'point', 'support', 'meaning'],
+};
+
+export interface CompleteInput {
+  title?: string;
+  before?: string;
+  /** The heading of the section being written. */
+  heading?: string;
+  /** The author's notes for that section: the sentence heads for the first one not yet made. */
+  notes?: string[];
+  /** What the paragraph is missing, from `paragraphVerdict`. */
+  missing?: string;
+}
 
 export function completeMessages({
   title = '',
   before = '',
-  after = '',
-}: {
-  title?: string;
-  before?: string;
-  after?: string;
-}): ChatMessage[] {
+  heading = '',
+  notes = [],
+  missing = '',
+}: CompleteInput): ChatMessage[] {
+  const { covered, next } = notesProgress(notes, before);
+  const { paragraph, earlier } = splitParagraph(before);
+  // "This …, This …, This …": name the opener to avoid.
+  const openers = [...new Set(paragraphSentences(before).slice(-3).map(firstWord).filter(Boolean))];
   return [
     { role: 'system', content: COMPLETE_SYSTEM },
     {
       role: 'user',
       content: `Article title: ${title || '(untitled)'}
+${heading ? `\nThe section being written: "${heading}"${notes.length ? `, with the author's notes for it:\n${notes.map((n, i) => `- ${n}${covered[i] ? ' (already made)' : ''}`).join('\n')}` : ''}\n` : ''}${next ? `\nThe next point the author is heading toward: "${next}".\n` : ''}${earlier.trim() ? `\nEarlier in the article:\n<<<\n${clip(earlier, 3000)}\n>>>\n` : ''}
+The paragraph being written:
+<<<
+${paragraph}
+>>>
 
-<text_before_cursor>
-${clip(before, 6000)}
-</text_before_cursor>
-<text_after_cursor>
-${head(after, 600)}
-</text_after_cursor>
-
-Continue from the cursor.`,
+The paragraph is missing ${missing || 'its next logical step'}. Write the one sentence that supplies it.${openers.length ? ` Don't begin with ${openers.map((w) => `"${w[0]!.toUpperCase()}${w.slice(1)}"`).join(' or ')}.` : ''}`,
     },
   ];
 }
@@ -93,20 +140,23 @@ Continue from the cursor.`,
 /** The built-in actions on a selection; each is rewritten, then split into pinpoint changes. */
 export const REWRITES = {
   improve: 'Improve this passage: make it clearer, tighter and more vivid without changing its meaning or voice.',
-  shorten: 'Make it about 40% shorter. Keep every key point.',
-  simplify: 'Rewrite it in plain, simple language anyone could follow. Short sentences, everyday words.',
+  shorten:
+    "Make it shorter by cutting, not rewriting: remove the words, phrases and sentences that don't earn their place. Keep the author's own wording for everything that stays, and every key point. Add nothing.",
+  simplify:
+    'Make it easier to read: swap jargon and long words for plain ones, and split sentences that run too long. Change as few words as possible. Add nothing.',
   grammar: 'Fix spelling, grammar and punctuation only. Change nothing else.',
   formal: 'Rewrite it in a more formal, professional tone.',
   casual: 'Rewrite it in a warmer, more conversational tone.',
   confident: 'Rewrite it to sound more confident and direct: cut hedges and qualifiers.',
-  persuasive: 'Rewrite it to be more persuasive, with a stronger case and a clearer call to the reader.',
-  hook: 'Rewrite it as a gripping opening that makes the reader need to keep reading.',
+  persuasive:
+    'Make the same case more persuasively, using only the points already there: firmer verbs, a clearer stance, a better order. Add no new arguments, facts or calls to action.',
+  hook: 'Rework it into a gripping opening from what is already there — reorder, sharpen, cut. Add no new facts or claims.',
   active: 'Rewrite it in the active voice, with strong verbs.',
 } as const;
 
 export type RewriteAction = keyof typeof REWRITES;
 
-const EDIT_SYSTEM = `You are an expert editor working inside a writing app. You rewrite a passage exactly as instructed. Keep the author's meaning, facts, voice and Markdown formatting unless the instruction says otherwise. Unless the instruction is only to fix grammar, also cut clichés ("in today's fast-paced world", "at the end of the day"), filler ("very", "basically", "really") and hedges, and prefer concrete words to abstract ones. Never invent facts, quotes, names or statistics. Output ONLY the rewritten passage — no preamble, no quotation marks around it, no explanation.`;
+const EDIT_SYSTEM = `You are an expert editor working inside a writing app. You edit the author's passage exactly as instructed. Keep their meaning, facts, voice and Markdown formatting unless the instruction says otherwise, and change only what the instruction needs. You edit what is there — never add new ideas, examples or paragraphs of your own. Never invent facts, quotes, names or statistics. Output ONLY the edited passage — no preamble, no quotation marks around it, no explanation.`;
 
 interface PassageInput {
   title?: string;
@@ -145,7 +195,8 @@ Instruction: ${instruction}`,
 
 // For free instructions: the model returns pinpoint edits, never the passage
 // again. "Add subheadings" becomes three inserts; nothing else is touched.
-const EDITS_SYSTEM = `You are a precise editor working inside a writing app. You carry out the author's instruction by making the smallest set of edits that does it — like marking up a page with a pencil. Never retype text you are not changing; never "improve" anything the instruction didn't ask about. Keep the author's facts, numbers, names, links and Markdown. Never invent facts, quotes, names or statistics. You answer only with JSON.`;
+const EDITS_SYSTEM = `You are a precise editor working inside a writing app. You carry out the author's instruction by making the smallest set of edits that does it — like marking up a page with a pencil. Never retype text you are not changing; never "improve" anything the instruction didn't ask about. Keep the author's facts, numbers, names, links and Markdown. Never invent facts, quotes, names or statistics.
+You edit what the author wrote — rephrase, tighten, restyle, fix, cut, reorder, add headings or turn text into a list — but you never write new material from scratch: no new paragraphs, sections, openings, conclusions or examples that aren't already there in some form. If the instruction asks for that, make no edits and say so in "declined". You answer only with JSON.`;
 
 export function editsMessages({ title = '', text, instruction, before = '', after = '' }: PassageInput): ChatMessage[] {
   return [
@@ -165,11 +216,11 @@ Passage:
 
 Instruction: ${instruction}
 
-Return JSON {"edits": [...]} — only the edits the instruction needs, in the order they appear. Each edit has:
+Return JSON {"edits": [...], "declined": ""} — only the edits the instruction needs, in the order they appear. Each edit has:
 - "type": "insert_before", "insert_after", "replace" or "delete";
 - "anchor": the exact words from the passage, copied character for character — for "replace" and "delete", exactly the words to change (as few as possible); for "insert_before" and "insert_after", the first or last sentence of the paragraph or line the new text goes next to;
 - "text": the new text in Markdown ("" for "delete"). A heading, list or new paragraph is its own block, e.g. "## A catchy heading". Put a heading with "insert_before" on the first sentence of the paragraph it introduces.
-If the instruction really needs the whole passage rewritten, use one "replace" whose anchor is the whole passage.`,
+If the instruction would mean writing new material from scratch, return no edits and put a one-sentence reason in "declined"; otherwise "declined" is "".`,
     },
   ];
 }
@@ -189,8 +240,10 @@ export const editsSchema: JsonSchema = {
         required: ['type', 'anchor', 'text'],
       },
     },
+    /** Why the model made no edits: the instruction asked for new writing. */
+    declined: { type: 'string' },
   },
-  required: ['edits'],
+  required: ['edits', 'declined'],
 };
 
 // ─────────────────────────────────────────────────────────── thinking aids

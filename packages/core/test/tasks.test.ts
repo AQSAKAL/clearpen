@@ -2,17 +2,33 @@
 // what never should.
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-
+import {
+  nextSentenceOk,
+  nextSentenceSpot,
+  notesProgress,
+  paragraphLength,
+  paragraphVerdict,
+} from '../src/autocomplete.ts';
 import { applyHunks } from '../src/diff.ts';
 import * as core from '../src/index.ts';
-import { REWRITES, THINK_KINDS, type ThinkKind, thinkMessages } from '../src/prompts.ts';
+import { sectionAt } from '../src/outline.ts';
+import {
+  completeMessages,
+  judgeMessages,
+  REWRITES,
+  THINK_KINDS,
+  type ThinkKind,
+  thinkMessages,
+} from '../src/prompts.ts';
 import { check } from '../src/tasks/check.ts';
 import { InputError } from '../src/tasks/common.ts';
 import { edit } from '../src/tasks/edit.ts';
+import { nextSentence } from '../src/tasks/next.ts';
 import { headlines, meta, normaliseOutline, outline } from '../src/tasks/plan.ts';
 import { review } from '../src/tasks/review.ts';
 import { think } from '../src/tasks/think.ts';
-import { complete, rewrite } from '../src/tasks/write.ts';
+import { rewrite } from '../src/tasks/write.ts';
+import { tidyCompletion } from '../src/tidy.ts';
 import { chunks, collect, fakeLLM, lastUser } from './fake.ts';
 
 const passage = 'First para here.\n\nSecond para here.\n\nLast para here.';
@@ -34,7 +50,7 @@ test('free instructions become pinpoint edits; bad and clashing ones are dropped
     applyHunks(passage, edits),
     'First para here.\n\n## Middle\n\nOverlapping here.\n\nFinal paragraph here.',
   );
-  assert.deepEqual(events.at(-1), { type: 'done', count: 3, missed: 1 });
+  assert.deepEqual(events.at(-1), { type: 'done', count: 3, missed: 1, declined: '' });
   assert.ok(provider.requests[0]!.format, 'the answer is constrained to the edits schema');
   await assert.rejects(collect(edit(llm, { text: '  ', instruction: 'x' })), InputError);
 });
@@ -144,13 +160,6 @@ test('a rewrite comes back as the few spots that changed, each with its warning'
   await assert.rejects(collect(rewrite(cut.llm, { text, action: 'shorten' })), /too long to rewrite/);
 });
 
-test('autocomplete is tidied to fit the cursor', async () => {
-  const { llm, provider } = fakeLLM({ stream: () => ['value privacy.', ' And more.'] });
-  const done = (await collect(complete(llm, { before: 'people who' }))).at(-1);
-  assert.deepEqual(done, { type: 'done', text: ' value privacy.', truncated: false });
-  assert.deepEqual(provider.requests[0]!.stop, ['\n\n']);
-});
-
 test('structured answers are normalised into safe shapes', async () => {
   assert.deepEqual(
     normaliseOutline({ title: ' T ', sections: [{ heading: 'A', points: ['x', 3, ''] }, { heading: '' }, 'junk'] }),
@@ -229,4 +238,190 @@ test('think returns tidy groups of notes from the coach model', async () => {
   await assert.rejects(think(llm, { kind: 'write-it-for-me' as ThinkKind }), InputError);
   const empty = fakeLLM({ complete: () => '{"groups":[]}' });
   await assert.rejects(think(empty.llm, { kind: 'next' }), /No notes came back/);
+});
+
+test('edit, don’t write: from-scratch requests and paragraphs of new words never reach the text', async () => {
+  // Declined before the model is even asked.
+  const { llm, provider } = fakeLLM({ stream: () => chunks('{"edits":[],"declined":""}') });
+  const declined = await collect(edit(llm, { text: passage, instruction: 'write two more paragraphs about athletes' }));
+  assert.deepEqual(declined, [
+    { type: 'done', count: 0, missed: 0, declined: 'That asks for new writing, not an edit.' },
+  ]);
+  assert.equal(provider.requests.length, 0);
+
+  // A request that slips past, answered with a new paragraph: dropped.
+  const story = JSON.stringify({
+    edits: [
+      {
+        type: 'insert_after',
+        anchor: 'Last para here.',
+        text: 'Take Serena Williams, who trained for years before she won anything at all.',
+      },
+    ],
+    declined: '',
+  });
+  const slipped = fakeLLM({ stream: () => chunks(story, 9) });
+  const events = await collect(edit(slipped.llm, { text: passage, instruction: 'tell the story of a champion' }));
+  assert.ok(!events.some((e) => e.type === 'edit'));
+  assert.deepEqual(events.at(-1), {
+    type: 'done',
+    count: 0,
+    missed: 0,
+    declined: 'That would mean writing new material, not editing what’s there.',
+  });
+
+  // The model's own reason is passed on.
+  const own = fakeLLM({
+    stream: () => chunks('{"edits":[],"declined":"That needs a new section, which is yours to write."}'),
+  });
+  const done = (await collect(edit(own.llm, { text: passage, instruction: 'make this cover pricing too' }))).at(-1);
+  assert.deepEqual(done, {
+    type: 'done',
+    count: 0,
+    missed: 0,
+    declined: 'That needs a new section, which is yours to write.',
+  });
+});
+
+// ─────────────────────────────────────────────────────────── the next logical sentence
+
+test('a suggestion is asked for only after a finished sentence at the end of prose', () => {
+  const at = (text: string) => nextSentenceSpot(text, text.length);
+  assert.ok(at('Every goal worth having hurts.'));
+  assert.ok(at('He said it was “fine.”'));
+  assert.ok(!at('Every goal worth having'), 'never mid-sentence');
+  assert.ok(!at('## Why pain matters.'), 'never in a heading');
+  assert.ok(!at('- Short note.'), 'too short to be prose');
+  assert.ok(!at('| Year 1 | $910K. |'), 'never in a table');
+  assert.ok(!at('```\nconsole.log("this is a long enough line.");'), 'never in code');
+  const middle = 'First sentence is long enough. Second one too.';
+  assert.ok(!nextSentenceSpot(middle, middle.indexOf(' Second')), 'never while editing inside a line');
+  const doc = '# T\n\n## Why pain matters\n\n- Pain is a signal\n\nPain tells you where to look.';
+  assert.equal(sectionAt(doc, doc.length)?.heading, 'Why pain matters');
+  assert.deepEqual(sectionAt(doc, doc.length)?.points, ['Pain is a signal']);
+  assert.equal(sectionAt(doc, 2), undefined, 'the title is not a section');
+});
+
+test('the next sentence comes only after a verdict: the judge quotes, code decides', () => {
+  // The judge only quotes; a part counts as done only if its quote is really there.
+  assert.match(judgeMessages({ before: 'x' })[0]!.content, /Do not write or suggest anything/);
+  const para3 =
+    'Most advice is about control. Control only works while you are in the room. So explain more and command less. ';
+  const all = {
+    point: 'Most advice is about control.',
+    support: 'Control only works while you are in the room.',
+    meaning: 'So explain more and command less.',
+  };
+  assert.equal(paragraphVerdict(para3, all).complete, true);
+  const invented = { ...all, meaning: 'Therefore children thrive when trusted.' };
+  assert.equal(paragraphVerdict(para3, invented).missing, 'what it means — why it matters or what follows');
+  assert.equal(paragraphVerdict(para3, 'not even an object').missing, 'its point, stated plainly');
+  assert.match(
+    completeMessages({ before: para3, missing: 'support for its point' })[1]!.content,
+    /missing support for its point/,
+  );
+  assert.match(
+    completeMessages({ before: 'It hurts.', heading: 'Why', notes: ['pain signals growth'] })[1]!.content,
+    /pain signals growth[\s\S]*The paragraph being written/,
+  );
+  const progress = notesProgress(
+    ['every goal has its own discomfort', 'you choose which discomfort to live with'],
+    'Every goal worth having comes with its own kind of discomfort.',
+  );
+  assert.deepEqual(progress, { covered: [true, false], next: 'you choose which discomfort to live with' });
+  assert.equal(tidyCompletion('it hurts. And then more.', 'Every goal '), 'it hurts.');
+  assert.equal(tidyCompletion('So choose it. Then more.', 'Every goal hurts.'), ' So choose it.');
+});
+
+test('the next sentence stops when it would only repeat or drone on', () => {
+  const para =
+    'This helped me recognize that parenting is about connection. This realization allowed me to shift from disciplinarian to partner. This understanding transformed how I approached discipline. ';
+  // "This …" a fourth time is dropped…
+  assert.equal(nextSentenceOk(para, 'This shift also allowed me to create a more open environment.'), false);
+  // …so is saying the same thing again in other words…
+  assert.equal(
+    nextSentenceOk(
+      'Parenting is about connection, not control. ',
+      'Parenting is really about connection rather than control.',
+    ),
+    false,
+  );
+  // …and "nothing" is a fine answer.
+  assert.equal(nextSentenceOk(para, ''), false);
+  // A new step, opened differently, earns its place.
+  assert.equal(
+    nextSentenceOk(para, 'Punishment had taught my son to hide mistakes; curiosity taught him to bring them to me.'),
+    true,
+  );
+  // The prompt names the opener to avoid.
+  assert.match(completeMessages({ before: para })[1]!.content, /Don't begin with "This"/);
+  // Only the paragraph being written is judged; earlier ones are context.
+  assert.match(
+    completeMessages({ before: 'Old point.\n\nNew point. ' })[1]!.content,
+    /Earlier in the article:\n<<<\nOld point\.[\s\S]*The paragraph being written:\n<<<\nNew point\./,
+  );
+  assert.equal(paragraphLength('A. B.\n\nOne. Two. Three. '), 3);
+});
+
+test('nextSentence asks the model only when it should, and writes only what is missing', async () => {
+  const judgeAll = JSON.stringify({
+    idea: 'control vs trust',
+    point: 'Most advice is about control.',
+    support: 'Control only works while you are in the room.',
+    meaning: 'So explain more and command less.',
+  });
+  const para3 =
+    'Most advice is about control. Control only works while you are in the room. So explain more and command less.';
+
+  // Mid-sentence, or a long paragraph: no model call at all.
+  const quiet = fakeLLM({ complete: () => judgeAll });
+  assert.deepEqual(await nextSentence(quiet.llm, { before: 'Most advice is about' }), { complete: false, next: '' });
+  assert.deepEqual(await nextSentence(quiet.llm, { before: 'One. Two. Three. Four. Five. Six.' }), {
+    complete: true,
+    next: '',
+  });
+  assert.equal(quiet.provider.requests.length, 0);
+
+  // A paragraph that has made its point: one call, the judge's, and nothing suggested.
+  const made = fakeLLM({ complete: () => judgeAll, stream: () => ['Should never be asked.'] });
+  assert.deepEqual(await nextSentence(made.llm, { before: para3 }), {
+    complete: true,
+    idea: 'control vs trust',
+    next: '',
+  });
+  assert.equal(made.provider.requests.length, 1);
+
+  // Missing its meaning: the writing call is told exactly that, and is steered by the section.
+  const judgeTwo = JSON.stringify({
+    idea: 'control',
+    point: 'Most advice is about control.',
+    support: 'Control only works while you are in the room.',
+    meaning: '',
+  });
+  const two = 'Most advice is about control. Control only works while you are in the room.';
+  const writes = fakeLLM({
+    complete: () => judgeTwo,
+    stream: () => [' So explain more', ' and command less. Then more.'],
+  });
+  const out = await nextSentence(writes.llm, {
+    before: two,
+    heading: 'Trust',
+    notes: Array.from({ length: 20 }, (_, i) => `note ${i}`),
+  });
+  assert.deepEqual(out, {
+    complete: false,
+    idea: 'control',
+    missing: 'what it means — why it matters or what follows',
+    next: ' So explain more and command less.',
+  });
+  const prompt = lastUser(writes.provider.requests[1]!);
+  assert.match(prompt, /missing what it means/);
+  assert.ok(prompt.includes('note 11') && !prompt.includes('note 12'), 'at most 12 notes');
+
+  // A suggestion that only restates is dropped.
+  const echo = fakeLLM({
+    complete: () => judgeTwo,
+    stream: () => ['Control only works while you are really in the room.'],
+  });
+  assert.equal((await nextSentence(echo.llm, { before: two })).next, '');
 });

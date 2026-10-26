@@ -14,10 +14,11 @@ Margin's engine. Pure TypeScript with no platform APIs, so the same code runs in
 | `anchor` | Finds a model's (slightly wrong) quote in the draft. |
 | `markdown` | Safe Markdown → HTML for exports. |
 | `outline` | The article's own outline: its sections and the notes under each. |
-| `intent` | Is a typed instruction a check, a question, or an edit? |
+| `autocomplete` | The rules for the next logical sentence: when to ask (`nextSentenceSpot`), whether the paragraph has made its point (`paragraphVerdict`, from the judge's quotes), and whether a suggestion earns its place (`nextSentenceOk`). |
+| `intent` | Is a typed instruction a check, a question, or an edit? And the guards that keep edits edits: `asksToWrite` refuses requests for new writing, `writesNewMaterial` drops a returned edit that writes a paragraph of new words. |
 | `prompts`, `tidy` | Every prompt Margin sends, and the clean-up of every answer. |
 | `llm/*` | Ollama and OpenAI-compatible providers, and the client: model roles (quick, coach, checker), stall protection, JSON answers. |
-| `tasks/*` | The AI features. Async generators of events: `complete`, `rewrite`, `edit`, `check`, `review`, `ask`. Structured answers: `think` (coach notes — the argument of a section, what comes next, objections; never prose), `outline`, `headlines`, `meta`. |
+| `tasks/*` | The AI features. Async generators of events: `rewrite`, `edit`, `check`, `review`, `ask`. Structured answers: `nextSentence` (a verdict on the paragraph, and one sentence only if a part is missing), `think` (coach notes — the argument of a section, what comes next, objections; never prose), `outline`, `headlines`, `meta`. |
 
 ## Using it
 

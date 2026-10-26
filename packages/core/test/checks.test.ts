@@ -7,7 +7,7 @@ import { test } from 'vitest';
 import { type Finding, factsBlock, matches, numbersIn, parseNumber, runChecks } from '../src/checks.ts';
 import { applyHunks, hunks } from '../src/diff.ts';
 import { placeEdit } from '../src/edits.ts';
-import { intentOf } from '../src/intent.ts';
+import { asksToWrite, intentOf, writesNewMaterial } from '../src/intent.ts';
 
 const read = (name: string) => fs.readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const thesis = read('thesis.md');
@@ -231,4 +231,46 @@ test('typed instructions are routed to checks, answers or edits', () => {
     ['turn this into a list', null],
   ] as [string, string | null][])
     assert.equal(intentOf(s), want, s);
+});
+
+test('edits are allowed; writing new material from scratch is not', () => {
+  for (const s of [
+    'write two more paragraphs about athletes',
+    'add a conclusion after this',
+    'continue writing',
+    'give me an example',
+    'flesh this out',
+    'write an intro',
+  ])
+    assert.ok(asksToWrite(s), s);
+  for (const s of [
+    'write catchy subheadings',
+    'make it punchier',
+    'add section headings',
+    'turn this into a list',
+    'fix the spelling',
+    'make it more formal',
+  ])
+    assert.ok(!asksToWrite(s), s);
+  const p =
+    'Choosing your pain is basically the most important decision you will make, because every goal worth having comes with discomfort.';
+  // Tightening an existing sentence is an edit…
+  assert.ok(
+    !writesNewMaterial(
+      p,
+      p,
+      'Choosing your pain is the most important decision you will make: every goal worth having hurts.',
+    ),
+  );
+  // …headings are structure…
+  assert.ok(!writesNewMaterial(p, '', '## Choosing your pain\n\n'));
+  // …but a new paragraph or sentence of fresh words is writing.
+  assert.ok(
+    writesNewMaterial(
+      p,
+      '',
+      '\n\nTake Serena Williams, who chose the pain of training for years before winning anything.',
+    ),
+  );
+  assert.ok(writesNewMaterial(p, '', '\n\nIn the end, the choice you make today shapes the path you walk tomorrow.'));
 });
