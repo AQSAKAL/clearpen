@@ -95,4 +95,4 @@ That step publishes a `latest.json` with each GitHub release, and the app can ch
 - [x] Final product name and bundle identifier: Clearpen, `app.clearpen.desktop`
 - [ ] Mac signing and notarization; Windows signing
 - [ ] Update keys, and the updater turned on
-- [ ] `LICENSE`, after the legal review
+- [x] `LICENSE`: AGPL-3.0-or-later

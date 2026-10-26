@@ -4,7 +4,7 @@
 
 Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop — library, editor, versions, export — with the AI features arriving next (see [the plan](docs/plans/writing-app.md)).
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks — on a local model. Thinking aids and publishing come next (see [the plan](docs/plans/writing-app.md)); downloads come with the first release.
 
 ## What's here
 
@@ -48,4 +48,4 @@ ollama pull qwen3:8b
 
 ## License
 
-AGPL-3.0-or-later, with a contributor licence agreement — see [CONTRIBUTING.md](CONTRIBUTING.md). The full licence text will be added as `LICENSE` once the licence and CLA have had a legal review.
+AGPL-3.0-or-later — see [LICENSE](LICENSE). Contributions are accepted under a contributor licence agreement; see [CONTRIBUTING.md](CONTRIBUTING.md).
