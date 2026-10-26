@@ -46,11 +46,14 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
       doc: '',
       placeholder: 'Start writing…',
       resolveImage: (src) => backend.media.url(src),
-      onUpdate({ docChanged }) {
-        if (!docChanged || loading.current) return;
+      onUpdate(u) {
+        page.emit('update', u);
+        if (!u.docChanged || loading.current) return;
         latest.current.edit({ content: ed.getText() });
         recount(ed);
       },
+      onAccept: (id, suggestion) => page.emit('accept', { id, suggestion }),
+      onReject: (id, suggestion) => page.emit('reject', { id, suggestion }),
       onImages(files, from, to) {
         void addImages(ed, files, from, to);
       },
@@ -83,7 +86,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
       ref.current = null;
       ed.destroy();
     };
-  }, [backend, ref]);
+  }, [backend, ref, page]);
 
   // Load the text when a different article opens.
   useEffect(() => {

@@ -60,6 +60,24 @@ export function newWords(passage: string, insert: string): number {
   return wordsOf(body).filter((w) => !known.has(w)).length;
 }
 
+// An edit trims; it doesn't throw the passage away. Small models answer "cut
+// the filler" by deleting the whole paragraph, so a change that removes most
+// of the passage is dropped — unless the writer asked to delete it.
+const DELETE_IT =
+  /\b(?:delete|remove|drop|cut|lose|get rid of|scrap)\b[^.?!]{0,30}?\b(?:it|this|that|all|everything|whole|entire|paragraphs?|sections?|passage|sentences?|lines?|bullets?|points?)\b/i;
+
+/** True when the instruction asks to delete the passage, or part of it, outright. */
+export function asksToDelete(instruction: string): boolean {
+  return DELETE_IT.test(String(instruction));
+}
+
+/** True when replacing `removed` with `insert` throws away most of `passage` instead of trimming it. */
+export function removesTooMuch(passage: string, removed: string, insert: string): boolean {
+  const total = wordsOf(passage).length;
+  const gone = wordsOf(removed).length;
+  return total >= 8 && gone >= total * 0.6 && wordsOf(insert).length < gone * 0.3;
+}
+
 /** True when replacing `removed` (within `passage`) with `insert` writes new material instead of editing. */
 export function writesNewMaterial(passage: string, removed: string, insert: string): boolean {
   const fresh = newWords(passage, insert);

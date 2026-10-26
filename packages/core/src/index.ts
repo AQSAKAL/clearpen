@@ -18,6 +18,7 @@ export * from './markdown.ts';
 export * from './media.ts';
 export * from './outline.ts';
 export * from './prompts.ts';
+export * from './suggest.ts';
 export * from './tasks/check.ts';
 
 export * from './tasks/common.ts';

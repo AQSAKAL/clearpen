@@ -5,11 +5,12 @@
 
 import type { Hunk } from '../diff.ts';
 import { type ModelEdit, placeEdit } from '../edits.ts';
-import { asksToWrite, writesNewMaterial } from '../intent.ts';
+import { asksToDelete, asksToWrite, removesTooMuch, writesNewMaterial } from '../intent.ts';
 import { completedItems, completedString } from '../jsonstream.ts';
 import type { LLMClient } from '../llm/client.ts';
 import * as P from '../prompts.ts';
 import { InputError, loadingNotice, MAX_PASSAGE, type NoticeEvent, type TaskOptions } from './common.ts';
+import { rewrite } from './write.ts';
 
 export type EditEvent =
   | NoticeEvent
@@ -29,7 +30,8 @@ export interface EditInput {
 const isEdit = (e: unknown): e is ModelEdit =>
   !!e && typeof (e as ModelEdit).anchor === 'string' && typeof (e as ModelEdit).type === 'string';
 
-export async function* edit(llm: LLMClient, input: EditInput, { signal }: TaskOptions = {}): AsyncGenerator<EditEvent> {
+export async function* edit(llm: LLMClient, input: EditInput, opts: TaskOptions = {}): AsyncGenerator<EditEvent> {
+  const { signal } = opts;
   const { text } = input;
   if (!text.trim()) throw new InputError('Nothing selected.');
   if (text.length > MAX_PASSAGE)
@@ -50,6 +52,8 @@ export async function* edit(llm: LLMClient, input: EditInput, { signal }: TaskOp
   let seen = 0;
   let missed = 0;
   let wrote = 0;
+  let threwAway = 0;
+  const deleting = asksToDelete(instruction);
   const placed: Hunk[] = [];
   // New edits found in what the model has written so far.
   function* flush(): Generator<EditEvent> {
@@ -64,6 +68,11 @@ export async function* edit(llm: LLMClient, input: EditInput, { signal }: TaskOp
       // An "edit" that brings in a paragraph of new words is writing, not editing.
       if (writesNewMaterial(text, text.slice(change.from, change.to), change.insert)) {
         wrote++;
+        continue;
+      }
+      // Deleting most of the passage isn't trimming it, unless that was the ask.
+      if (!deleting && removesTooMuch(text, text.slice(change.from, change.to), change.insert)) {
+        threwAway++;
         continue;
       }
       // Edits that overlap can't both apply; the first one wins.
@@ -92,6 +101,22 @@ export async function* edit(llm: LLMClient, input: EditInput, { signal }: TaskOp
     yield* flush();
   }
   yield* flush();
+
+  // The model threw the passage away instead of trimming it. Do the same
+  // instruction as a rewrite, which marks only the words that change.
+  if (!placed.length && threwAway) {
+    for await (const ev of rewrite(llm, { ...input, instruction }, opts)) {
+      if (ev.type === 'notice') yield ev;
+      if (ev.type !== 'done') continue;
+      for (const c of ev.changes) {
+        const removed = text.slice(c.from, c.to);
+        if (writesNewMaterial(text, removed, c.insert) || removesTooMuch(text, removed, c.insert)) continue;
+        placed.push(c);
+        yield { type: 'edit', from: c.from, to: c.to, insert: c.insert };
+      }
+    }
+  }
+
   const declined =
     completedString(raw, 'declined') ||
     (wrote ? 'That would mean writing new material, not editing what’s there.' : '');

@@ -11,6 +11,7 @@ import { completedItems, completedString } from '../src/jsonstream.ts';
 import { toDocument, toHTML } from '../src/markdown.ts';
 import { ImageError, imageBlock, MEDIA_SRC, prepareImage } from '../src/media.ts';
 import { outlineToMarkdown, sectionsOf } from '../src/outline.ts';
+import { editChanges, isWholeRewrite, streamingRewrite } from '../src/suggest.ts';
 import { firstSentenceEnd, tidyCompletion, tidyRewrite } from '../src/tidy.ts';
 
 const draft = fs.readFileSync(new URL('./fixtures/draft.md', import.meta.url), 'utf8');
@@ -322,4 +323,36 @@ test('images: prepared by content, and placed in a paragraph of their own', asyn
   assert.equal(imageBlock('One.', 4, 4, ['![a](media/x.png)']), '\n\n![a](media/x.png)\n');
   assert.equal(imageBlock('One.\n\nTwo.', 6, 6, ['![a](media/x.png)']), '![a](media/x.png)\n\n');
   assert.equal(imageBlock('', 0, 0, ['![a](m)', '![b](n)']), '![a](m)\n\n![b](n)\n');
+});
+
+test('suggestions: whole rewrites, split edits, invented figures, streaming preambles', () => {
+  const text = 'The new inbox has basically made it a lot easier to see urgent tickets.';
+  assert.equal(isWholeRewrite(text, [{ from: 0, to: text.length, insert: 'x' }]), true);
+  assert.equal(isWholeRewrite(text, [{ from: 18, to: 28, insert: '' }]), false);
+
+  // A long replacement is split back into the words that differ.
+  const long =
+    'Our pilot cut support tickets from 400 to 300 a month, and the team now answers most of them the same morning.';
+  const edited =
+    'Our pilot cut support tickets from 400 to 300 a month, and the team answers most of them the same morning.';
+  const parts = editChanges(long, { from: 0, to: long.length, insert: edited }, long);
+  assert.equal(parts.length, 1);
+  assert.equal(long.slice(parts[0]!.from, parts[0]!.to).trim(), 'now');
+
+  // A figure the edit brings in is flagged, and so is one found nowhere in the
+  // sources even when it replaces nothing the integrity check can see.
+  const [added] = editChanges('Tickets fell.', { from: 13, to: 13, insert: ' By 42%.' }, 'Tickets fell.');
+  assert.match(added!.warning, /adds 42%/);
+  const [unverified] = editChanges(
+    'Tickets fell by 42%.',
+    { from: 0, to: 20, insert: 'Tickets fell by 42%, to 310.' },
+    'Tickets fell by 42%.',
+  );
+  assert.match(unverified!.warning, /310/);
+  const [changed] = editChanges('Costs were $1,200.', { from: 11, to: 17, insert: '$1,300' }, 'Costs were $1,200.');
+  assert.match(changed!.warning, /1,200/);
+
+  assert.equal(streamingRewrite("Here's a shorter version: The inbox", ' The inbox has'), ' The inbox');
+  assert.equal(streamingRewrite('  The inbox', 'The inbox'), 'The inbox');
+  assert.equal(streamingRewrite('Here is: the plan', 'Here is the plan: ship it'), 'Here is: the plan');
 });

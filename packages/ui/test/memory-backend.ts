@@ -5,13 +5,15 @@ import { prepareImage } from '@margin/core';
 import { openLibrary } from '@margin/db';
 import { nodeDriver } from '@margin/db/node';
 import type { Backend } from '../src/backend.ts';
+import { localAI } from '../src/local-ai.ts';
+import { fakeModel, type Reply } from './fake-model.ts';
 
 export interface TestBackend extends Backend {
   saved: { name: string; contents: string; type: string }[];
   images: Map<string, Uint8Array>;
 }
 
-export async function testBackend(): Promise<TestBackend> {
+export async function testBackend(replies: Reply[] = []): Promise<TestBackend> {
   const library = await openLibrary(nodeDriver());
   const images = new Map<string, Uint8Array>();
   const saved: TestBackend['saved'] = [];
@@ -40,17 +42,6 @@ export async function testBackend(): Promise<TestBackend> {
         return true;
       },
     },
-    ai: {
-      async status() {
-        return {
-          ok: true,
-          provider: 'ollama',
-          baseUrl: 'http://127.0.0.1:11434',
-          models: ['qwen3:8b'],
-          roles: { quick: 'qwen3:8b', coach: 'qwen3:8b', checker: 'qwen3:8b' },
-          error: null,
-        };
-      },
-    },
+    ai: localAI(fakeModel(replies).llm),
   };
 }

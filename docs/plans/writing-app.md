@@ -1,6 +1,6 @@
 # Plan: the writing app in the desktop app
 
-**Status:** approved 2026-10-26. Milestone 1 (Write) is built; milestone 2 is next.
+**Status:** approved 2026-10-26. Milestones 1 (Write) and 2 (Edit with AI) are built. At your request the next sentence (autocomplete) moved up to milestone 3, ahead of checks and review.
 
 ## Context
 
@@ -102,17 +102,20 @@ Each milestone ends with an app you can install and try, all checks passing, and
    - **Suggestions:** tracked, with per-change ✓/✕, Accept all / Reject all and integrity warnings.
    - **Control:** Esc stops any AI task.
    - **Safety:** a version is saved before you accept AI changes.
-3. **Check and review.**
+3. **Next sentence (autocomplete).** Moved up from Think.
+   - **Ghost text:** the one sentence a paragraph is missing, after a finished sentence and a pause, or on ⌘J. Tab keeps it, ⌘→ takes one word, Esc or typing on dismisses it.
+   - **The paragraph hint:** "¶ point made · Tab for new paragraph" when the paragraph is complete.
+   - **The rules:** your own words must come between suggestions, and no suggestion appears while other AI changes are on screen. There's an on/off switch in the ⋯ menu.
+4. **Check and review.**
    - **Review:** it shows Margin's own checks for the whole draft instantly, then the AI's notes. Cards sit in the margin, or in the Notes tab when narrow.
    - **Selection checks:** fact-check, logic and consistency, with the second-opinion pass.
    - **Insights:** stats, reading level, the six highlight kinds, and structure.
-4. **Think.**
-   - **Next sentence:** ghost text and the paragraph hint.
+5. **Think.**
    - **Slash menu, coach notes and Shape this section,** with "Add to my notes".
    - **Ask:** a chat about the draft.
    - **Plan:** brief, sections map, outline and headlines.
    - **Publish:** description, slug, tags, excerpt and social post.
-5. **Ship 0.2.0.**
+6. **Ship 0.2.0.**
    - **Checks:** a keyboard and accessibility pass, and the narrow layout.
    - **Export everything:** a folder of Markdown files plus media.
    - **Out:** updated docs, a version bump and a locally verified build. The release is tagged only when you say so.

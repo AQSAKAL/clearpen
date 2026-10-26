@@ -4,7 +4,7 @@
 
 import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@margin/core';
 import { openLibrary, type SqlDriver } from '@margin/db';
-import type { Backend } from '@margin/ui';
+import { type Backend, localAI } from '@margin/ui';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appConfigDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -93,7 +93,7 @@ export async function createDesktopBackend(): Promise<Backend> {
       },
     },
 
-    ai: { status: () => llm.status() },
+    ai: localAI(llm),
 
     beforeClose(saveAll) {
       const stop = getCurrentWindow().onCloseRequested(async () => {

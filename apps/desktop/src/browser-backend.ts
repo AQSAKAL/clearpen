@@ -4,7 +4,7 @@
 
 import { createLLM, createOllama, prepareImage } from '@margin/core';
 import { openLibrary, type SqlDriver } from '@margin/db';
-import type { Backend } from '@margin/ui';
+import { type Backend, localAI } from '@margin/ui';
 import initSqlJs, { type BindParams } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
@@ -66,6 +66,6 @@ export async function createBrowserBackend(): Promise<Backend> {
         return true;
       },
     },
-    ai: { status: () => llm.status() },
+    ai: localAI(llm),
   };
 }

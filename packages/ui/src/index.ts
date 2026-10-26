@@ -4,4 +4,5 @@
 import './fonts.ts';
 
 export { App } from './app.tsx';
-export type { Backend, StoredImage } from './backend.ts';
+export type { AI, Backend, ModelChoice, StoredImage } from './backend.ts';
+export { localAI } from './local-ai.ts';

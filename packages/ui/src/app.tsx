@@ -5,14 +5,17 @@
 import type { Version } from '@margin/db';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AIProvider } from './ai.tsx';
 import { AskProvider } from './ask.tsx';
 import type { Backend } from './backend.ts';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
 import { FontsDialog } from './components/fonts-dialog.tsx';
 import { HistoryDialog } from './components/history-dialog.tsx';
 import { LibrarySidebar, Logo } from './components/library-sidebar.tsx';
+import { ModelsDialog } from './components/models-dialog.tsx';
 import { MoveDialog } from './components/move-dialog.tsx';
 import { Reader } from './components/reader.tsx';
+import { SelectionToolbar } from './components/selection-toolbar.tsx';
 import { ShortcutsDialog } from './components/shortcuts-dialog.tsx';
 import { type Command, TopBar } from './components/top-bar.tsx';
 import { TrashDialog } from './components/trash-dialog.tsx';
@@ -24,6 +27,7 @@ import { applyFonts } from './fonts.ts';
 import { copyMarkdown, copyRichText, documentOf, fileName, markdownOf } from './lib/export.ts';
 import { LibraryProvider, useLibrary } from './library.tsx';
 import { loadSettings, type Settings, SettingsProvider, useSettings } from './settings.tsx';
+import { StatusProvider } from './status.tsx';
 import { ThemeProvider } from './theme.tsx';
 import { WELCOME_TITLE, welcomeText } from './welcome.ts';
 
@@ -75,17 +79,25 @@ function Shell({ backend }: { backend: Backend }) {
     [set],
   );
 
+  // The models chosen last time; the dialog changes them later.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, at launch.
+  useEffect(() => backend.ai.setModels(settings.models), [backend]);
+
   return (
     <ThemeProvider theme={settings.theme} onChange={onTheme}>
       <TooltipProvider delayDuration={400}>
-        <AskProvider>
-          <LibraryProvider backend={backend} onOpen={onOpen}>
-            <EditorRefProvider>
-              <Workspace />
-            </EditorRefProvider>
-          </LibraryProvider>
-        </AskProvider>
-        <Toaster position="bottom-center" />
+        <StatusProvider>
+          <AIProvider>
+            <AskProvider>
+              <LibraryProvider backend={backend} onOpen={onOpen}>
+                <EditorRefProvider>
+                  <Workspace />
+                </EditorRefProvider>
+              </LibraryProvider>
+            </AskProvider>
+          </AIProvider>
+        </StatusProvider>
+        <Toaster position="top-center" />
       </TooltipProvider>
     </ThemeProvider>
   );
@@ -101,7 +113,7 @@ function Workspace() {
   const [counts, setCounts] = useState<Counts>({ words: 0, minutes: 1 });
   const [reading, setReading] = useState<{ title: string; content: string } | null>(null);
   const [focus, setFocus] = useState(false);
-  const [dialog, setDialog] = useState<'history' | 'fonts' | 'shortcuts' | 'trash' | null>(null);
+  const [dialog, setDialog] = useState<'history' | 'fonts' | 'shortcuts' | 'trash' | 'models' | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
   const libRef = useRef(lib);
@@ -286,7 +298,7 @@ function Workspace() {
 
   return (
     <SidebarProvider open={settings.libraryOpen} onOpenChange={(o) => set('libraryOpen', o)}>
-      <LibrarySidebar onMove={setMoving} onTrash={() => setDialog('trash')} />
+      <LibrarySidebar onMove={setMoving} onTrash={() => setDialog('trash')} onModels={() => setDialog('models')} />
       <SidebarInset className="min-w-0">
         <TopBar counts={counts} reading={!!reading} focus={focus} mod={mod} onCommand={run} />
         <div className="flex-1 overflow-y-auto" data-reading={reading ? '' : undefined}>
@@ -317,6 +329,8 @@ function Workspace() {
       />
       <TrashDialog open={dialog === 'trash'} onOpenChange={(o) => setDialog(o ? 'trash' : null)} />
       <MoveDialog docId={moving} onOpenChange={(o) => !o && setMoving(null)} />
+      <ModelsDialog open={dialog === 'models'} onOpenChange={(o) => setDialog(o ? 'models' : null)} />
+      {!reading && <SelectionToolbar mod={mod} />}
     </SidebarProvider>
   );
 }

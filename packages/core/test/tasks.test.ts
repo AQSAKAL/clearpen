@@ -55,6 +55,31 @@ test('free instructions become pinpoint edits; bad and clashing ones are dropped
   await assert.rejects(collect(edit(llm, { text: '  ', instruction: 'x' })), InputError);
 });
 
+test('an edit that throws the passage away is redone as a rewrite, unless deleting was the ask', async () => {
+  const wordy =
+    "In today's fast-paced world, it is very important for writers to basically make sure that the things they write are understood.";
+  const trimmed = 'It is important for writers to make sure that the things they write are understood.';
+  const deleteAll = JSON.stringify({ edits: [{ type: 'delete', anchor: wordy, text: '' }], declined: '' });
+  // The edits request has a schema; the rewrite fallback doesn't.
+  const { llm, provider } = fakeLLM({ stream: (req) => chunks(req.format ? deleteAll : trimmed) });
+
+  const events = await collect(edit(llm, { text: wordy, instruction: 'cut the filler words' }));
+  const edits = events.filter((e) => e.type === 'edit');
+  assert.equal(provider.requests.length, 2, 'asked again as a rewrite');
+  assert.ok(edits.length > 1, 'several small cuts, not one deletion');
+  assert.equal(applyHunks(wordy, edits), trimmed);
+
+  const asked = await collect(edit(llm, { text: wordy, instruction: 'delete this paragraph' }));
+  assert.deepEqual(
+    asked.filter((e) => e.type === 'edit'),
+    [{ type: 'edit', from: 0, to: wordy.length, insert: '' }],
+  );
+  assert.ok(core.asksToDelete('remove the last two sentences'));
+  assert.ok(!core.asksToDelete('cut the filler words'));
+  assert.ok(core.removesTooMuch(wordy, wordy, ''));
+  assert.ok(!core.removesTooMuch(wordy, 'basically ', ''));
+});
+
 test('fact-check: a confirmed correction is kept, an unconfirmed one dropped, a doubtful one softened', async () => {
   const content =
     'Intro.\n\nBM25 replaces full-text search. Python was released in 1991. The sky is green. Water is wet.';

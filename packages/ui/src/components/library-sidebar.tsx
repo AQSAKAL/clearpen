@@ -57,7 +57,15 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
-export function LibrarySidebar({ onMove, onTrash }: { onMove(docId: string): void; onTrash(): void }) {
+export function LibrarySidebar({
+  onMove,
+  onTrash,
+  onModels,
+}: {
+  onMove(docId: string): void;
+  onTrash(): void;
+  onModels(): void;
+}) {
   const lib = useLibrary();
   const { settings, set } = useSettings();
   const { prompt, confirm } = useAsk();
@@ -337,7 +345,7 @@ export function LibrarySidebar({ onMove, onTrash }: { onMove(docId: string): voi
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <ModelStatus />
+        <ModelStatus onOpen={onModels} />
       </SidebarFooter>
     </Sidebar>
   );

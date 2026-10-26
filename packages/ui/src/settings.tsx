@@ -3,7 +3,7 @@
 // in the background.
 
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import type { Backend } from './backend.ts';
+import type { Backend, ModelChoice } from './backend.ts';
 import { DEFAULT_FONTS, type FontSettings } from './fonts.ts';
 import type { ThemeSetting } from './theme.tsx';
 
@@ -18,6 +18,8 @@ export interface Settings {
   last: string | null;
   /** The welcome article has been made once; never again, even if it's deleted. */
   welcomed: boolean;
+  /** The model chosen for each role. */
+  models: ModelChoice;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   collapsed: [],
   last: null,
   welcomed: false,
+  models: {},
 };
 
 interface SettingsValue {

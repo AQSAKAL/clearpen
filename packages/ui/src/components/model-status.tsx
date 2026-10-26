@@ -1,18 +1,21 @@
-// Whether a model is ready, checked now and every minute. The models dialog
-// (choosing a model per role) comes with the AI features.
+// Whether a model is ready, checked now, every minute and whenever the
+// choice of models changes. Click it to choose models.
 
 import type { LLMStatus } from '@margin/core';
 import { useEffect, useState } from 'react';
 import { cn } from '../lib/utils.ts';
 import { useLibrary } from '../library.tsx';
+import { useSettings } from '../settings.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
 const POLL_MS = 60_000;
 
-export function ModelStatus() {
+export function ModelStatus({ onOpen }: { onOpen(): void }) {
   const { backend } = useLibrary();
+  const { settings } = useSettings();
   const [status, setStatus] = useState<LLMStatus | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: check again when the writer picks other models.
   useEffect(() => {
     let live = true;
     const check = () =>
@@ -26,7 +29,7 @@ export function ModelStatus() {
       live = false;
       clearInterval(t);
     };
-  }, [backend]);
+  }, [backend, settings.models]);
 
   const label = !status ? 'Looking for a model…' : status.ok ? status.roles.quick : status.error || 'No model';
   const detail = !status
@@ -38,7 +41,12 @@ export function ModelStatus() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground" role="status">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent"
+          aria-label={`Models: ${label}`}
+        >
           <span
             aria-hidden
             className={cn(
@@ -47,7 +55,7 @@ export function ModelStatus() {
             )}
           />
           <span className="truncate">{label}</span>
-        </div>
+        </button>
       </TooltipTrigger>
       {detail && <TooltipContent side="top">{detail}</TooltipContent>}
     </Tooltip>

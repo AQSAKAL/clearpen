@@ -3,6 +3,8 @@ import { Kbd, KbdGroup } from './ui/kbd.tsx';
 
 export function shortcuts(mod: string): [string[], string][] {
   return [
+    [[`${mod}↵`], 'Accept the latest suggested changes'],
+    [['Esc'], 'Reject them, or stop the AI while it works'],
     [[`${mod}S`], 'Save a version'],
     [[`${mod}\\`], 'Show or hide the library'],
     [[`${mod}.`], 'Focus mode'],

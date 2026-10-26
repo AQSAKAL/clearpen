@@ -3,7 +3,17 @@
 // browser preview implement it in memory; the web app will implement it over
 // HTTP. The UI never calls Tauri, SQLite or a model server directly.
 
-import type { LLMStatus } from '@margin/core';
+import type {
+  EditEvent,
+  EditInput,
+  LLMStatus,
+  NoticeEvent,
+  RewriteDone,
+  RewriteInput,
+  Role,
+  TaskOptions,
+  TokenEvent,
+} from '@margin/core';
 import type { Library } from '@margin/db';
 
 export interface StoredImage {
@@ -11,6 +21,18 @@ export interface StoredImage {
   src: string;
   type: string;
   bytes: number;
+}
+
+/** Which model plays which role; a missing or null role uses the best model installed. */
+export type ModelChoice = Partial<Record<Role, string | null>>;
+
+/** The AI features, as streams of events. Locally they run in the app; on the web, on the server. */
+export interface AI {
+  status(): Promise<LLMStatus>;
+  /** `preload` loads the writing model into memory now, so the next answer starts quickly. */
+  setModels(models: ModelChoice, opts?: { preload?: boolean }): void;
+  rewrite(input: RewriteInput, opts?: TaskOptions): AsyncIterable<NoticeEvent | TokenEvent | RewriteDone>;
+  edit(input: EditInput, opts?: TaskOptions): AsyncIterable<EditEvent>;
 }
 
 export interface Backend {
@@ -36,9 +58,7 @@ export interface Backend {
     save(suggestedName: string, contents: string, type: string): Promise<boolean>;
   };
 
-  ai: {
-    status(): Promise<LLMStatus>;
-  };
+  ai: AI;
 
   /** Runs `save` before the window closes, and waits for it. Returns a function that stops listening. */
   beforeClose?(save: () => Promise<void>): () => void;
