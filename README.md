@@ -24,7 +24,7 @@ docs/
 
 ## Develop
 
-You need Node 22.12+ and pnpm.
+You need Node 24+ and pnpm.
 
 ```bash
 pnpm install
