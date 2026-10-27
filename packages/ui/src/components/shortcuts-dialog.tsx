@@ -5,7 +5,7 @@ export function shortcuts(mod: string): [string[], string][] {
   return [
     [['Tab'], 'Keep the suggested next sentence'],
     [[`${mod}→`], 'Keep one word of it'],
-    [[`${mod}J`], 'Suggest the next sentence now'],
+    [[`${mod}J`], 'Suggest the next sentence now, or what follows a colon'],
     [[`${mod}↵`], 'Accept the latest suggested changes'],
     [['Esc'], 'Dismiss a suggestion, reject changes, or stop the AI'],
     [[`${mod}⇧E`], 'Review the draft'],

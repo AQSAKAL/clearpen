@@ -62,6 +62,9 @@ test('completions fit seamlessly at the cursor and stop after a sentence', () =>
   assert.equal(tidyCompletion('people who value it.', 'built for people who'), ' value it.');
   assert.equal(tidyCompletion('Dr. Smith said so. Then', 'As '), 'Dr. Smith said so.');
   assert.equal(tidyCompletion('first line\nsecond', 'x '), 'first line');
+  // A lead-in draws a list item; it continues the line instead.
+  assert.equal(tidyCompletion('\n- Nobody waits.\n- More', 'It fixes two things:'), ' Nobody waits.');
+  assert.equal(tidyCompletion('1. Ask first.', 'Steps:'), ' Ask first.');
   assert.equal(firstSentenceEnd('No end here'), -1);
 });
 

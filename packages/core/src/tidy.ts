@@ -49,7 +49,10 @@ export function firstSentenceEnd(text: string): number {
 export function tidyCompletion(raw: string, before: string): string {
   let text = String(raw)
     .replace(THINKING, '')
-    .replace(/^```\w*\n?|```$/g, '');
+    .replace(/^```\w*\n?|```$/g, '')
+    // A lead-in ("Three reasons:") draws a list item on a line of its own: it continues this one.
+    .replace(/^\s*\n\s*/, '')
+    .replace(/^(\s*)(?:[-*+]|\d+[.)])[ \t]+/, '$1');
   text = text.replace(/\n[\s\S]*$/, ''); // one line at most
   const end = firstSentenceEnd(text);
   if (end !== -1) text = text.slice(0, end);

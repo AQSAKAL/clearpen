@@ -14,7 +14,7 @@ In today's fast-paced world, it is very important for writers to basically make 
 
 ## Keep the logic whole
 
-Finish a sentence and pause. Clearpen checks whether your paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey: **Tab** keeps it, **${mod}→** takes one word, and typing on ignores it. When the paragraph is complete you'll see *¶ point made*, and Tab starts a new one. **${mod}J** asks for a suggestion at any time, and ⋯ → Next-sentence suggestions turns them off.
+Finish a sentence and pause. Clearpen checks whether your paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey: **Tab** keeps it, **${mod}→** takes one word, and typing on ignores it. When the paragraph is complete you'll see *¶ point made*, and Tab starts a new one. **${mod}J** asks for one right away — after a sentence, or after a lead-in like “Three reasons:” — and ⋯ → Next-sentence suggestions turns them off.
 
 Typos are fixed as you go: a capital to start each sentence the moment you finish its first word, and slips like “mi favorite” once you finish the sentence. A fix is underlined for a moment; **${mod}Z** right after puts back what you typed, and Clearpen leaves those words alone.
 

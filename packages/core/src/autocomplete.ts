@@ -2,7 +2,8 @@
 // sentence at a time. The rules that keep it from becoming a rabbit hole:
 //
 // - Ask only after a finished sentence at the end of a line of prose, after a
-//   pause; never mid-sentence or word by word.
+//   pause; never mid-sentence or word by word. Asked for with ⌘J, a lead-in
+//   that ends in a colon ("Three reasons:") will do too.
 // - First a verdict: has the paragraph made its point? A judge model only
 //   names the sentences that state it, support it and draw its meaning;
 //   code decides, and a part counts only if that sentence is really there.
@@ -42,6 +43,15 @@ export function nextSentenceSpot(text: string, pos: number): boolean {
 
 /** Ends with a finished sentence. */
 export const endsSentence = (before: string) => /[.!?…]["”’)]*\s*$/.test(before);
+
+/** Ends with a lead-in — "Three reasons:" — that promises what comes next. Headings are the writer's. */
+export function endsLeadIn(before: string): boolean {
+  const line = before.slice(before.lastIndexOf('\n') + 1);
+  return /\p{L}["”’)]*:\s*$/u.test(line) && !/^\s*#{1,6}\s/.test(line);
+}
+
+/** What a lead-in is missing, in words for the writing prompt. */
+export const LEAD_IN_MISSING = 'what the colon at its end introduces (the first one, if it promises several)';
 
 /** The first word of a sentence, lower-cased, past any opening quote or emphasis. */
 export const firstWord = (s: string) =>

@@ -2,10 +2,13 @@
 // time. First a verdict: has this paragraph made its point? Only if not, the
 // one sentence that supplies the missing part, streamed as it's written so
 // the writer sees it begin at once. Ask only where `nextSentenceSpot` says
-// it's worth it.
+// it's worth it, or when the writer asks with ⌘J. A lead-in ("Three
+// reasons:") has nothing to judge: it gets what its colon introduces.
 
 import {
+  endsLeadIn,
   endsSentence,
+  LEAD_IN_MISSING,
   MAX_PARAGRAPH_SENTENCES,
   nextSentenceOk,
   paragraphLength,
@@ -49,12 +52,13 @@ export async function* nextSentenceStream(
   { signal }: TaskOptions = {},
 ): AsyncGenerator<NextSentenceEvent> {
   const before = input.before.slice(-20_000);
+  const leadIn = endsLeadIn(before);
   // Whole sentences only, and a long paragraph has said enough.
-  if (!endsSentence(before)) {
+  if (!leadIn && !endsSentence(before)) {
     yield { type: 'done', next: '' };
     return;
   }
-  if (paragraphLength(before) >= MAX_PARAGRAPH_SENTENCES) {
+  if (!leadIn && paragraphLength(before) >= MAX_PARAGRAPH_SENTENCES) {
     yield { type: 'verdict', complete: true };
     yield { type: 'done', next: '' };
     return;
@@ -63,20 +67,25 @@ export async function* nextSentenceStream(
   const model = await llm.modelFor('quick');
 
   // First the judge — it only names sentences; code decides whether the point is made.
-  const judged = await llm.json({
-    model,
-    messages: P.judgeMessages({ before }),
-    format: P.judgeSchema,
-    maxTokens: 60,
-    temperature: 0,
-    ...(signal ? { signal } : {}),
-  });
-  const { complete, missing } = paragraphVerdict(before, judged);
-  yield complete ? { type: 'verdict', complete: true } : { type: 'verdict', complete: false, missing };
-  if (complete) {
-    yield { type: 'done', next: '' };
-    return;
+  let missing = LEAD_IN_MISSING;
+  if (!leadIn) {
+    const judged = await llm.json({
+      model,
+      messages: P.judgeMessages({ before }),
+      format: P.judgeSchema,
+      maxTokens: 60,
+      temperature: 0,
+      ...(signal ? { signal } : {}),
+    });
+    const verdict = paragraphVerdict(before, judged);
+    if (verdict.complete) {
+      yield { type: 'verdict', complete: true };
+      yield { type: 'done', next: '' };
+      return;
+    }
+    missing = verdict.missing;
   }
+  yield { type: 'verdict', complete: false, missing };
 
   // Then, only for an unfinished paragraph, the one sentence it's missing.
   const messages = P.completeMessages({

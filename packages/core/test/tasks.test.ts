@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
+  endsLeadIn,
+  LEAD_IN_MISSING,
   nextSentenceOk,
   nextSentenceSpot,
   notesProgress,
@@ -471,4 +473,25 @@ test('nextSentenceStream gives the verdict first, then the sentence as it is wri
   assert.deepEqual(events.at(-1), { type: 'done', next: ' So explain more and command less.' });
   // One sentence is all that's wanted: the model is stopped once it's written.
   assert.equal(writes.provider.requests[1]!.signal?.aborted, true);
+});
+
+test('a lead-in ending in a colon skips the judge and gets what it introduces', async () => {
+  assert.ok(endsLeadIn('A shared inbox fixes three things:'));
+  assert.ok(endsLeadIn('It fixes “three things”: '));
+  assert.ok(!endsLeadIn('## Three things:'), 'headings are the writer’s');
+  assert.ok(!endsLeadIn('We met at 10:'));
+  assert.ok(!endsLeadIn('It fixes three things.'));
+
+  const writes = fakeLLM({
+    complete: () => JSON.stringify({ point: 1, support: 2, meaning: 3 }),
+    stream: () => ['\n- Requests reach', ' whoever is free first.', '\n- More'],
+  });
+  const events = await collect(
+    nextSentenceStream(writes.llm, { before: 'Old point.\n\nA shared inbox fixes three things:' }),
+  );
+  assert.deepEqual(events[0], { type: 'verdict', complete: false, missing: LEAD_IN_MISSING });
+  assert.deepEqual(events.at(-1), { type: 'done', next: ' Requests reach whoever is free first.' });
+  // No judge: the only call is the writing one, told what the colon promises.
+  assert.equal(writes.provider.requests.length, 1);
+  assert.match(lastUser(writes.provider.requests[0]!), /missing what the colon at its end introduces/);
 });

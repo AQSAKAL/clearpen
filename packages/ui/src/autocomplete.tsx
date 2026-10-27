@@ -4,10 +4,19 @@
 // in grey supplies the missing part, appearing as the model writes it. Tab
 // keeps it; typing on ignores it.
 // After a suggestion is taken, Clearpen waits for words of the writer's own,
-// so Tab can never write a paragraph.
+// so Tab can never write a paragraph. ⌘J asks at once, after a sentence or a
+// lead-in like "Three reasons:", and says so when there's nothing to offer.
 
-import { NEXT_SENTENCE_PAUSE_MS, nextSentenceSpot, OWN_WORDS_BETWEEN, sectionAt } from '@clearpen/core';
+import {
+  endsLeadIn,
+  endsSentence,
+  NEXT_SENTENCE_PAUSE_MS,
+  nextSentenceSpot,
+  OWN_WORDS_BETWEEN,
+  sectionAt,
+} from '@clearpen/core';
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';
 import { useLibrary } from './library.tsx';
@@ -35,6 +44,7 @@ export function Autocomplete() {
 
   useEffect(() => {
     const s = state.current;
+    const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
 
     // Any answer still on its way is now stale.
     const cancel = () => {
@@ -56,6 +66,11 @@ export function Autocomplete() {
       if (!force && !nextSentenceSpot(text, pos)) return;
       // One AI thing on screen at a time.
       if (ed.suggestions().length) return;
+      const before = text.slice(Math.max(0, pos - 6000), pos);
+      if (force && !endsSentence(before) && !endsLeadIn(before)) {
+        toast(`${mod}J suggests what comes after a finished sentence or a colon`);
+        return;
+      }
       const id = ++s.seq;
       const ctrl = new AbortController();
       s.ctrl = ctrl;
@@ -65,11 +80,12 @@ export function Autocomplete() {
       // The writer moved on while the model thought.
       const stale = () => id !== s.seq || ed.cursor() !== s.at || !ed.getSelection().empty;
       let complete = false;
+      let offered = false;
       try {
         for await (const ev of backend.ai.nextSentence(
           {
             title: page.title.current,
-            before: text.slice(Math.max(0, pos - 6000), pos),
+            before,
             heading: section?.heading ?? '',
             notes: section?.points ?? [],
           },
@@ -85,11 +101,16 @@ export function Autocomplete() {
             if (ev.next.trim()) ed.showGhost(s.at, ev.next);
             else ed.clearGhost();
           }
+          offered = complete || (ev.type === 'done' && !!ev.next.trim());
         }
       } catch {
         // The model is away: no suggestion this time.
-        if (!stale()) ed.clearGhost();
+        if (stale()) return;
+        ed.clearGhost();
+        if (force) toast('Couldn’t reach the model for a suggestion');
+        return;
       }
+      if (force && !offered && !stale()) toast('Nothing new to suggest here');
     }
 
     const offUpdate = page.on('update', (u) => {

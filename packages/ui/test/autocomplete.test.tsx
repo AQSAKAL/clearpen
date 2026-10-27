@@ -47,6 +47,12 @@ function type(view: EditorView, text: string) {
 const ghost = () => document.querySelector('.cm-ghost')?.textContent ?? '';
 const slow = { timeout: 3000 };
 
+/** ⌘J, or Ctrl+J off the Mac. */
+function askNow(view: EditorView) {
+  const mac = /Mac/.test(navigator.platform);
+  fireEvent.keyDown(view.contentDOM, { key: 'j', metaKey: mac, ctrlKey: !mac });
+}
+
 test('after a finished sentence and a pause, the missing sentence appears in grey; Tab keeps it', async () => {
   const { view } = await launch(missingMeaning);
   type(view, `${POINT} ${SUPPORT}`);
@@ -90,6 +96,20 @@ test('a complete paragraph gets “point made”, and Tab starts a new paragraph
   await waitFor(() => assert.match(ghost(), /point made/), slow);
   fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
   await waitFor(() => assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT} ${meaning}\n\n`));
+});
+
+test('⌘J after a lead-in suggests what its colon introduces; mid-sentence it says where it works', async () => {
+  const { view } = await launch([{ when: /Article title:/, reply: SUPPORT }]);
+  type(view, 'A shared inbox fixes three things:');
+  askNow(view);
+  await waitFor(() => assert.equal(ghost(), ` ${SUPPORT}`), slow);
+  fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
+  await waitFor(() => assert.equal(view.state.doc.toString(), `A shared inbox fixes three things: ${SUPPORT}`));
+
+  type(view, ' Requests now reach');
+  askNow(view);
+  await screen.findByText(/J suggests what comes after a finished sentence or a colon/);
+  assert.equal(ghost(), '');
 });
 
 test('the ⋯ menu turns suggestions off', async () => {
