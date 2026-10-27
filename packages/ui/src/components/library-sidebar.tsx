@@ -193,7 +193,7 @@ export function LibrarySidebar({
             <ItemButton
               asChild
               isActive={lib.current?.id === d.id}
-              className={cn('w-full cursor-default', !d.title && 'italic text-muted-foreground')}
+              className={cn('w-full cursor-default text-left', !d.title && 'italic text-muted-foreground')}
             >
               <button
                 type="button"
@@ -222,9 +222,12 @@ export function LibrarySidebar({
 
   return (
     <Sidebar>
-      <SidebarHeader className="gap-2">
-        {lib.backend.overlayTitleBar && <div data-tauri-drag-region className="-mx-2 -mt-2 h-7 shrink-0" />}
-        <div className="flex items-center justify-between px-2 pt-1" data-tauri-drag-region>
+      <SidebarHeader className="gap-2 pt-0">
+        {/* Level with the top bar; on a Mac the window's buttons sit at its left. */}
+        <div
+          data-tauri-drag-region
+          className={cn('flex h-12 shrink-0 items-center justify-between px-2', lib.backend.overlayTitleBar && 'pl-18')}
+        >
           <Logo />
           <SidebarTrigger className="text-muted-foreground" />
         </div>

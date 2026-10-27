@@ -67,6 +67,7 @@ export function TopBar({
   const { backend, saveState, failures } = useLibrary();
   const { open, isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
+  // tauri.conf.json's trafficLightPosition centres the window's buttons in this 48px bar.
   const roomForLights = backend.overlayTitleBar && (!open || isMobile);
 
   return (
