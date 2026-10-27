@@ -1,10 +1,62 @@
-# Clearpen
+<h1 align="center">Clearpen</h1>
 
-**An open-source writing app with an editor in the margin — offline, on Mac, Windows and the web.**
+<p align="center">
+  <strong>You write. Clearpen edits.</strong><br>
+  An open-source writing app for articles that hold up — on your own computer, with AI that runs offline.
+</p>
 
-Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
+<p align="center">
+  <a href="#download">Download</a> ·
+  <a href="#run-it-from-source">Run it from source</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="LICENSE">AGPL-3.0</a>
+</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/next-sentence-dark.png">
+  <img src="docs/screenshots/next-sentence-light.png" alt="Clearpen on a Mac: a library of projects and articles on the left, and an article open on the right. After the sentence “Requests now reach whoever is free first.”, Clearpen's suggestion for the paragraph's missing sentence waits in grey.">
+</picture>
+
+Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think. It marks small edits that you accept or reject, checks your facts, logic and numbers, and tells you what a paragraph is missing. It never writes your article from scratch.
+
+Everything runs on your machine. The AI is a local model through [Ollama](https://ollama.com), your library is a single file, and every article exports to plain Markdown.
 
 > **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks — on a local model. Thinking aids and publishing come next (see [the plan](docs/plans/writing-app.md)).
+
+## What it does
+
+### One sentence, only when a paragraph needs it
+
+Finish a sentence and pause. Clearpen checks whether the paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey, as in the screenshot above: **Tab** keeps it, and typing on ignores it. When a paragraph is complete you see *¶ point made* instead. **⌘J** asks right away, after a sentence or after a lead-in like “Three reasons:”.
+
+### Small, marked changes instead of a rewrite
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/pinpoint-edits-dark.png">
+  <img src="docs/screenshots/pinpoint-edits-light.png" alt="A wordy paragraph after choosing Shorten: six small changes are marked in place, deletions struck through in red and insertions in green, each with its own accept and reject button. A bar at the bottom reads “Shortened: 6 changes”, with Accept all and Reject all.">
+</picture>
+
+Select a passage and choose **Improve**, **Shorten**, **Simplify**, **Fix grammar** or a change of tone, or type what you want done, such as “make it punchier”. Only the words that change are marked, each with its own ✓ and ✕. **⌘↵** accepts them all; **Esc** keeps your original.
+
+### A review that shows its working
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/review-dark.png">
+  <img src="docs/screenshots/review-light.png" alt="Review notes in the margin beside a cost table and a paragraph. One note says the rows add up to $8,500, not $9,500, calculated by Clearpen, not the AI. Another flags “every customer” as a sweeping generalisation, spotted by Clearpen's rules. A third, from the AI, says the claim needs support.">
+</picture>
+
+**Review** (⌘⇧E) reads the whole draft and leaves notes beside the passages they're about. Clearpen's own checks come first: table totals, percentages, contradictions and sweeping claims. Arithmetic is done by code, never by a model, and every note says whether it came from Clearpen's rules or from the AI. Select a passage and choose **Check** to fact-check it, test its logic or compare it with the rest of the draft.
+
+### And a quiet place to write
+
+- A plain Markdown page: headings, lists, quotes, tables and images.
+- Projects, full-text search, a trash, and drag-and-drop between projects.
+- A version on **⌘S** and every ten minutes, so you can always go back.
+- Typo fixes as you type; **⌘Z** right after one puts back what you typed.
+- Reader mode, focus mode, light and dark.
+- Export to Markdown or a web page, or copy rich text for Google Docs, Medium or WordPress.
+
+On Windows, **Ctrl** stands in for **⌘**.
 
 ## Download
 
@@ -22,7 +74,56 @@ Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which
 
 You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
 
-## What's here
+## Run it from source
+
+You need:
+
+- [Node](https://nodejs.org) 24 or later and [pnpm](https://pnpm.io/installation) 11;
+- [Rust](https://rustup.rs) 1.90 or later, plus the Xcode Command Line Tools on Mac (`xcode-select --install`), or the [Microsoft C++ Build Tools and WebView2](https://tauri.app/start/prerequisites/) on Windows;
+- [Ollama](https://ollama.com), for the AI features.
+
+Then:
+
+```bash
+git clone https://github.com/AQSAKAL/clearpen.git
+cd clearpen
+pnpm install
+pnpm --filter @clearpen/desktop tauri dev
+```
+
+The first run compiles the Rust side of the app and takes a few minutes; after that, the window opens in seconds and reloads as you edit. On first launch Clearpen offers to download a model through Ollama. To get one yourself:
+
+```bash
+ollama pull qwen3:8b             # 16 GB of memory or more
+ollama pull qwen3:4b-instruct    # 8 GB
+```
+
+Your library lives in one SQLite file, `library.db`, in `~/Library/Application Support/app.clearpen.desktop/` on Mac or `%APPDATA%\app.clearpen.desktop\` on Windows.
+
+### Or try it in a browser, without Rust
+
+```bash
+pnpm --filter @clearpen/desktop dev
+```
+
+Open http://localhost:1420. The app runs on the same library code, with SQLite compiled to WebAssembly and held in memory, so **nothing is saved** when you close the tab. It talks to Ollama on `localhost` directly.
+
+### Build an installer
+
+```bash
+pnpm --filter @clearpen/desktop tauri build
+```
+
+Installers land in `apps/desktop/src-tauri/target/release/bundle/`. Signing, releases and the universal Mac build are in [apps/desktop/README.md](apps/desktop/README.md).
+
+## Develop
+
+```bash
+pnpm check        # lint, typecheck and test everything
+pnpm test:watch   # tests while you work
+```
+
+The tests run the real AI tasks against a scripted model, so they need neither Ollama nor a network. Before a bigger change, read [the architecture](docs/ARCHITECTURE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```
 packages/
@@ -36,22 +137,6 @@ apps/
   web/        the app in a browser                     (phase 4)
 docs/
   ARCHITECTURE.md
-```
-
-## Develop
-
-You need Node 24+ and pnpm.
-
-```bash
-pnpm install
-pnpm check        # lint, typecheck and test everything
-pnpm test:watch   # tests while you work
-```
-
-To try the AI tasks against a real model, install [Ollama](https://ollama.com) and pull a model:
-
-```bash
-ollama pull qwen3:8b
 ```
 
 ## Principles
