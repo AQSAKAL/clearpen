@@ -4,7 +4,23 @@
 
 Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think: it suggests pinpoint edits to what you wrote that you accept or reject, lays out the argument of a section, the objection to answer and the evidence to find, and checks your facts, logic and numbers. It never writes your article from scratch. Everything runs on your own machine by default, with local models through [Ollama](https://ollama.com). When you're ready, publish to your own site.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks — on a local model. Thinking aids and publishing come next (see [the plan](docs/plans/writing-app.md)); downloads come with the first release.
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks — on a local model. Thinking aids and publishing come next (see [the plan](docs/plans/writing-app.md)).
+
+## Download
+
+Installers for Mac and Windows are on the [Releases page](https://github.com/AQSAKAL/clearpen/releases). They're early builds and not signed yet, so your computer warns you the first time you open Clearpen.
+
+| | Download | The first time |
+|---|---|---|
+| **Mac** — Apple silicon or Intel, macOS 13.3 or later | `Clearpen_<version>_universal.dmg` | Open it and drag Clearpen to Applications. When macOS says it can't check the app, go to System Settings → Privacy & Security and choose **Open Anyway**. |
+| **Windows** — 10 or 11, 64-bit | `Clearpen_<version>_x64-setup.exe`, or the `.msi` | Run it. If SmartScreen says "Windows protected your PC", choose **More info** → **Run anyway**. |
+
+Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which is free. The first time you open Clearpen, it checks for Ollama and links you to it if it's missing. Then it downloads a writing model for you, with its progress:
+
+- **Qwen3 8B** (5.2 GB), for computers with 16 GB of memory or more;
+- **Qwen3 4B** (2.5 GB), lighter and quicker, for 8 GB.
+
+You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
 
 ## What's here
 

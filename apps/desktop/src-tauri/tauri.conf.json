@@ -65,6 +65,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Clearpen",
     "category": "Productivity",
     "shortDescription": "Write articles that hold up.",
     "longDescription": "An open-source writing app with an editor in the margin. You write; Clearpen edits and helps you think, with local models on your own machine.",
