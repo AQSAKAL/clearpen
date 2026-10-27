@@ -21,6 +21,7 @@ import { useStatus } from './status.tsx';
 
 export const REWRITE_ACTIONS: Partial<Record<RewriteAction, string>> = {
   improve: 'Improve',
+  clarify: 'Clarify',
   shorten: 'Shorten',
   simplify: 'Simplify',
   grammar: 'Fix grammar',
@@ -37,6 +38,7 @@ export const TONES: Partial<Record<RewriteAction, string>> = {
 
 const DOING: Partial<Record<RewriteAction, string>> = {
   improve: 'Improving',
+  clarify: 'Clarifying',
   shorten: 'Shortening',
   simplify: 'Simplifying',
   grammar: 'Fixing grammar',
@@ -45,6 +47,7 @@ const DOING: Partial<Record<RewriteAction, string>> = {
 
 const DONE: Record<RewriteAction, string> = {
   improve: 'Improved',
+  clarify: 'Clarified',
   shorten: 'Shortened',
   simplify: 'Simplified',
   grammar: 'Corrected',
@@ -73,6 +76,12 @@ const surroundings = (ed: ClearpenEditor, { from, to }: Span) => ({
   before: ed.slice(Math.max(0, from - 3000), from),
   after: ed.slice(to, Math.min(ed.length(), to + 1000)),
 });
+
+/** A Simplify or Shorten whose every change would flatten the writer's voice: nothing to show, and why. */
+const heldBack = (reasons: string[]) =>
+  reasons.length === 1
+    ? `Held back the only change — it ${reasons[0]}.`
+    : `Held back ${reasons.length} changes to keep your voice: ${reasons.slice(0, 2).join('; ')}.`;
 
 export function useEditActions(mod: string) {
   const { backend, current, flush } = useLibrary();
@@ -144,7 +153,9 @@ export function useEditActions(mod: string) {
         if (!done || !ed.suggestion(id)) return;
         if (done.text.trim() === text.trim() || !done.changes.length) {
           ed.rejectSuggestion(id);
-          status.show('The AI suggested no changes.');
+          status.show(
+            done.dropped.length ? { text: heldBack(done.dropped), ms: 6000 } : 'The AI suggested no changes.',
+          );
           return;
         }
         await keepVersion(REWRITE_ACTIONS[action] ?? TONES[action] ?? label);
@@ -166,7 +177,8 @@ export function useEditActions(mod: string) {
           groupStatus(ed, group, done.changes.length, label);
           return;
         }
-        const warn = warning(text, done.text);
+        // The one change carries its own warning — the voice guard's as well as the figures'.
+        const warn = done.changes[0]?.warning ?? warning(text, done.text);
         ed.updateSuggestion(id, { insert: done.text, status: 'ready', warning: warn });
         status.show(
           warn

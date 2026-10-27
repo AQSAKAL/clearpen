@@ -58,6 +58,41 @@ export function briefBlock(brief: Brief = {}): string {
 const withBrief = (brief: Brief | undefined, before: string, after: string) =>
   brief && briefBlock(brief) ? `${before}${briefBlock(brief)}${after}` : '';
 
+// ─────────────────────────────────────────────────────────── how an editor reads
+
+// What the literature on clear prose agrees on, stated once and sent with
+// every edit: Gopen & Swan's reader expectations (where things sit in a
+// sentence decides what a reader takes from it), Fenton's plain English,
+// Graham on claims as strong as the truth allows, Chapin on what a
+// mechanical "simplify" destroys. Principles, not rules — a good writer
+// breaks each of them on purpose — so the model is told what a reader does,
+// not what is forbidden.
+export const EDITING_PRINCIPLES = `How a reader reads, and so how you edit:
+- A reader expects a sentence's subject to be followed soon by its verb, and takes whatever comes between them as an aside. Keep subject and verb together; give a long aside its own sentence.
+- A reader links a sentence backward from its opening words and stresses whatever it ends on. Open on what the previous sentence established; end on the new point. Never let a sentence trail off on an afterthought ("as well", "respectively", "as discussed above").
+- A reader looks for the action in the verb. "Made a decision" is "decided"; "the analysis was performed by the team" is "the team analysed". Put the action in the verb and name who does it.
+- Plain words by default: "use" not "utilise", "before" not "prior to", "because" not "due to the fact that", "help" not "facilitate". A rare or vivid word is fine on purpose and never by accident: one in a paragraph is the author's voice, so leave it.
+- A claim should be as strong as the truth allows — no stronger, and no vaguer. "A complex issue with many factors" says nothing; "everyone agrees" says too much. Keep a hedge that carries information ("I think", "in our tests", "for small teams"); cut only the habitual ones.
+- Length is not the problem. A sentence is too long when it carries more points than it has places to stress them; split it where the first half can stand alone. Never delete content to make it shorter unless asked to shorten.
+- The voice is the author's. Keep their contractions, questions, asides and rhythm, and keep a word the next sentence picks up from this one — that is how paragraphs hold together, not padding. Never vary a word for variety: the same thing keeps the same name.
+- A passive is a choice, not an error. Keep it when it keeps the paragraph's subject at the front of the sentence; change it when it hides who did something the reader needs to know.`;
+
+/** Who is reading, by kind of piece: the editor reads on their behalf. */
+export const READERS: Record<string, string> = {
+  article:
+    'The reader is intelligent and busy, knows nothing of the subject beyond what the page tells them, and stops at the first paragraph that costs more than it gives.',
+  technical:
+    'The reader is a practitioner with a job to finish. They skim for the step they need, trust the guide only while every term keeps one meaning, and will do each step exactly as written.',
+  scientific:
+    'The reader is a reviewer with a few hours and twenty papers. They read the abstract and the introduction first and skip to the main result; they do not remember what an earlier section said; they give up at the first undefined term or unsupported claim. By the end of the introduction they must know what the problem is, why it matters, what is new here and how it relates to earlier work.',
+  business:
+    'The reader is a decision-maker with ten minutes. They read the summary and the numbers first and want to know what you recommend, what it costs, what could go wrong and what you need from them.',
+  investment:
+    'The reader is a portfolio manager who reads the thesis and the valuation first, holds every figure against the tables, and distrusts any forecast stated as a fact.',
+};
+
+const readerLine = (brief?: Brief) => READERS[brief?.genre ?? ''] ?? READERS.article!;
+
 // ─────────────────────────────────────────────────────────── the next logical sentence
 
 // The one exception to "Clearpen never writes for you": when the author
@@ -70,7 +105,7 @@ const withBrief = (brief: Brief | undefined, before: string, after: string) =>
 // verdict, a few tokens instead of whole sentences — under a second, not three.
 const JUDGE_SYSTEM = `You read the paragraph an author is writing, given as numbered sentences, and find the sentences that do three jobs: the one that states the paragraph's point; the one that supports it with a reason, evidence, an example or an experience; and the one that draws the meaning — why it matters, what follows, or what the reader should take from it. Answer with each sentence's number, or 0 if no sentence does that job. Do not write or suggest anything. You answer only with JSON.`;
 
-const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Reason only from what the author has already written: draw out a consequence, a cause or why it matters, but never state a fact, result or outcome they haven't claimed, and never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
+const COMPLETE_SYSTEM = `You help an author finish the paragraph they are writing. It is missing one thing, named below. Write ONE sentence, in the author's voice, tense and style, that supplies exactly that — never a restatement, another example on the pile, or a summary, and not beginning the way the previous sentences began. Begin from what the last sentence established — pick up the idea it ended on — and end on the new point, so a reader can follow the step. Reason only from what the author has already written: draw out a consequence, a cause or why it matters, but never state a fact, result or outcome they haven't claimed, and never invent statistics, quotes, names or sources. Output ONLY the sentence.`;
 
 export function judgeMessages({ before = '' }: { before?: string }): ChatMessage[] {
   const numbered = paragraphSentences(before)
@@ -138,26 +173,38 @@ The paragraph is missing ${missing || 'its next logical step'}. Write the one se
 
 // ─────────────────────────────────────────────────────────── rewrite
 
-/** The built-in actions on a selection; each is rewritten, then split into pinpoint changes. */
+/**
+ * The built-in actions on a selection; each is rewritten, then split into
+ * pinpoint changes. Each instruction says what to keep as carefully as what
+ * to change: a small model told only "simplify" flattens voice, rhythm and
+ * emphasis along with the long words.
+ */
 export const REWRITES = {
-  improve: 'Improve this passage: make it clearer, tighter and more vivid without changing its meaning or voice.',
+  improve:
+    "Improve this passage as a careful editor would, keeping every fact and the author's voice: bring each subject next to its verb; open each sentence on what the one before established and end it on its new point; put the action in the verb; cut a word that repeats an idea already there. Change only what earns a change.",
+  clarify:
+    "Make this passage easier to follow without shortening it: reorder each sentence so it opens on what the previous sentence established and ends on its new point; bring each subject next to its verb, moving a long aside into a sentence of its own; turn an action hidden in a noun into the verb, naming who does it. Keep every fact, term, hedge and the author's words wherever you can. Add nothing.",
   shorten:
-    "Make it shorter by cutting, not rewriting: remove the words, phrases and sentences that don't earn their place. Keep the author's own wording for everything that stays, and every key point. Add nothing.",
+    "Make it shorter by cutting, not rewriting: remove the words, phrases and sentences that don't earn their place. Keep the author's own wording for everything that stays, every key point, every hedge that carries information, the last sentence of each paragraph, and any word the next sentence picks up. Vary sentence length as the author did. Add nothing.",
   simplify:
-    'Make it easier to read: swap jargon and long words for plain ones, and split sentences that run too long. Change as few words as possible. Add nothing.',
-  grammar: 'Fix spelling, grammar and punctuation only. Change nothing else.',
+    "Make each sentence the way the author would say it aloud to a friend: plain words, spoken order, one idea per sentence. Swap a long word for a plain one only when the plain one means the same; split only a sentence that carries two ideas. Keep the author's contractions, questions, asides, the occasional vivid phrase, and any marker of how sure they are. Change as few words as possible. Add nothing.",
+  grammar:
+    'Fix spelling, grammar and punctuation only. Change nothing else — not the voice, not a passive, not the wording around a figure or formula.',
   formal: 'Rewrite it in a more formal, professional tone.',
   casual: 'Rewrite it in a warmer, more conversational tone.',
-  confident: 'Rewrite it to sound more confident and direct: cut hedges and qualifiers.',
+  confident:
+    'Rewrite it to sound more confident and direct: cut the hedges that carry no information (a habitual "perhaps", "somewhat", "a bit", "sort of", "it could be argued"). Keep a hedge that marks a real degree of certainty, scope or source ("I think", "in our tests", "for small teams").',
   persuasive:
     'Make the same case more persuasively, using only the points already there: firmer verbs, a clearer stance, a better order. Add no new arguments, facts or calls to action.',
   hook: 'Rework it into a gripping opening from what is already there — reorder, sharpen, cut. Add no new facts or claims.',
-  active: 'Rewrite it in the active voice, with strong verbs.',
+  active: 'Rewrite it in the active voice, naming who does each action, with strong verbs.',
 } as const;
 
 export type RewriteAction = keyof typeof REWRITES;
 
-const EDIT_SYSTEM = `You are an expert editor working inside a writing app. You edit the author's passage exactly as instructed. Keep their meaning, facts, voice and Markdown formatting unless the instruction says otherwise, and change only what the instruction needs. You edit what is there — never add new ideas, examples or paragraphs of your own. Never invent facts, quotes, names or statistics. Output ONLY the edited passage — no preamble, no quotation marks around it, no explanation.`;
+const EDIT_SYSTEM = `You are an expert editor working inside a writing app. You edit the author's passage exactly as instructed. Keep their meaning, facts, voice and Markdown formatting unless the instruction says otherwise, and change only what the instruction needs. You edit what is there — never add new ideas, examples or paragraphs of your own. Never invent facts, quotes, names or statistics. Output ONLY the edited passage — no preamble, no quotation marks around it, no explanation.
+
+${EDITING_PRINCIPLES}`;
 
 interface PassageInput {
   title?: string;
@@ -197,7 +244,9 @@ Instruction: ${instruction}`,
 // For free instructions: the model returns pinpoint edits, never the passage
 // again. "Add subheadings" becomes three inserts; nothing else is touched.
 const EDITS_SYSTEM = `You are a precise editor working inside a writing app. You carry out the author's instruction by making the smallest set of edits that does it — like marking up a page with a pencil. Never retype text you are not changing; never "improve" anything the instruction didn't ask about. Keep the author's facts, numbers, names, links and Markdown. Never invent facts, quotes, names or statistics.
-You edit what the author wrote — rephrase, tighten, restyle, fix, cut, reorder, add headings or turn text into a list — but you never write new material from scratch: no new paragraphs, sections, openings, conclusions or examples that aren't already there in some form. If the instruction asks for that, make no edits and say so in "declined". You answer only with JSON.`;
+You edit what the author wrote — rephrase, tighten, restyle, fix, cut, reorder, add headings or turn text into a list — but you never write new material from scratch: no new paragraphs, sections, openings, conclusions or examples that aren't already there in some form. If the instruction asks for that, make no edits and say so in "declined". You answer only with JSON.
+
+${EDITING_PRINCIPLES}`;
 
 export function editsMessages({ title = '', text, instruction, before = '', after = '' }: PassageInput): ChatMessage[] {
   return [
@@ -252,7 +301,7 @@ export const editsSchema: JsonSchema = {
 // Clearpen never writes the author's prose. It helps them think: the point a
 // section must make, the steps of the argument, the evidence to find, the
 // objection to answer, the questions only they can answer. Notes, not prose.
-const COACH_SYSTEM = `You are a writing coach and a sharp editor. You NEVER write the author's prose: no paragraphs, no ready-to-use sentences, no openings, endings, examples or transitions written out. Writing is the author's job; yours is to help them think. You lay out logic and argument as short notes — fragments of at most 15 words, in your voice as a coach, never in the author's voice. Never invent facts, statistics, studies, quotes, people or anecdotes: for evidence, say what kind would support the point and where the author might find it; for examples, point to the kind of experience the author could draw on. You answer only with JSON.`;
+const COACH_SYSTEM = `You are a writing coach and a sharp editor. You NEVER write the author's prose: no paragraphs, no ready-to-use sentences, no openings, endings, examples or transitions written out. Writing is the author's job; yours is to help them think. You lay out logic and argument as short notes — fragments of at most 15 words, in your voice as a coach, never in the author's voice — and as questions, since a question joins the author's own thinking where an answer would replace it. The one time you may write a full sentence is when a task asks you to quote the author's own sentences back to them, word for word. Never invent facts, statistics, studies, quotes, people or anecdotes: for evidence, say what kind would support the point and where the author might find it; for examples, point to the kind of experience the author could draw on. You answer only with JSON.`;
 
 /** Each kind of help: what it's for, and the groups of notes to return ([label, how many and what]). */
 export const THINK_KINDS = {
@@ -320,6 +369,30 @@ export const THINK_KINDS = {
       ['A reader would ask', '2 or 3 questions'],
       ['What would make it concrete', '2 notes: the kind of detail, number or example to look for'],
       ['What to cut or check', '0 or 1 note'],
+    ],
+  },
+  // The argument as the author has actually made it, in their own words, so
+  // they can see its steps as objects: where one is missing, where a reason
+  // comes before the claim it supports. Writing becomes thinking when the
+  // sentences can be laid out and looked at.
+  steps: {
+    task: 'Lay out the argument the author has made so far as its steps, quoting their own sentences, so they can see where it holds and where a step is missing.',
+    groups: [
+      [
+        'Your claims, in order',
+        '3 to 6 notes: each the exact sentence that asserts something, quoted word for word, in order',
+      ],
+      ['Where a step is missing', '0 to 2 notes: between which two claims, and what kind of step — as a question'],
+      ['A reason before its claim', '0 or 1 note: a sentence that supports a point the reader has not yet been given'],
+    ],
+  },
+  // One sceptical reader, one question. The brief's audience is that reader
+  // when there is one.
+  reader: {
+    task: 'Read the text so far as one specific, sceptical reader — the audience in the brief, if given — and ask the one question they would put to the author at this point. A question, never an answer.',
+    groups: [
+      ['The reader asks', '1 note: one question, in the reader’s own voice'],
+      ['What would satisfy them', '1 or 2 notes: the kind of evidence, step or definition — never the words'],
     ],
   },
 } as const satisfies Record<string, { task: string; groups: readonly (readonly [string, string])[] }>;
@@ -396,19 +469,43 @@ export const thinkSchema: JsonSchema = {
 export const NOTE_CATEGORIES = ['clarity', 'concision', 'structure', 'evidence', 'tone', 'grammar', 'style'] as const;
 export type NoteCategory = (typeof NOTE_CATEGORIES)[number];
 
+// The review reads at three levels and reports in that order — the argument,
+// then the structure, then the sentences — because a clear thought in a
+// clumsy sentence beats a polished sentence with nothing in it (Hobbs), and
+// an expert editor judges a paragraph by what it does for the argument
+// before judging how it reads (Hayes). Notes are phrased as a reader's
+// reaction, not a rule: the author may have broken the rule on purpose.
+const REVIEW_SYSTEM = `You are a demanding but kind senior editor at a respected magazine. You review drafts and leave precise margin notes. Each note points at an exact passage, says in one plain sentence what a reader does there and why that is a problem ("a reader takes 'as well' as the point of this sentence because it ends it"), and — where you can — offers a replacement built from the author's own words.
+
+Read at three levels, and give your notes in that order of importance:
+1. The argument: a claim with nothing to support it; a step that does not follow; a paragraph that never says why its point matters; an opening that promises a topic but withholds what was found or argued.
+2. The structure: a sentence that opens on something new and ends on what the reader already knew; a paragraph whose sentences each open on a different subject, so no story holds; a step between two sentences left for the reader to guess; an aside that interrupts a subject on its way to its verb; a term or initials used before they are explained; a list told in prose.
+3. The sentences: an action hidden in a noun ("made a decision" for "decided"); a word that repeats an idea already there; a pompous word with a plain twin; a tired phrase; a sentence that trails off on an afterthought.
+Sentence notes on a paragraph that has not yet made its point are not worth making.
+
+Do not nitpick, and never invent problems: a strong draft gets few notes. Never praise inside notes. Never flag "I think" or an honest "I'm not sure": a hedge that says how sure the author is carries information. A word repeated into the next sentence to carry the thought is not repetition, and a single question, intensifier or informal phrase is voice, not padding — flag these only when they run through a whole passage. A passive is wrong only when it hides who did something the reader needs to know; length alone is never the problem. A suggestion must actually fix the problem you name — if you flag a cliché, your replacement must not contain it.`;
+
 export function reviewMessages({
   title = '',
   content,
   brief,
+  facts = '',
 }: {
   title?: string;
   content: string;
   brief?: Brief;
+  /** What Clearpen's own checks found, so the model doesn't repeat them. */
+  facts?: string;
 }): ChatMessage[] {
+  const genre = brief?.genre ?? 'article';
+  const structural =
+    genre === 'scientific' || genre === 'technical' || genre === 'business' || genre === 'investment'
+      ? `\nFor this kind of piece, also check the opening: if the first paragraphs never state the main result or recommendation, or never say what is new here, leave one note on the first sentence saying what the reader is still waiting for.\n`
+      : '';
   return [
     {
       role: 'system',
-      content: `You are a demanding but kind senior editor at a respected magazine. You review drafts and leave precise margin notes. Each note points at an exact passage, says what is wrong in one plain sentence, and — where you can — offers a replacement. Focus on what matters most: unclear sentences, padding and repetition, weak structure, unsupported claims, tone problems, and real errors. Do not nitpick, and never invent problems: a strong draft gets few notes. Never praise inside notes. A suggestion must actually fix the problem you name — if you flag a cliché, your replacement must not contain it.`,
+      content: `${REVIEW_SYSTEM}\n\n${readerLine(brief)} Read on their behalf.`,
     },
     {
       role: 'user',
@@ -417,14 +514,14 @@ ${withBrief(brief, '\nBrief:\n', '\n')}
 <draft>
 ${head(content, 24000)}
 </draft>
-
+${facts ? `\n${facts}\n` : ''}${structural}
 Review this draft. Return JSON with:
 - "summary": two or three sentences of overall assessment — the draft's biggest strength and the most important thing to fix.
-- "notes": up to 10 margin notes (fewer if the draft is strong), in the order they appear in the draft. Each note has:
+- "notes": up to 10 margin notes (fewer if the draft is strong), the most important first. Each note has:
   - "quote": the exact words from the draft the note is about, copied character for character (one phrase or sentence, 4 to 40 words);
   - "category": one of ${NOTE_CATEGORIES.join(', ')};
-  - "issue": what is wrong, in one plain sentence;
-  - "suggestion": the replacement text for the quoted words, or "" if the fix needs the author (for example a missing source).`,
+  - "issue": what a reader does at this passage and why that is a problem, in one plain sentence;
+  - "suggestion": the replacement text for the quoted words, built from the author's own words, or "" if the fix needs the author (for example a missing source or an unstated step).`,
     },
   ];
 }
@@ -459,11 +556,31 @@ export interface LensDefinition {
   overall: readonly string[];
   items: string;
   system: string;
+  /** What the "explanation" of an item should work out, when it isn't "what is true here". */
+  explain?: string;
 }
 
-// A check judges a passage; it never rewrites it. Three lenses, each its own
+// A check judges a passage; it never rewrites it. Four lenses, each its own
 // focused prompt.
 export const CHECK_LENSES: Record<Lens, LensDefinition> = {
+  clarity: {
+    verdicts: [
+      'clear',
+      'new before old',
+      'subject far from verb',
+      'action in a noun',
+      'ends on an afterthought',
+      'no link back',
+      'term before definition',
+      'says nothing',
+    ],
+    ok: ['clear'],
+    overall: ['clear', 'mostly clear', 'hard to follow'],
+    items: 'every sentence of the passage, in order',
+    explain:
+      'say what a reader does at this sentence — what its opening words link back to, what its final words make them stress, how long they wait for the verb, where the action sits — in one or two plain sentences',
+    system: `You are an editor who reads the way readers read: a reader expects a sentence's subject to be followed soon by its verb and takes what comes between as an aside; links each sentence backward from its opening words; stresses whatever a sentence ends on; and looks for the action in the verb. You judge how the selected passage reads, sentence by sentence, and you never rewrite it. For each sentence, name its opening words and its final words; say whether the opening links back to the sentence before and whether the ending carries the new point; count the words between the subject and its verb; ask whether the verb carries the action or a noun does. A sentence that reads well gets the verdict "clear" — most do. For any other verdict, your "fix" is a reordering of the author's own words — the same facts, the same terms, nothing added — or "" when only the author can supply what is missing, such as an unstated step or a definition. Never flag a passive that keeps the paragraph's subject at the front, never flag length by itself, and never flag "I think".`,
+  },
   factcheck: {
     verdicts: ['correct', 'incorrect', 'misleading', 'unverifiable', 'opinion'],
     ok: ['correct', 'opinion'],
@@ -523,7 +640,7 @@ The passage to check:
 Return JSON with:
 - "items": ${L.items}, in order. Each has:
   - "quote": the exact words from the passage, copied character for character (a phrase or one sentence);
-  - "explanation": first work out what is actually true here, then say it in one or two plain sentences${lens === 'factcheck' ? ' — for something you cannot verify, say what to check and where' : ''};
+  - "explanation": ${L.explain ?? 'first work out what is actually true here, then say it in one or two plain sentences'}${lens === 'factcheck' ? ' — for something you cannot verify, say what to check and where' : ''};
   - "verdict": one of ${L.verdicts.map((v) => `"${v}"`).join(', ')}, following from your explanation;
   - "fix": replacement text for the quoted words that makes them right, or "" if they are fine or only the author can fix them.
 - "overall": one of ${L.overall.map((v) => `"${v}"`).join(', ')};

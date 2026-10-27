@@ -10,6 +10,7 @@ export const LENS_CATEGORIES: Record<Lens, Category[]> = {
   factcheck: ['factcheck', 'numbers'],
   logic: ['logic'],
   consistency: ['consistency', 'numbers'],
+  clarity: ['clarity', 'structure', 'concision', 'style'],
 };
 
 /** Findings of `categories` that touch [from, to). */

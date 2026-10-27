@@ -1,14 +1,39 @@
 // Insights: instant, private statistics about the draft — no AI involved —
-// and highlights in the text for long sentences, passive voice, adverbs,
-// filler and clichés.
+// highlights in the text for long sentences, passive voice, adverbs, filler
+// and clichés, what kind of piece this is, the skeleton: each sentence by its
+// opening words and its verb, and the terms: each thing the draft defines,
+// with every name used for it.
 
-import { countByKind, type HighlightKind, headings, highlights, stats } from '@clearpen/core';
+import {
+  countByKind,
+  GENRES,
+  type Genre,
+  type HighlightKind,
+  headings,
+  highlights,
+  skeleton,
+  stats,
+  type TermSource,
+  terms,
+} from '@clearpen/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '../editor-ref.tsx';
 import { cn } from '../lib/utils.ts';
 import { useLibrary } from '../library.tsx';
 import { Label } from './ui/label.tsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.tsx';
 import { Switch } from './ui/switch.tsx';
+
+/** What the writer calls each kind of piece. The kind decides which checks run and who the review reads for. */
+export const GENRE_LABELS: Record<Genre, string> = {
+  article: 'An article',
+  technical: 'A technical guide',
+  scientific: 'A scientific paper',
+  business: 'A business case',
+  investment: 'An investment note',
+};
+
+const isGenre = (g: unknown): g is Genre => (GENRES as readonly unknown[]).includes(g);
 
 export const KINDS: [HighlightKind, string][] = [
   ['vlong', 'Very long sentences'],
@@ -18,6 +43,16 @@ export const KINDS: [HighlightKind, string][] = [
   ['weak', 'Filler & weak words'],
   ['cliche', 'Clichés & AI-isms'],
 ];
+
+/** How a term came to be defined, as the Terms list says it. */
+const TERM_SOURCES: Record<TermSource, string> = {
+  initials: 'initials',
+  called: '“we call”',
+  'that-is': '“that is”',
+  emphasis: 'bold at first use',
+  definition: 'definition',
+  cluster: 'several names',
+};
 
 export interface HighlightState {
   on: boolean;
@@ -76,10 +111,19 @@ export function useHighlights(): HighlightState {
 
 export function Insights({ highlight }: { highlight: HighlightState }) {
   const page = usePage();
+  const { current, edit } = useLibrary();
   const text = useLiveText();
   const s = useMemo(() => stats(text), [text]);
   const counts = useMemo(() => countByKind(highlights(text)), [text]);
   const toc = useMemo(() => headings(text), [text]);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const bones = useMemo(() => (showSkeleton ? skeleton(text) : []), [text, showSkeleton]);
+  const [showTerms, setShowTerms] = useState(false);
+  const glossary = useMemo(() => (showTerms ? terms(text) : []), [text, showTerms]);
+  const genre: Genre = isGenre(current?.brief.genre) ? current.brief.genre : 'article';
+  const setGenre = (g: Genre) => {
+    if (current) edit({ brief: { ...current.brief, genre: g } });
+  };
 
   const tiles: [string, string][] = [
     [s.words.toLocaleString(), 'words'],
@@ -120,6 +164,25 @@ export function Insights({ highlight }: { highlight: HighlightState }) {
         )}
       </div>
 
+      <div className="grid gap-1.5">
+        <Label htmlFor="genre" className="font-medium">
+          What this is
+        </Label>
+        <Select value={genre} onValueChange={(v) => isGenre(v) && setGenre(v)}>
+          <SelectTrigger id="genre" className="w-full" aria-label="What kind of piece this is">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {GENRES.map((g) => (
+              <SelectItem key={g} value={g}>
+                {GENRE_LABELS[g]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-muted-foreground">Decides which of Clearpen’s checks run, and who the review reads for.</p>
+      </div>
+
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="highlights-on" className="font-medium">
@@ -146,6 +209,91 @@ export function Insights({ highlight }: { highlight: HighlightState }) {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="skeleton-on" className="font-medium">
+            Skeleton
+          </Label>
+          <Switch id="skeleton-on" checked={showSkeleton} onCheckedChange={setShowSkeleton} />
+        </div>
+        <p className="text-muted-foreground">
+          Each sentence by its opening words and its verb. A paragraph reads as a story about whoever keeps opening its
+          sentences; a verb shown in grey is “is” or “has”, so the action may be hiding in a noun.
+        </p>
+        {showSkeleton && (
+          <ol className="grid gap-2">
+            {bones.map((p, i) => (
+              <li key={p.from} className="rounded-md border bg-card px-1.5 py-1.5">
+                {p.heading && p.heading !== bones[i - 1]?.heading && (
+                  <div className="mb-1 truncate px-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    {p.heading}
+                  </div>
+                )}
+                <ul className="grid">
+                  {p.sentences.map((x) => (
+                    <li key={x.from}>
+                      <button
+                        type="button"
+                        onClick={() => jump(x.from)}
+                        className="flex w-full items-baseline gap-2 rounded-md px-1.5 py-0.5 text-left hover:bg-accent"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{x.opener}</span>
+                        {x.verb && <span className="shrink-0 text-muted-foreground">{x.verb}</span>}
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{x.words}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="terms-on" className="font-medium">
+            Terms
+          </Label>
+          <Switch id="terms-on" checked={showTerms} onCheckedChange={setShowTerms} />
+        </div>
+        <p className="text-muted-foreground">
+          Each thing the draft defines — initials in brackets, bold at first use, “we call this…” — with every name used
+          for it and how often. The same thing keeps the same name; a form in italics is one you never defined.
+        </p>
+        {showTerms &&
+          (glossary.length ? (
+            <ol className="grid gap-1">
+              {glossary.map((t) => (
+                <li key={`${t.source}:${t.first.from}`}>
+                  <button
+                    type="button"
+                    onClick={() => jump(t.first.from)}
+                    className="grid w-full gap-0.5 rounded-md px-1.5 py-1 text-left hover:bg-accent"
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="min-w-0 flex-1 truncate font-medium">{t.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{TERM_SOURCES[t.source]}</span>
+                    </span>
+                    <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                      {t.names.map((n) => (
+                        <span key={n.name} className={cn(n.variant && 'italic')}>
+                          {n.name} <span className="tabular-nums">{n.count}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-muted-foreground">
+              Nothing defined yet. A term is one the draft introduces: “the data quality service (DQS)”, “we call this
+              the stress position”, or a phrase in bold the first time it appears.
+            </p>
+          ))}
       </div>
 
       {toc.length > 0 && (

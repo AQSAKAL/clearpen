@@ -115,6 +115,11 @@ test('Insights counts the draft and highlights what you ask for', async () => {
   const panel = await screen.findByRole('tabpanel');
   assert.ok(within(panel).getByText('words / sentence'));
   assert.equal(document.querySelectorAll('.editor .cm-an').length, 0);
-  await user.click(within(panel).getByRole('switch'));
+  await user.click(within(panel).getByRole('switch', { name: 'Highlight in your text' }));
   await waitFor(() => assert.ok(document.querySelectorAll('.editor .cm-an').length > 0));
+  // What kind of piece this is, and the skeleton: each sentence by its opener and verb.
+  assert.ok(within(panel).getByText('An article'));
+  assert.equal(panel.querySelectorAll('ol li').length, 0);
+  await user.click(within(panel).getByRole('switch', { name: 'Skeleton' }));
+  await waitFor(() => assert.ok(panel.querySelectorAll('ol li button').length > 0));
 });

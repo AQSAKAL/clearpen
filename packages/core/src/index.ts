@@ -21,6 +21,7 @@ export * from './media.ts';
 export * from './notes.ts';
 export * from './outline.ts';
 export * from './prompts.ts';
+export * from './style.ts';
 export * from './suggest.ts';
 export * from './tasks/check.ts';
 
@@ -32,4 +33,5 @@ export * from './tasks/proofread.ts';
 export * from './tasks/review.ts';
 export * from './tasks/think.ts';
 export * from './tasks/write.ts';
+export * from './terms.ts';
 export * from './tidy.ts';

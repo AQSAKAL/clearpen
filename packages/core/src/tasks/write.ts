@@ -2,12 +2,13 @@
 // about the draft. Clearpen never drafts the author's prose — for
 // help with what to write, see `think`.
 
-import { type Hunk, hunks } from '../diff.ts';
+import { applyHunks, type Hunk, hunks } from '../diff.ts';
 import { warning } from '../integrity.ts';
 import type { LLMClient } from '../llm/client.ts';
 import type { StreamInfo } from '../llm/types.ts';
 import * as P from '../prompts.ts';
 import { tidyRewrite, tidyText } from '../tidy.ts';
+import { voiceWarnings } from '../voice.ts';
 import { InputError, MAX_PASSAGE, type NoticeEvent, streamText, type TaskOptions, type TokenEvent } from './common.ts';
 
 export interface TextDone {
@@ -29,8 +30,14 @@ export interface RewriteInput {
 }
 
 export interface RewriteDone extends TextDone {
-  /** The rewrite as pinpoint changes to `text`, each with its integrity warning. */
+  /** The rewrite as pinpoint changes to `text`, each with what to check before accepting: a figure changed, a paragraph's last sentence cut. */
   changes: (Hunk & { warning: string })[];
+  /**
+   * Changes held back because they would flatten the author's voice — a
+   * question made a statement, a contraction expanded, a hedge cut — one
+   * reason each. `text` is the rewrite without them.
+   */
+  dropped: string[];
 }
 
 /**
@@ -58,8 +65,22 @@ export async function* rewrite(
   // Half a rewrite would silently delete the rest of the passage.
   if (info.truncated) throw new Error('That passage is too long to rewrite in one go — try a section at a time.');
   const out = tidyRewrite(raw, text);
-  const changes = hunks(text, out).map((h) => ({ ...h, warning: warning(text.slice(h.from, h.to), h.insert) }));
-  yield { type: 'done', text: out, truncated: false, changes };
+  const all = hunks(text, out);
+  // Simplify and Shorten change words, not voice: a change that would is held back.
+  const voice = voiceWarnings(text, out, input.action, all);
+  const changes: RewriteDone['changes'] = [];
+  const dropped: string[] = [];
+  all.forEach((h, i) => {
+    const v = voice[i]!;
+    if (v.drop) {
+      dropped.push(v.drop);
+      return;
+    }
+    const facts = warning(text.slice(h.from, h.to), h.insert);
+    const warn = facts ? (v.warning ? `${facts}; ${v.warning}` : facts) : v.warning ? `Check: ${v.warning}` : '';
+    changes.push({ ...h, warning: warn });
+  });
+  yield { type: 'done', text: dropped.length ? applyHunks(text, changes) : out, truncated: false, changes, dropped };
 }
 
 /** Answers a question about the draft. */

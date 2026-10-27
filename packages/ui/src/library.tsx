@@ -131,6 +131,8 @@ export function LibraryProvider({
       const doc = currentRef.current;
       if (!doc) return;
       pending.current.set(doc.id, { ...pending.current.get(doc.id), ...patch });
+      // The editor holds the text; the brief lives only here, so show it at once.
+      if (patch.brief) setCurrent({ ...doc, brief: patch.brief });
       if (failed.current === 0) {
         setSaveState('editing');
         clearTimeout(timer.current);

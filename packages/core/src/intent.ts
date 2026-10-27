@@ -2,11 +2,16 @@
 // answer, or an edit. Order matters: "is the logic consistent?" is about
 // consistency, "does this hold up?" about logic.
 
-export type Lens = 'factcheck' | 'logic' | 'consistency';
+export type Lens = 'factcheck' | 'logic' | 'consistency' | 'clarity';
 export type Intent = Lens | 'ask';
 
 const INTENTS: [Lens, RegExp][] = [
   ['consistency', /\bconsisten|\bcontradict|\bmatch(?:es)? the rest\b/i],
+  // "is this clear?", "check the flow", "how does it read?" — a verdict on how it reads, not a rewrite ("make it clearer" is an edit).
+  [
+    'clarity',
+    /\b(?:check|test|assess|review|judge|rate|how is|how(?:'|’)s|is (?:this|it|that)|does (?:this|it|that))\b[^.?]*\b(?:clarity|clear|readab\w*|flow|easy to (?:read|follow)|hard to (?:read|follow)|confusing|read (?:well|ok|okay|smoothly|easily))\b|\b(?:clarity|readability|flow) check\b|\bhow (?:does|will|would) (?:this|it|that) read\b/i,
+  ],
   [
     'logic',
     /\b(?:check|test|critique|assess|evaluate|review|stress-test)\b[^.?]*\b(?:logic|reasoning|argument)\b|\b(?:logic|reasoning|argument)\b[^.?]*\b(?:sound|valid|hold up|flawed|weak)\b|\bdoes (?:this|it|that) (?:make sense|follow|hold up|add up)\b|\bfallac|\blogical(?:ly)?\b|\bholes? in\b/i,

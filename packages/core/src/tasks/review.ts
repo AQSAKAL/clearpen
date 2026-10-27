@@ -2,6 +2,7 @@
 // the exact passage it is about.
 
 import { createAnchorer, type Span } from '../anchor.ts';
+import { factsBlock, runChecks } from '../checks.ts';
 import { completedItems, completedString } from '../jsonstream.ts';
 import type { LLMClient } from '../llm/client.ts';
 import * as P from '../prompts.ts';
@@ -42,6 +43,11 @@ export async function* review(
   const notice = await loadingNotice(llm, model);
   if (notice) yield notice;
 
+  // What Clearpen's own checks found goes to the model as settled, so the
+  // notes it adds are the ones only a reader can make.
+  const exact = runChecks(content, { genre: input.brief?.genre || 'article', sources: input.brief?.notes || '' });
+  const facts = factsBlock(exact);
+
   const place = createAnchorer(content);
   let raw = '';
   let sentSummary = false;
@@ -72,7 +78,7 @@ export async function* review(
 
   for await (const chunk of llm.stream({
     model,
-    messages: P.reviewMessages(input),
+    messages: P.reviewMessages({ ...input, facts }),
     format: P.reviewSchema,
     maxTokens: 2600,
     temperature: 0.3,

@@ -7,8 +7,15 @@
 
 import { type Sentence, sentences } from './analysis.ts';
 import type { Span } from './anchor.ts';
+import { styleFindings } from './style.ts';
+import { termFindings } from './terms.ts';
 
-export const GENRES = ['article', 'technical', 'business', 'investment'] as const;
+/**
+ * What kind of piece this is, which decides which checks run and how the
+ * review reads it. `scientific` is a paper or research write-up: claims,
+ * evidence, defined terms, a result stated early.
+ */
+export const GENRES = ['article', 'technical', 'scientific', 'business', 'investment'] as const;
 export type Genre = (typeof GENRES)[number];
 
 export type Category =
@@ -2143,6 +2150,10 @@ export function runChecks(
   checkLogic(c);
   checkNames(c);
   checkSpellingVariants(c);
+  // The terms registry: used before defined, derived forms, several names for one thing, back after a gap.
+  c.out.push(...termFindings(c.text, c.S));
+  // How it reads comes last: a wrong figure outranks a weak sentence ending on the same words.
+  c.out.push(...styleFindings(c.text, c.genre, c.S));
   return { findings: dedupe(c.out), facts: [...new Set(c.facts)] };
 }
 

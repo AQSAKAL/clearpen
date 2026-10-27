@@ -36,7 +36,9 @@ Finish a sentence and pause. Clearpen checks whether the paragraph has made its 
   <img src="docs/screenshots/pinpoint-edits-light.png" alt="A wordy paragraph after choosing Shorten: six small changes are marked in place, deletions struck through in red and insertions in green, each with its own accept and reject button. A bar at the bottom reads “Shortened: 6 changes”, with Accept all and Reject all.">
 </picture>
 
-Select a passage and choose **Improve**, **Shorten**, **Simplify**, **Fix grammar** or a change of tone, or type what you want done, such as “make it punchier”. Only the words that change are marked, each with its own ✓ and ✕. **⌘↵** accepts them all; **Esc** keeps your original.
+Select a passage and choose **Improve**, **Clarify**, **Shorten**, **Simplify**, **Fix grammar** or a change of tone, or type what you want done, such as “make it punchier”. Only the words that change are marked, each with its own ✓ and ✕. **⌘↵** accepts them all; **Esc** keeps your original.
+
+The edits follow what the research on clear prose agrees on — keep a subject next to its verb, open a sentence on what the reader already knows and end it on the new point, put the action in the verb, plain words, claims as strong as the truth allows — and they keep your voice: your contractions, questions, asides and rhythm, and the one vivid phrase in a paragraph. **Clarify** restructures a passage without shortening it. See [the principles and their sources](docs/research/clear-writing.md).
 
 ### A review that shows its working
 
@@ -45,7 +47,11 @@ Select a passage and choose **Improve**, **Shorten**, **Simplify**, **Fix gramma
   <img src="docs/screenshots/review-light.png" alt="Review notes in the margin beside a cost table and a paragraph. One note says the rows add up to $8,500, not $9,500, calculated by Clearpen, not the AI. Another flags “every customer” as a sweeping generalisation, spotted by Clearpen's rules. A third, from the AI, says the claim needs support.">
 </picture>
 
-**Review** (⌘⇧E) reads the whole draft and leaves notes beside the passages they're about. Clearpen's own checks come first: table totals, percentages, contradictions and sweeping claims. Arithmetic is done by code, never by a model, and every note says whether it came from Clearpen's rules or from the AI. Select a passage and choose **Check** to fact-check it, test its logic or compare it with the rest of the draft.
+**Review** (⌘⇧E) reads the whole draft and leaves notes beside the passages they're about. Clearpen's own checks come first: table totals, percentages, contradictions and sweeping claims, and how the prose reads — a subject far from its verb, a sentence that opens on the new and ends on the known, an action hidden in a noun, a pompous word with a plain twin (one click replaces it), initials never spelled out, a list told in prose, an opening that says what it will discuss rather than what it found. Arithmetic is done by code, never by a model, and every note says whether it came from Clearpen's rules or from the AI. The AI's notes come in order of importance: the argument first, then the structure, then the sentences. Select a passage and choose **Check** to fact-check it, test its logic, compare it with the rest of the draft, or see how it reads — where a reader links back, waits for the verb and puts the stress.
+
+### Insights, and what kind of piece this is
+
+**Insights** (click the word count) shows reading level and highlights, and two more things. **What this is** — an article, a technical guide, a scientific paper, a business case or an investment note — decides which checks run and who the review reads for: a scientific paper is read for a reviewer with a few hours who skips to the main result. The **Skeleton** lists each sentence by its opening words and its verb, paragraph by paragraph: a paragraph reads as a story about whoever keeps opening its sentences, and a verb shown in grey is “is” or “has”, so the action may be hiding in a noun.
 
 ### And a quiet place to write
 

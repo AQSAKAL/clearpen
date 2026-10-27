@@ -42,19 +42,43 @@ export const LENSES: Record<Lens, { label: string; hint: string; title: string; 
     doing: 'Comparing with the rest of the draft',
     waiting: 'Looking for places the draft disagrees with itself.',
   },
+  clarity: {
+    label: 'Check how it reads',
+    hint: 'Where a reader links back, waits and stresses',
+    title: 'Reading check',
+    doing: 'Reading it as a reader would',
+    waiting: 'Following each sentence from its opening words to its end.',
+  },
 };
 
 const PASSED: Record<Lens, [string, string]> = {
   factcheck: ['claim checks out', 'claims check out'],
   logic: ['step holds up', 'steps hold up'],
   consistency: ['point agrees with the draft', 'points agree with the draft'],
+  clarity: ['sentence reads clearly', 'sentences read clearly'],
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Clearpen's own findings as notes, saying they came from code, not the AI. */
+// Hobbs's hierarchy as a ranking rule: what the argument gets wrong outranks
+// how it is built, which outranks how a sentence reads — a wrong figure before
+// a weak ending. Within a level, text order.
+const LEVEL: Record<string, number> = {
+  numbers: 0,
+  factcheck: 0,
+  logic: 0,
+  evidence: 0,
+  consistency: 0,
+  compliance: 0,
+  procedure: 0,
+  structure: 1,
+};
+const level = (category: string) => LEVEL[category] ?? 2;
+const byLevel = (a: Finding, b: Finding) => level(a.category) - level(b.category) || a.from - b.from || a.to - b.to;
+
+/** Clearpen's own findings as notes, by level then position, saying they came from code, not the AI. */
 const ownNotes = (findings: Finding[]): NoteInput[] =>
-  findings.map((f) => ({
+  [...findings].sort(byLevel).map((f) => ({
     from: f.from,
     to: f.to,
     category: f.category,
