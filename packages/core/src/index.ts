@@ -8,7 +8,6 @@ export * from './autocorrect.ts';
 export * from './checks.ts';
 export * from './diff.ts';
 export * from './edits.ts';
-export * from './goals.ts';
 export * from './integrity.ts';
 export * from './intent.ts';
 export * from './jsonstream.ts';
