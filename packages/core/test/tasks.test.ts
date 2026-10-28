@@ -3,6 +3,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
+  CODE_LEAD_IN_MISSING,
+  commandOk,
+  endsCodeLeadIn,
   endsLeadIn,
   LEAD_IN_MISSING,
   nextSentenceOk,
@@ -578,4 +581,59 @@ test('a lead-in ending in a colon skips the judge and gets what it introduces', 
   // No judge: the only call is the writing one, told what the colon promises.
   assert.equal(writes.provider.requests.length, 1);
   assert.match(lastUser(writes.provider.requests[0]!), /missing what the colon at its end introduces/);
+});
+
+test('a lead-in that introduces a command gets the command, as inline code', async () => {
+  assert.ok(endsCodeLeadIn('How to create an SSH key, use this CLI command:'));
+  assert.ok(endsCodeLeadIn('SSH is: a protocol. To install it, run the following:'));
+  assert.ok(endsCodeLeadIn('In the terminal:'));
+  assert.ok(!endsCodeLeadIn('A shared inbox fixes three things:'));
+  assert.ok(!endsCodeLeadIn('Run the numbers again:'));
+  assert.ok(!endsCodeLeadIn('Use this command.'), 'a sentence, not a lead-in');
+  // Only the clause the colon ends counts: code mentioned earlier on the line doesn't.
+  assert.ok(!endsCodeLeadIn('The command failed. It failed for three reasons:'));
+
+  // A command is a command — not a sentence of prose, and not a refusal.
+  assert.ok(commandOk('ssh-keygen -t ed25519 -C "<you@example.com>"'));
+  assert.ok(commandOk('ls'));
+  assert.ok(commandOk('Get-ChildItem -Path C:\\ -Recurse'));
+  assert.ok(!commandOk('The key pair ensures only authorized users can initiate a secure connection.'));
+  assert.ok(!commandOk('Use the ssh-keygen tool.'));
+  assert.ok(!commandOk("I'm not sure which command you mean."));
+  assert.ok(!commandOk('nothing'));
+  assert.ok(!commandOk(''));
+
+  const before = 'How does SSH work: It establishes a secure channel. How to create an SSH key, use this CLI command:';
+  const writes = fakeLLM({
+    complete: () => 'never asked',
+    stream: () => ['```bash\nssh-keygen', ' -t ed25519', ' -C "<you@example.com>"\n```'],
+  });
+  const events = await collect(nextSentenceStream(writes.llm, { before, title: 'SSH', heading: 'Keys' }));
+  assert.deepEqual(events[0], { type: 'verdict', complete: false, missing: CODE_LEAD_IN_MISSING });
+  // Streamed as inline code from the first chunk; the fence never shows.
+  assert.deepEqual(
+    events.filter((e) => e.type === 'text').map((e) => e.text),
+    [' `ssh-keygen`', ' `ssh-keygen -t ed25519`', ' `ssh-keygen -t ed25519 -C "<you@example.com>"`'],
+  );
+  assert.deepEqual(events.at(-1), { type: 'done', next: ' `ssh-keygen -t ed25519 -C "<you@example.com>"`' });
+  // No judge: one call, to the command prompt, with the section, at a low temperature.
+  assert.equal(writes.provider.requests.length, 1);
+  const req = writes.provider.requests[0]!;
+  assert.match(req.messages[0]!.content, /never invent a tool, a flag or an option/);
+  assert.match(lastUser(req), /The section being written: "Keys"/);
+  assert.match(lastUser(req), /introduces a command\. Write that one command and nothing else\./);
+  assert.equal(req.temperature, 0.2);
+  // One line is all that's wanted: the model is stopped once it's written.
+  assert.equal(req.signal?.aborted, true);
+
+  // A sentence where a command was asked for is dropped: code decides, not the prompt.
+  const prose = fakeLLM({ stream: () => ['The key pair ensures only authorized users can connect.'] });
+  assert.equal((await nextSentence(prose.llm, { before })).next, '');
+  // A prompt sign copied from a terminal is not part of the command.
+  const prompt = fakeLLM({ stream: () => ['$ ssh-keygen -t ed25519\n'] });
+  assert.equal((await nextSentence(prompt.llm, { before })).next, ' `ssh-keygen -t ed25519`');
+  // An ordinary lead-in still gets a sentence from the sentence prompt.
+  const plain = fakeLLM({ stream: () => ['Requests reach whoever is free first.'] });
+  await nextSentence(plain.llm, { before: 'A shared inbox fixes three things:' });
+  assert.match(plain.provider.requests[0]!.messages[0]!.content, /Write ONE sentence/);
 });

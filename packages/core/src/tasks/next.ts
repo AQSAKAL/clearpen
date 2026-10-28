@@ -3,9 +3,14 @@
 // one sentence that supplies the missing part, streamed as it's written so
 // the writer sees it begin at once. Ask only where `nextSentenceSpot` says
 // it's worth it, or when the writer asks with ⌘J. A lead-in ("Three
-// reasons:") has nothing to judge: it gets what its colon introduces.
+// reasons:") has nothing to judge: it gets what its colon introduces — and
+// when that is a command ("use this CLI command:"), the command itself, as
+// inline code, from a prompt that may name a standard tool.
 
 import {
+  CODE_LEAD_IN_MISSING,
+  commandOk,
+  endsCodeLeadIn,
   endsLeadIn,
   endsSentence,
   LEAD_IN_MISSING,
@@ -17,7 +22,7 @@ import {
 import type { LLMClient } from '../llm/client.ts';
 import { anySignal } from '../llm/util.ts';
 import * as P from '../prompts.ts';
-import { firstSentenceEnd, tidyCompletion } from '../tidy.ts';
+import { commandComplete, firstSentenceEnd, tidyCommand, tidyCommandCompletion, tidyCompletion } from '../tidy.ts';
 import type { TaskOptions } from './common.ts';
 
 export interface NextSentenceInput {
@@ -53,6 +58,8 @@ export async function* nextSentenceStream(
 ): AsyncGenerator<NextSentenceEvent> {
   const before = input.before.slice(-20_000);
   const leadIn = endsLeadIn(before);
+  // A lead-in that introduces a command gets the command, not a sentence.
+  const command = leadIn && endsCodeLeadIn(before);
   // Whole sentences only, and a long paragraph has said enough.
   if (!leadIn && !endsSentence(before)) {
     yield { type: 'done', next: '' };
@@ -67,7 +74,7 @@ export async function* nextSentenceStream(
   const model = await llm.modelFor('quick');
 
   // First the judge — it only names sentences; code decides whether the point is made.
-  let missing = LEAD_IN_MISSING;
+  let missing = command ? CODE_LEAD_IN_MISSING : LEAD_IN_MISSING;
   if (!leadIn) {
     const judged = await llm.json({
       model,
@@ -87,15 +94,18 @@ export async function* nextSentenceStream(
   }
   yield { type: 'verdict', complete: false, missing };
 
-  // Then, only for an unfinished paragraph, the one sentence it's missing.
-  const messages = P.completeMessages({
-    title: input.title ?? '',
-    before,
-    heading: input.heading ?? '',
-    notes,
-    missing,
-  });
-  // One sentence is all that's wanted: stop the model as soon as it's written.
+  // Then, only for an unfinished paragraph, the one sentence it's missing —
+  // or, after a command lead-in, the one command, held to a low temperature
+  // because a flag is right or wrong.
+  const title = input.title ?? '';
+  const heading = input.heading ?? '';
+  const messages = command
+    ? P.commandMessages({ title, before, heading })
+    : P.completeMessages({ title, before, heading, notes, missing });
+  const tidy = command ? tidyCommandCompletion : tidyCompletion;
+  // One sentence (or one line) is all that's wanted: stop the model as soon as it's written.
+  const written = (text: string) =>
+    command ? commandComplete(text) : /\n/.test(text.trimStart()) || firstSentenceEnd(text.trimStart()) !== -1;
   const enough = new AbortController();
   let raw = '';
   let shown = '';
@@ -104,24 +114,26 @@ export async function* nextSentenceStream(
       model,
       messages,
       maxTokens: 70,
-      temperature: 0.45,
+      temperature: command ? 0.2 : 0.45,
       stop: ['\n\n'],
       signal: anySignal([signal, enough.signal]),
     })) {
       raw += chunk;
-      const text = tidyCompletion(raw, before);
+      const text = tidy(raw, before);
       if (text.trim() && text !== shown) {
         shown = text;
         yield { type: 'text', text };
       }
-      if (/\n/.test(raw.trimStart()) || firstSentenceEnd(raw.trimStart()) !== -1) break;
+      if (written(raw)) break;
     }
   } finally {
     enough.abort();
   }
-  const next = tidyCompletion(raw, before);
-  // A restatement, or the same opener again, isn't a step forward.
-  yield { type: 'done', next: nextSentenceOk(before, next) ? next : '' };
+  const next = tidy(raw, before);
+  // A restatement, or the same opener again, isn't a step forward; prose
+  // where a command was asked for isn't the command.
+  const ok = command ? commandOk(tidyCommand(raw)) : nextSentenceOk(before, next);
+  yield { type: 'done', next: ok ? next : '' };
 }
 
 /** The verdict and the sentence together, for callers that don't stream. */

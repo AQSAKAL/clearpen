@@ -27,7 +27,7 @@ Everything runs on your machine. The AI is a local model through [Ollama](https:
 
 ### One sentence, only when a paragraph needs it
 
-Finish a sentence and pause. Clearpen checks whether the paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey, as in the screenshot above: **Tab** keeps it, and typing on ignores it. When a paragraph is complete you see *¶ point made* instead. **⌘J** asks right away, after a sentence or after a lead-in like “Three reasons:”.
+Finish a sentence and pause. Clearpen checks whether the paragraph has made its point, given a reason and said why it matters. If something is missing, the one sentence that supplies it appears in grey, as in the screenshot above: **Tab** keeps it, and typing on ignores it. When a paragraph is complete you see *¶ point made* instead. **⌘J** asks right away, after a sentence or after a lead-in like “Three reasons:”. After a lead-in that introduces a command, such as “use this CLI command:”, the suggestion is the command itself, as inline code.
 
 ### Small, marked changes instead of a rewrite
 

@@ -178,6 +178,32 @@ The paragraph is missing ${missing || 'its next logical step'}. Write the one se
   ];
 }
 
+// A lead-in that introduces a command ("use this CLI command:") can't be
+// answered with a sentence: the no-new-facts rule above would only let the
+// model talk around it. This is the one prompt that may name something the
+// author hasn't written — a standard tool's command — and it is held to the
+// conventional form, with the author's own values left as placeholders. Code
+// drops an answer that is prose instead (`commandOk`).
+const COMMAND_SYSTEM = `You help an author writing a technical guide. The paragraph they are writing ends with a colon that introduces a command or a line of code — "run this command:", "use this CLI command:". Write that one command, exactly as the reader would type it, and nothing else: no explanation, no prose, no comment, no code fence, no prompt sign. Use only a standard, widely used tool and its documented options, in their most common form; if the author has named the tool, use that one; never invent a tool, a flag or an option. Where a value is the author's own — an email address, a path, a file name, a host — put a placeholder in angle brackets, such as <you@example.com>. If what the author describes has no single well-known command, output nothing.`;
+
+export function commandMessages({ title = '', before = '', heading = '' }: CompleteInput): ChatMessage[] {
+  const { paragraph, earlier } = splitParagraph(before);
+  return [
+    { role: 'system', content: COMMAND_SYSTEM },
+    {
+      role: 'user',
+      content: `Article title: ${title || '(untitled)'}
+${heading ? `\nThe section being written: "${heading}"\n` : ''}${earlier.trim() ? `\nEarlier in the article:\n<<<\n${clip(earlier, 1500)}\n>>>\n` : ''}
+The paragraph being written:
+<<<
+${paragraph}
+>>>
+
+Its last line ends with a colon that introduces a command. Write that one command and nothing else.`,
+    },
+  ];
+}
+
 // ─────────────────────────────────────────────────────────── rewrite
 
 /**

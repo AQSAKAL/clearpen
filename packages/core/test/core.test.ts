@@ -13,7 +13,14 @@ import { ImageError, imageBlock, MEDIA_SRC, prepareImage } from '../src/media.ts
 import { findingsIn, LENS_CATEGORIES, relocate } from '../src/notes.ts';
 import { outlineToMarkdown, sectionsOf } from '../src/outline.ts';
 import { editChanges, isWholeRewrite, streamingRewrite } from '../src/suggest.ts';
-import { firstSentenceEnd, tidyCompletion, tidyRewrite } from '../src/tidy.ts';
+import {
+  commandComplete,
+  firstSentenceEnd,
+  tidyCommand,
+  tidyCommandCompletion,
+  tidyCompletion,
+  tidyRewrite,
+} from '../src/tidy.ts';
 
 const draft = fs.readFileSync(new URL('./fixtures/draft.md', import.meta.url), 'utf8');
 
@@ -66,6 +73,28 @@ test('completions fit seamlessly at the cursor and stop after a sentence', () =>
   assert.equal(tidyCompletion('\n- Nobody waits.\n- More', 'It fixes two things:'), ' Nobody waits.');
   assert.equal(tidyCompletion('1. Ask first.', 'Steps:'), ' Ask first.');
   assert.equal(firstSentenceEnd('No end here'), -1);
+});
+
+test('a command answer is the command alone, as the reader would type it', () => {
+  assert.equal(tidyCommand('```bash\nssh-keygen -t ed25519\n```'), 'ssh-keygen -t ed25519');
+  assert.equal(tidyCommand("Here's the command: `git init`"), 'git init');
+  assert.equal(tidyCommand('Command:\n$ npm install\n'), 'npm install');
+  assert.equal(tidyCommand('PS C:\\> Get-ChildItem'), 'Get-ChildItem');
+  // A comment line is not the command; a comment after it is the author's to keep or cut.
+  assert.equal(tidyCommand('# Generate a key\nssh-keygen -t ed25519  # modern'), 'ssh-keygen -t ed25519  # modern');
+  assert.equal(tidyCommand('<think>which tool?</think>\n\nls -la'), 'ls -la');
+  assert.equal(tidyCommand(''), '');
+  // The first line is written once a newline follows it — a closing fence counts.
+  assert.equal(commandComplete('ssh-keygen'), false);
+  assert.equal(commandComplete('```bash\nssh-keygen'), false);
+  assert.equal(commandComplete('ssh-keygen\n'), true);
+  assert.equal(commandComplete('```bash\nssh-keygen\n```'), true);
+  // At the cursor it is inline code, continuing the lead-in's line.
+  assert.equal(tidyCommandCompletion('git init', 'Run this command:'), ' `git init`');
+  assert.equal(tidyCommandCompletion('git init', 'Run this command: '), '`git init`');
+  assert.equal(tidyCommand('echo `date`'), 'echo `date`', 'a backtick inside the command is the command’s');
+  assert.equal(tidyCommandCompletion('echo `date`', 'Run:'), ' `` echo `date` ``');
+  assert.equal(tidyCommandCompletion('', 'Run this command:'), '');
 });
 
 test('rewrites lose the chatter models wrap around them', () => {

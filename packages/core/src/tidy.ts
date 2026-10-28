@@ -73,6 +73,46 @@ export function tidyCompletion(raw: string, before: string): string {
 
 export const PREAMBLE_RE = /^(here(’|')?s|here is)[^:\n]*:\s*/i;
 
+// A command answer, line by line: "Here's the command:" and "Command:" are
+// chatter, a fence line or a comment is not the command, and a blank line
+// is nothing.
+const COMMAND_LABEL_RE = /^(?:the )?(?:command|code)\s*:\s*/i;
+const commandLine = (line: string) => line.replace(PREAMBLE_RE, '').replace(COMMAND_LABEL_RE, '').trim();
+const isCommandLine = (line: string) => {
+  const l = commandLine(line);
+  return !!l && !l.startsWith('```') && !l.startsWith('#');
+};
+
+/**
+ * The one command a model answered with, as the reader would type it: the
+ * first line that is one, without the prompt sign or backticks a model copies
+ * from a terminal or a Markdown page.
+ */
+export function tidyCommand(raw: string): string {
+  const first = String(raw).replace(THINKING, '').split('\n').find(isCommandLine);
+  if (!first) return '';
+  const line = commandLine(first).replace(/^(?:\$|>|PS>|PS [^>]*>)\s+/, '');
+  // Backticks around the whole line are Markdown; one inside it is the command's.
+  return (line.match(/^(`+)\s*(.*?)\s*\1$/)?.[2] ?? line).trim();
+}
+
+/** Whether the model has finished its first command line: a newline follows it. */
+export function commandComplete(raw: string): boolean {
+  const lines = String(raw).replace(THINKING, '').split('\n');
+  const at = lines.findIndex(isCommandLine);
+  return at !== -1 && at < lines.length - 1;
+}
+
+/** A command as it goes at the cursor after a lead-in: inline code, on the same line. */
+export function tidyCommandCompletion(raw: string, before: string): string {
+  const cmd = tidyCommand(raw);
+  if (!cmd) return '';
+  // A command with a backtick of its own needs the double-backtick form.
+  const code = cmd.includes('`') ? `\`\` ${cmd} \`\`` : `\`${cmd}\``;
+  const prev = before.slice(-1);
+  return !prev || /\s/.test(prev) ? code : ` ${code}`;
+}
+
 /** Strips the wrappers a model sometimes adds around a rewrite. */
 export function tidyRewrite(raw: string, original: string): string {
   let text = String(raw).replace(THINKING, '').trim();

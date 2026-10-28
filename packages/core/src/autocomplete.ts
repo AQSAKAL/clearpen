@@ -3,7 +3,9 @@
 //
 // - Ask only after a finished sentence at the end of a line of prose, after a
 //   pause; never mid-sentence or word by word. Asked for with ⌘J, a lead-in
-//   that ends in a colon ("Three reasons:") will do too.
+//   that ends in a colon ("Three reasons:") will do too — and a lead-in that
+//   introduces a command ("run this command:") gets the command, as inline
+//   code, since no sentence can supply what that colon promises.
 // - First a verdict: has the paragraph made its point? A judge model only
 //   names the sentences that state it, support it and draw its meaning;
 //   code decides, and a part counts only if that sentence is really there.
@@ -52,6 +54,41 @@ export function endsLeadIn(before: string): boolean {
 
 /** What a lead-in is missing, in words for the writing prompt. */
 export const LEAD_IN_MISSING = 'what the colon at its end introduces (the first one, if it promises several)';
+
+// Words that say the colon introduces something to type, not something to
+// read: "use this CLI command:", "run the following:", "in the terminal:".
+const CODE_LEAD_IN =
+  /\b(?:commands?|cli|shell|terminal|console|code|snippets?|scripts?|one-liners?|syntax|quer(?:y|ies))\b|\b(?:run|type|execute|enter|paste)\s+(?:this|these|the following)\b/i;
+
+/**
+ * Ends with a lead-in that introduces a command or a line of code. Only the
+ * clause the colon ends is read: an earlier sentence on the line may mention
+ * code for its own reasons.
+ */
+export function endsCodeLeadIn(before: string): boolean {
+  if (!endsLeadIn(before)) return false;
+  const line = before.slice(before.lastIndexOf('\n') + 1);
+  const start = line.search(/[^.!?…]*:\s*$/);
+  return CODE_LEAD_IN.test(start === -1 ? line : line.slice(start));
+}
+
+/** What a command lead-in is missing, in words for the writing prompt. */
+export const CODE_LEAD_IN_MISSING = 'the command its last line introduces';
+
+/**
+ * Whether a suggested command is one: not empty, not a refusal, and not a
+ * sentence of prose that a model wrote instead of the command.
+ */
+export function commandOk(suggestion: string): boolean {
+  const s = String(suggestion).trim();
+  if (!s || /^\(?(?:nothing|none|n\/a|empty)\)?\.?$/i.test(s)) return false;
+  // Plain words ending like a sentence are prose, not a command.
+  if (/^[\p{L}\s,;'’]+[.!?]$/u.test(s)) return false;
+  // So is a capitalised sentence of a few words, however it is punctuated inside.
+  if (/^\p{Lu}/u.test(s) && /[.!?]$/.test(s) && s.split(/\s+/).length >= 3) return false;
+  // An apology or an explanation is not a command either.
+  return !/^(?:i(?:'m| am|'d| would)? |sorry|unfortunately|there is no|here(?:'s| is))/i.test(s);
+}
 
 /** The first word of a sentence, lower-cased, past any opening quote or emphasis. */
 export const firstWord = (s: string) =>
