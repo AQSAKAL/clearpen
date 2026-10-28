@@ -10,6 +10,8 @@ import type {
   EditEvent,
   EditInput,
   Fix,
+  GuideInput,
+  GuideReply,
   LLMStatus,
   NextSentenceEvent,
   NoticeEvent,
@@ -54,6 +56,8 @@ export interface AI {
     input: { title?: string; before: string; heading?: string; notes?: string[] },
     opts?: TaskOptions,
   ): AsyncIterable<NextSentenceEvent>;
+  /** After a guided frame is filled: what the sentence leaves unsaid, and the next frame's question. */
+  guide(input: GuideInput, opts?: TaskOptions): Promise<GuideReply>;
 }
 
 export interface Backend {

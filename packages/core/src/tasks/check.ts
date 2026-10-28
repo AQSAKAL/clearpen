@@ -12,6 +12,7 @@ import { factsBlock, runChecks } from '../checks.ts';
 import type { Lens } from '../intent.ts';
 import { completedItems, completedString } from '../jsonstream.ts';
 import type { LLMClient } from '../llm/client.ts';
+import { checkOptions } from '../modes.ts';
 import * as P from '../prompts.ts';
 import { InputError, loadingNotice, MAX_PASSAGE, type NoticeEvent, type TaskOptions } from './common.ts';
 
@@ -72,7 +73,7 @@ export async function* check(
   const L = P.CHECK_LENSES[lens];
 
   // Exact arithmetic first, so the model is told the answer instead of guessing it.
-  const exact = runChecks(content, { genre: input.brief?.genre || 'article', sources: input.brief?.notes || '' });
+  const exact = runChecks(content, checkOptions(input.brief));
   const facts = factsBlock({ facts: exact.facts, findings: exact.findings.filter((f) => f.from < to && f.to > from) });
 
   // Checking facts is the job a larger model does best.

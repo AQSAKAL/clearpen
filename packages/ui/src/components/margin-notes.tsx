@@ -70,7 +70,7 @@ export function MarginNotes() {
   if (!notes.summary && !notes.live.length) return null;
 
   return (
-    <aside ref={column} aria-label="Notes" className="relative w-[300px] shrink-0 pt-10">
+    <aside ref={column} aria-label="Notes" className="relative w-full">
       {notes.summary && <NotesSummaryCard ref={summaryEl} summary={notes.summary} count={notes.live.length} />}
       {notes.live.map((n) => (
         <NoteCardView

@@ -14,6 +14,7 @@ import type { Backend } from './backend.ts';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
 import { AssistPanel, type AssistTab } from './components/assist-panel.tsx';
 import { FontsDialog } from './components/fonts-dialog.tsx';
+import { GuideCard } from './components/guide-card.tsx';
 import { HistoryDialog } from './components/history-dialog.tsx';
 import { useHighlights } from './components/insights.tsx';
 import { LibrarySidebar, Logo } from './components/library-sidebar.tsx';
@@ -31,9 +32,11 @@ import { TooltipProvider } from './components/ui/tooltip.tsx';
 import { EditorRefProvider, usePage } from './editor-ref.tsx';
 import { exampleArticle } from './examples/index.ts';
 import { applyFonts } from './fonts.ts';
+import { GuideProvider } from './guide.tsx';
 import { copyMarkdown, copyRichText, documentOf, fileName, markdownOf } from './lib/export.ts';
 import { cn } from './lib/utils.ts';
 import { LibraryProvider, useLibrary } from './library.tsx';
+import { useMode } from './mode.ts';
 import { NotesProvider } from './notes.tsx';
 import { GoalDialog } from './onboarding.tsx';
 import { useReviewActions } from './review-actions.ts';
@@ -146,7 +149,9 @@ function Shell({ backend }: { backend: Backend }) {
                 >
                   <EditorRefProvider>
                     <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
-                      <Workspace />
+                      <GuideProvider>
+                        <Workspace />
+                      </GuideProvider>
                     </NotesProvider>
                   </EditorRefProvider>
                 </LibraryProvider>
@@ -181,6 +186,7 @@ function Workspace() {
   const notesInMargin = useWide(scroller, MARGIN_ROOM_PX);
   const panelInline = useMedia(PANEL_INLINE_QUERY);
   const highlight = useHighlights();
+  const mode = useMode();
   // Notes go in the margin when there's room, otherwise in the Assist panel.
   const openNotes = useCallback(() => {
     if (!notesInMargin) setPanel('notes');
@@ -425,6 +431,7 @@ function Workspace() {
           focus={focus}
           autocomplete={settings.autocomplete}
           autocorrect={settings.autocorrect}
+          mode={mode}
           mod={mod}
           onCommand={run}
         />
@@ -434,8 +441,19 @@ function Workspace() {
               <div className="w-full min-w-0 max-w-[700px]">
                 <ArticleEditor onCounts={onCounts} />
               </div>
-              {notesInMargin && <MarginNotes />}
+              {notesInMargin && (
+                <div className="w-[300px] shrink-0 pt-10">
+                  <GuideCard placement="margin" />
+                  <MarginNotes />
+                </div>
+              )}
             </div>
+            {/* No room beside the page: the card keeps to the bottom of the page's own scroll area. */}
+            {!notesInMargin && !reading && (
+              <div className="pointer-events-none sticky bottom-4 flex justify-end px-4">
+                <GuideCard placement="floating" />
+              </div>
+            )}
             {reading && (
               <Reader
                 title={reading.title}

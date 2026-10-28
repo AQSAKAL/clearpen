@@ -19,7 +19,9 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';
+import { useGuide } from './guide.tsx';
 import { useLibrary } from './library.tsx';
+import { useMode } from './mode.ts';
 import { useSettings } from './settings.tsx';
 
 export const POINT_MADE = ' ¶ point made · Tab for new paragraph';
@@ -29,6 +31,8 @@ export function Autocomplete() {
   const ai = useAI();
   const { backend, current } = useLibrary();
   const { settings } = useSettings();
+  const mode = useMode();
+  const guide = useGuide();
   const state = useRef({
     seq: 0,
     /** Characters the writer typed since they last took a suggestion. */
@@ -39,8 +43,9 @@ export function Autocomplete() {
     timer: undefined as ReturnType<typeof setTimeout> | undefined,
     ctrl: null as AbortController | null,
   });
-  const live = useRef({ on: settings.autocomplete, busy: ai.busy });
-  live.current = { on: settings.autocomplete, busy: ai.busy };
+  // The mode may turn suggestions off, and a guide in progress has the cursor's grey text.
+  const live = useRef({ on: settings.autocomplete, busy: ai.busy, mode, guided: !!guide.template });
+  live.current = { on: settings.autocomplete && mode.aids.next, busy: ai.busy, mode, guided: !!guide.template };
 
   useEffect(() => {
     const s = state.current;
@@ -62,7 +67,16 @@ export function Autocomplete() {
       if (!sel.empty) return;
       const pos = sel.from;
       const text = ed.getText();
-      if (!force && (!live.current.on || live.current.busy || s.typed < OWN_WORDS_BETWEEN)) return;
+      if (force && !live.current.mode.aids.next) {
+        toast(`Next-sentence suggestions are off in ${live.current.mode.label}`);
+        return;
+      }
+      if (force && live.current.guided) {
+        toast('Finish or stop the frames first — the frames have the cursor');
+        return;
+      }
+      if (!force && (!live.current.on || live.current.busy || live.current.guided || s.typed < OWN_WORDS_BETWEEN))
+        return;
       if (!force && !nextSentenceSpot(text, pos)) return;
       // One AI thing on screen at a time.
       if (ed.suggestions().length) return;

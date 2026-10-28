@@ -11,11 +11,13 @@
 
 import {
   type CheckEvent,
+  checkOptions,
   countWords,
   type Finding,
   findingsIn,
   LENS_CATEGORIES,
   type Lens,
+  modeOf,
   runChecks,
   SENTENCE_LEVEL,
   type Unfinished,
@@ -119,10 +121,9 @@ export function useReviewActions(openNotes: () => void) {
   const status = useStatus();
   const brief = current?.brief;
 
-  const ownChecks = useCallback(
-    (text: string) => runChecks(text, { genre: brief?.genre ?? 'article', sources: brief?.notes ?? '' }).findings,
-    [brief],
-  );
+  // The mode decides which of Clearpen's own checks run; free writing runs none.
+  const ownChecks = useCallback((text: string) => runChecks(text, checkOptions(brief)).findings, [brief]);
+  const listener = modeOf(brief).review === 'listener';
 
   const review = useCallback(() => {
     const ed = page.editor.current;
@@ -134,9 +135,19 @@ export function useReviewActions(openNotes: () => void) {
     }
     notes.clear();
     openNotes();
-    void ai.run('Reviewing', async (signal) => {
+    void ai.run(listener ? 'Listening' : 'Reviewing', async (signal) => {
       notes.setStop(() => ai.stop());
-      notes.setSummary({ state: 'reading', text: '', label: 'Reading your draft…' });
+      notes.setSummary(
+        listener
+          ? {
+              title: 'A listener’s notes',
+              state: 'reading',
+              text: '',
+              label: 'Listening to your draft…',
+              waiting: 'Reading for the thinking, not the prose.',
+            }
+          : { state: 'reading', text: '', label: 'Reading your draft…' },
+      );
       let finished = false;
       // Sentence-level findings wait for the verdict on their paragraph; null once it has placed them.
       let pending: NoteInput[] | null = null;
@@ -178,10 +189,12 @@ export function useReviewActions(openNotes: () => void) {
       status.show(
         n
           ? `${plural(n, 'note')} in the margin${held ? `, ${held} held back` : ''} — click one to see its passage`
-          : 'No notes — it reads cleanly.',
+          : listener
+            ? 'Nothing to add — the summary says what was heard.'
+            : 'No notes — it reads cleanly.',
       );
     });
-  }, [ai, backend, brief, flush, notes, openNotes, ownChecks, page, status]);
+  }, [ai, backend, brief, flush, listener, notes, openNotes, ownChecks, page, status]);
 
   const check = useCallback(
     (span: Span, lens: Lens) => {

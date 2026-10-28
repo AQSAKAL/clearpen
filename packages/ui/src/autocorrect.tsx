@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react';
 import { useAI } from './ai.tsx';
 import { usePage } from './editor-ref.tsx';
 import { useLibrary } from './library.tsx';
+import { useMode } from './mode.ts';
 import { useSettings } from './settings.tsx';
 
 /** A finished sentence waiting to be proofread, kept pinned to its place as the text changes. */
@@ -29,8 +30,9 @@ export function Autocorrect() {
   const ai = useAI();
   const { backend, current } = useLibrary();
   const { settings } = useSettings();
+  const mode = useMode();
   const live = useRef({ on: settings.autocorrect, busy: ai.busy });
-  live.current = { on: settings.autocorrect, busy: ai.busy };
+  live.current = { on: settings.autocorrect && mode.aids.typos, busy: ai.busy };
   const state = useRef({
     queue: [] as Waiting[],
     /** Where each word the writer ended, not yet looked at, ends. */

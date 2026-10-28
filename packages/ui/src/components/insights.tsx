@@ -5,35 +5,39 @@
 // with every name used for it.
 
 import {
+  briefForMode,
   countByKind,
-  GENRES,
-  type Genre,
   type HighlightKind,
   headings,
   highlights,
+  isModeId,
+  MODE,
+  MODE_GROUPS,
+  type ModeId,
+  modeOf,
   skeleton,
   stats,
+  TEMPLATES,
   type TermSource,
   terms,
 } from '@clearpen/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '../editor-ref.tsx';
+import { useGuide } from '../guide.tsx';
 import { cn } from '../lib/utils.ts';
 import { useLibrary } from '../library.tsx';
+import { Button } from './ui/button.tsx';
 import { Label } from './ui/label.tsx';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.tsx';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select.tsx';
 import { Switch } from './ui/switch.tsx';
-
-/** What the writer calls each kind of piece. The kind decides which checks run and who the review reads for. */
-export const GENRE_LABELS: Record<Genre, string> = {
-  article: 'An article',
-  technical: 'A technical guide',
-  scientific: 'A scientific paper',
-  business: 'A business case',
-  investment: 'An investment note',
-};
-
-const isGenre = (g: unknown): g is Genre => (GENRES as readonly unknown[]).includes(g);
 
 export const KINDS: [HighlightKind, string][] = [
   ['vlong', 'Very long sentences'],
@@ -120,10 +124,13 @@ export function Insights({ highlight }: { highlight: HighlightState }) {
   const bones = useMemo(() => (showSkeleton ? skeleton(text) : []), [text, showSkeleton]);
   const [showTerms, setShowTerms] = useState(false);
   const glossary = useMemo(() => (showTerms ? terms(text) : []), [text, showTerms]);
-  const genre: Genre = isGenre(current?.brief.genre) ? current.brief.genre : 'article';
-  const setGenre = (g: Genre) => {
-    if (current) edit({ brief: { ...current.brief, genre: g } });
+  const guide = useGuide();
+  const mode = modeOf(current?.brief);
+  const setMode = (id: ModeId) => {
+    if (current) edit({ brief: { ...current.brief, ...briefForMode(id) } });
   };
+  // A mode with frames, not yet started on this page: offer to start them at the end of the text.
+  const frames = mode.template && !guide.template && !guide.offer ? TEMPLATES[mode.template.id] : null;
 
   const tiles: [string, string][] = [
     [s.words.toLocaleString(), 'words'],
@@ -165,22 +172,34 @@ export function Insights({ highlight }: { highlight: HighlightState }) {
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="genre" className="font-medium">
+        <Label htmlFor="mode" className="font-medium">
           What this is
         </Label>
-        <Select value={genre} onValueChange={(v) => isGenre(v) && setGenre(v)}>
-          <SelectTrigger id="genre" className="w-full" aria-label="What kind of piece this is">
+        <Select value={mode.id} onValueChange={(v) => isModeId(v) && setMode(v)}>
+          <SelectTrigger id="mode" className="w-full" aria-label="What this is">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {GENRES.map((g) => (
-              <SelectItem key={g} value={g}>
-                {GENRE_LABELS[g]}
-              </SelectItem>
+            {MODE_GROUPS.map(([label, ids]) => (
+              <SelectGroup key={label}>
+                <SelectLabel>{label}</SelectLabel>
+                {ids.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {MODE[id].label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground">Decides which of Clearpen’s checks run, and who the review reads for.</p>
+        <p className="text-muted-foreground">{mode.hint}</p>
+        {frames && (
+          <div>
+            <Button size="xs" variant="outline" onClick={() => guide.start(frames.id)}>
+              Start the frames at the end of the text
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3">

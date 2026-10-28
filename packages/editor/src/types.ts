@@ -34,11 +34,17 @@ export interface SuggestionInput {
   warning?: string;
 }
 
-/** The ghost text at the cursor. `display`, when set, is shown instead of `text` ("¶ point made"). */
+/**
+ * The ghost text at the cursor. `display`, when set, is shown instead of
+ * `text` ("¶ point made"). A `frame` is a guided-writing frame — a sentence
+ * with a blank — shown in the prose's face with nothing to insert: the author
+ * types the whole sentence, and Tab does nothing.
+ */
 export interface Ghost {
   pos: number;
   text: string;
   display?: string;
+  kind?: 'frame';
 }
 
 /** One of autocorrect's fixes: from–to becomes `insert`. */
@@ -157,8 +163,11 @@ export interface ClearpenEditor {
   /** Is from–to prose — not code, a link's address, an image, HTML or a table? */
   isProse(from: number, to: number): boolean;
 
-  /** Shows ghost text at `pos`; `display`, if given, is shown instead of `text`. */
-  showGhost(pos: number, text: string, display?: string): void;
+  /**
+   * Shows ghost text at `pos`; `display`, if given, is shown instead of `text`.
+   * A `frame` ghost shows a sentence with a blank to complete and inserts nothing.
+   */
+  showGhost(pos: number, text: string, display?: string, kind?: 'frame'): void;
   ghost(): Ghost | null;
   clearGhost(): void;
   /** Inserts the ghost text; false when there's none. */

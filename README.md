@@ -21,7 +21,7 @@ Clearpen helps you write articles that hold up. You do the writing; Clearpen edi
 
 Everything runs on your machine. The AI is a local model through [Ollama](https://ollama.com), your library is a single file, and every article exports to plain Markdown.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks — on a local model. Thinking aids and publishing come next (see [the plan](docs/plans/writing-app.md)).
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing — on a local model. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
 
 ## What it does
 
@@ -49,9 +49,19 @@ The edits follow what the research on clear prose agrees on — keep a subject n
 
 **Review** (⌘⇧E) reads the whole draft and leaves notes beside the passages they're about. Clearpen's own checks come first: table totals, percentages, contradictions and sweeping claims, and how the prose reads — a subject far from its verb, a sentence that opens on the new and ends on the known, an action hidden in a noun, a pompous word with a plain twin (one click replaces it), initials never spelled out, a list told in prose, an opening that says what it will discuss rather than what it found — and, in a technical guide or a paper, what the reader who skims needs: a section that never says what it is for, “as discussed above” with nothing to search for, an introduction with no map of what follows, and a line about how hard the problem was. Arithmetic is done by code, never by a model, and every note says whether it came from Clearpen's rules or from the AI. The AI's notes come in order of importance: the argument first, then the structure, then the sentences. On a paragraph that hasn't yet made its point, the review leaves one note saying what is missing and holds the sentence-level notes back under it, to open if you want them. Select a passage and choose **Check** to fact-check it, test its logic, compare it with the rest of the draft, or see how it reads — where a reader links back, waits for the verb and puts the stress.
 
-### Insights, and what kind of piece this is
+### Modes, and guided writing
 
-**Insights** (click the word count) shows reading level and highlights, and two more things. **What this is** — an article, a technical guide, a scientific paper, a business case or an investment note — decides which checks run and who the review reads for: a scientific paper is read for a reviewer with a few hours who skips to the main result. The **Skeleton** lists each sentence by its opening words and its verb, paragraph by paragraph: a paragraph reads as a story about whoever keeps opening its sentences, and a verb shown in grey is “is” or “has”, so the action may be hiding in a noun.
+**What this is**, in Insights, sets the article's mode, and the chevron beside **New article** starts one in a mode. A mode is a preset: which of Clearpen's checks run, who the review reads for, and which aids are on. An article, a technical guide, a scientific paper, a business case and an investment note are the kinds of piece Clearpen already read for — a scientific paper is read for a reviewer with a few hours who skips to the main result. Three modes are for writing to think:
+
+- **Clear out ideas** is free writing. Nothing checks or suggests while you write; typo fixes stay. **Review** then reads as a listener, not an editor: the strongest idea on the page, quoted; what you circled without quite saying, as a question; a claim you could test. Never a correction.
+- **Reflect** is that, plus three frames, one at a time: *I feel ___ today.* — *That comes from ___.* — *What I want instead is ___.*
+- **Work a problem** is that, plus five: what you're working on, why it matters, what you've tried, what stops you, ways forward. A scientific paper offers a skeleton of six: the question, what is known, what is new, the method, the result, what it means.
+
+A frame is a question in the shape of a sentence. It waits in grey at the cursor and on a card beside the page, and you type the whole sentence: the grey text goes the moment you start, Tab inserts nothing, and nothing Clearpen shows ever lands in the article. When your sentence has filled its frame, the next appears, and the coach says on the card what the sentence still leaves unsaid and asks the next question — a question, never words for you to use. **Why this?** explains the frame; **Skip** and **Stop** are yours. Templates are plain data in `packages/core/src/guide.ts`: adding one is adding an entry.
+
+### Insights
+
+**Insights** (click the word count) shows reading level and highlights, the mode, the terms the draft defines, and the **Skeleton**: each sentence by its opening words and its verb, paragraph by paragraph. A paragraph reads as a story about whoever keeps opening its sentences, and a verb shown in grey is “is” or “has”, so the action may be hiding in a noun.
 
 ### And a quiet place to write
 

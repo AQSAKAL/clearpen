@@ -1,7 +1,17 @@
 // The AI features running in the app itself, on a model client the backend
 // makes (Ollama on this machine, through whatever fetch it needs).
 
-import { check, edit, type LLMClient, nextSentenceStream, proofread, type Role, review, rewrite } from '@clearpen/core';
+import {
+  check,
+  edit,
+  guide,
+  type LLMClient,
+  nextSentenceStream,
+  proofread,
+  type Role,
+  review,
+  rewrite,
+} from '@clearpen/core';
 import type { AI } from './backend.ts';
 
 const ROLES: Role[] = ['quick', 'coach', 'checker'];
@@ -24,5 +34,6 @@ export function localAI(llm: LLMClient): AI {
     proofread: (input, opts) => proofread(llm, input, opts),
     review: (input, opts) => review(llm, input, opts),
     check: (input, opts) => check(llm, input, opts),
+    guide: (input, opts) => guide(llm, input, opts),
   };
 }
