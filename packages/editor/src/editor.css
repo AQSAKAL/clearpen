@@ -29,6 +29,7 @@
  *   --del-bg         #fbe7e3 / rgba(220, 80, 60, 0.16)
  *
  *   Note categories
+ *   --c-argument     #9c36b5 / #da77f2
  *   --c-clarity      #2f6fde / #6f9ff5
  *   --c-concision    #b7791f / #e0a948
  *   --c-structure    #7b4bd6 / #a988f0
@@ -387,6 +388,9 @@
 }
 .cm-note-active {
   background: color-mix(in srgb, var(--note-c, var(--c-clarity)) 20%, transparent);
+}
+.cm-note-argument {
+  --note-c: var(--c-argument);
 }
 .cm-note-clarity {
   --note-c: var(--c-clarity);

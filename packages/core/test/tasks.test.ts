@@ -11,8 +11,10 @@ import {
   paragraphLength,
   paragraphVerdict,
 } from '../src/autocomplete.ts';
+import { runChecks } from '../src/checks.ts';
 import { applyHunks } from '../src/diff.ts';
 import * as core from '../src/index.ts';
+import { heldBack, judgedParagraphs } from '../src/notes.ts';
 import { sectionAt } from '../src/outline.ts';
 import {
   completeMessages,
@@ -169,6 +171,88 @@ test('review notes stream in, pinned to their passages; made-up quotes are dropp
   assert.equal(notes[1]!.category, 'clarity', 'an unknown category becomes clarity');
   assert.deepEqual(events.at(-1), { type: 'done', found: 2 });
   await assert.rejects(collect(review(llm, { content: 'Too short.' })), /Write a little more/);
+});
+
+test('review judges each paragraph before its notes, and holds sentence notes back where the point is not yet made', async () => {
+  const made =
+    'Most advice is about control. Control only works while you are in the room. So explain more and command less.';
+  const thin = 'We will utilise the new tool prior to launch. The team made a decision about it last week.';
+  const content = `# Title\n\n${made}\n\n${thin}\n\n- A list item has no point of its own to make.\n\nOne sentence alone is a beat, not a paragraph to judge.`;
+  // Code numbers the paragraphs; the model only names them.
+  assert.deepEqual(
+    judgedParagraphs(content).map((p) => [content.slice(p.from, p.to), p.opening]),
+    [
+      [made, 'Most advice is about control.'],
+      [thin, 'We will utilise the new tool prior to launch.'],
+    ],
+  );
+  const answer = JSON.stringify({
+    summary: 'The first paragraph lands; the second only asserts.',
+    unfinished: [
+      { paragraph: 2, missing: 'A reason to believe the tool is worth it.' },
+      { paragraph: 2, missing: 'named twice' },
+      { paragraph: 9, missing: 'no such paragraph' },
+    ],
+    notes: [
+      { quote: 'explain more and command less', category: 'style', issue: 'Tired.', suggestion: '' },
+      {
+        quote: 'made a decision about it',
+        category: 'clarity',
+        issue: 'Action in a noun.',
+        suggestion: 'decided on it',
+      },
+      { quote: 'We will utilise the new tool', category: 'structure', issue: 'Nothing supports this.', suggestion: '' },
+    ],
+  });
+  const { llm, provider } = fakeLLM({ stream: () => chunks(answer, 11) });
+  const events = await collect(review(llm, { content }));
+  const prompt = lastUser(provider.requests[0]!);
+  assert.match(prompt, /1\. Most advice is about control\.\n2\. We will utilise the new tool prior to launch\.\n/);
+  assert.doesNotMatch(prompt, /\n3\. /);
+  assert.match(prompt, /"unfinished": the numbered paragraphs/);
+  // One verdict, after the summary and before any note, mapped onto the draft.
+  const types = events.map((e) => e.type);
+  assert.deepEqual(types, ['summary', 'unfinished', 'note', 'note', 'note', 'done']);
+  const unfinished = events.flatMap((e) => (e.type === 'unfinished' ? [e.paragraphs] : []))[0]!;
+  assert.deepEqual(
+    unfinished.map((p) => ({ text: content.slice(p.from, p.to), missing: p.missing })),
+    [{ text: thin, missing: 'a reason to believe the tool is worth it' }],
+  );
+  // The style note on the finished paragraph shows; the clarity note on the unfinished one is held; structure never is.
+  const notes = events.flatMap((e) => (e.type === 'note' ? [e.note] : []));
+  assert.deepEqual(
+    notes.map((n) => [n.quote, n.held ?? false]),
+    [
+      ['explain more and command less', false],
+      ['made a decision about it', true],
+      ['We will utilise the new tool', false],
+    ],
+  );
+  // Clearpen's own findings follow the same rule, by category.
+  const plain = runChecks(content).findings.find((f) => f.kind === 'plain')!;
+  assert.equal(content.slice(plain.from, plain.to), 'utilise');
+  assert.ok(heldBack(unfinished, plain));
+  assert.ok(!heldBack(unfinished, { ...plain, category: 'numbers' }), 'an exact finding is never held');
+  assert.ok(!heldBack(unfinished, { from: 0, to: 5, category: 'clarity' }), 'only inside the paragraph');
+});
+
+test('a paragraph that has made its point keeps its sentence notes, even when the model skips the verdict', async () => {
+  const content = `${'Our team writes everything down. '.repeat(4)}In today's fast-paced world, it is very important. We ship weekly and it works for us most of the time.`;
+  const note = { quote: "In today's fast-paced world", category: 'style', issue: 'Cliché.', suggestion: 'Today' };
+  for (const answer of [
+    JSON.stringify({ summary: 'Fine.', unfinished: [], notes: [note] }),
+    // An answer with no verdict at all: nothing is held, and the margin isn't kept waiting.
+    JSON.stringify({ summary: 'Fine.', notes: [note] }),
+  ]) {
+    const { llm } = fakeLLM({ stream: () => chunks(answer, 9) });
+    const events = await collect(review(llm, { content }));
+    assert.deepEqual(
+      events.map((e) => e.type),
+      ['summary', 'unfinished', 'note', 'done'],
+    );
+    assert.deepEqual(events.flatMap((e) => (e.type === 'unfinished' ? [e.paragraphs] : []))[0], []);
+    assert.equal(events.flatMap((e) => (e.type === 'note' ? [e.note] : []))[0]!.held, undefined);
+  }
 });
 
 test('a rewrite comes back as the few spots that changed, each with its warning', async () => {

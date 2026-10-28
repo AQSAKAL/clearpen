@@ -7,6 +7,7 @@
 
 import { type Sentence, sentences } from './analysis.ts';
 import type { Span } from './anchor.ts';
+import { signpostFindings } from './signposts.ts';
 import { styleFindings } from './style.ts';
 import { termFindings } from './terms.ts';
 
@@ -2077,6 +2078,8 @@ function checkProcedure(c: Ctx): void {
 // ═══════════════════════════════════════════════════════════ entry point
 
 export const CATEGORY_LABELS = {
+  /** The review's note on a paragraph that has not yet made its point (notes.ts). */
+  argument: 'Argument',
   numbers: 'Numbers',
   factcheck: 'Fact-check',
   logic: 'Logic',
@@ -2152,6 +2155,9 @@ export function runChecks(
   checkSpellingVariants(c);
   // The terms registry: used before defined, derived forms, several names for one thing, back after a gap.
   c.out.push(...termFindings(c.text, c.S));
+  // Signposts for the reader who skims — technical and scientific only; the module decides.
+  // The piece's structure before its sentences: a section with no opening outranks a paragraph note on the same words.
+  c.out.push(...signpostFindings(c.text, c.genre, c.S));
   // How it reads comes last: a wrong figure outranks a weak sentence ending on the same words.
   c.out.push(...styleFindings(c.text, c.genre, c.S));
   return { findings: dedupe(c.out), facts: [...new Set(c.facts)] };

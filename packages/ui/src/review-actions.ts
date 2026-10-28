@@ -1,6 +1,13 @@
 // Review and Check. Both start with Clearpen's own checks — exact, instant and
 // offline — and pin those first; the model's notes and verdicts follow.
 // Nothing in the text changes: notes go in the margin.
+//
+// The point-made gate (`heldBack` in core's notes.ts says why): in a review,
+// Clearpen's own sentence-level findings wait for the model's verdict on each
+// paragraph; its exact and structure findings go up at once. A paragraph that
+// has not yet made its point gets one "argument" note saying what it is
+// missing, and the sentence notes inside it — Clearpen's and the model's —
+// are kept under that note until the writer asks to see them.
 
 import {
   type CheckEvent,
@@ -10,6 +17,8 @@ import {
   LENS_CATEGORIES,
   type Lens,
   runChecks,
+  SENTENCE_LEVEL,
+  type Unfinished,
 } from '@clearpen/core';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -89,6 +98,18 @@ const ownNotes = (findings: Finding[]): NoteInput[] =>
     origin: f.category === 'numbers' ? 'software' : 'rule',
   }));
 
+const inside = (p: Unfinished) => (n: NoteInput) => n.from < p.to && n.to > p.from;
+
+/** The one note on a paragraph that has not yet made its point, with the sentence notes it holds back. */
+const unfinishedNote = (p: Unfinished, held: NoteInput[]): NoteInput => ({
+  from: p.from,
+  to: p.to,
+  category: 'argument',
+  title: 'Point not yet made',
+  issue: `This paragraph hasn’t made its point yet: it still needs ${p.missing}. Its sentences can wait until it has.`,
+  held,
+});
+
 /** `openNotes` shows the notes when the margin isn't on screen (a narrow window). */
 export function useReviewActions(openNotes: () => void) {
   const { backend, current, flush } = useLibrary();
@@ -117,23 +138,47 @@ export function useReviewActions(openNotes: () => void) {
       notes.setStop(() => ai.stop());
       notes.setSummary({ state: 'reading', text: '', label: 'Reading your draft…' });
       let finished = false;
+      // Sentence-level findings wait for the verdict on their paragraph; null once it has placed them.
+      let pending: NoteInput[] | null = null;
+      let held = 0;
       try {
         await flush();
-        notes.add(ownNotes(ownChecks(content)), content);
+        const own = ownNotes(ownChecks(content));
+        pending = own.filter((n) => SENTENCE_LEVEL.includes(n.category));
+        notes.add(
+          own.filter((n) => !SENTENCE_LEVEL.includes(n.category)),
+          content,
+        );
         for await (const ev of backend.ai.review({ title: page.title.current, content, brief }, { signal })) {
           if (ev.type === 'notice') notes.setSummary({ label: ev.text });
           else if (ev.type === 'summary') notes.setSummary({ text: ev.text });
-          else if (ev.type === 'note') notes.add([ev.note], content);
+          else if (ev.type === 'unfinished') {
+            const waiting = pending ?? [];
+            const holders = ev.paragraphs.map((p) => unfinishedNote(p, waiting.filter(inside(p))));
+            const shown = waiting.filter((n) => !ev.paragraphs.some((p) => inside(p)(n)));
+            held += waiting.length - shown.length;
+            notes.add([...holders, ...shown], content);
+            pending = null;
+          } else if (ev.type === 'note') {
+            // The flag says where the note goes; the margin keeps its own held list.
+            const { held: wait, ...note } = ev.note;
+            if (wait) held += notes.hold([note], content);
+            else notes.add([note], content);
+          }
         }
         finished = true;
       } finally {
+        // Stopped or failed before the verdicts came: nothing stays hidden.
+        if (pending) notes.add(pending, content);
         notes.setStop(null);
         const n = ed.notes().length;
         notes.setSummary(finished || n ? { state: 'done' } : null);
       }
       const n = ed.notes().length;
       status.show(
-        n ? `${plural(n, 'note')} in the margin — click one to see its passage` : 'No notes — it reads cleanly.',
+        n
+          ? `${plural(n, 'note')} in the margin${held ? `, ${held} held back` : ''} — click one to see its passage`
+          : 'No notes — it reads cleanly.',
       );
     });
   }, [ai, backend, brief, flush, notes, openNotes, ownChecks, page, status]);

@@ -23,18 +23,26 @@ Our pilot cut support tickets from 400 to 300 a month. Each ticket costs $25 to 
 SQLite was first released in 1990.
 `;
 
+const PADDING = {
+  quote: 'saves real money every single month',
+  category: 'concision',
+  issue: 'Padding: “every single” adds nothing.',
+  suggestion: 'saves real money every month',
+};
+
+// The first paragraph has made its point: its sentence note shows.
 const REVIEW: Reply = {
   when: /<draft>/,
+  reply: JSON.stringify({ summary: 'A clear case, with one total to fix.', unfinished: [], notes: [PADDING] }),
+};
+
+// The first paragraph hasn't: the same sentence note waits under one note on the paragraph.
+const UNFINISHED: Reply = {
+  when: /<draft>/,
   reply: JSON.stringify({
-    summary: 'A clear case, with one total to fix.',
-    notes: [
-      {
-        quote: 'saves real money every single month',
-        category: 'concision',
-        issue: 'Padding: “every single” adds nothing.',
-        suggestion: 'saves real money every month',
-      },
-    ],
+    summary: 'The saving is there; the opening never says why it matters.',
+    unfinished: [{ paragraph: 1, missing: 'why the saving matters' }],
+    notes: [PADDING],
   }),
 };
 
@@ -89,6 +97,31 @@ test('Review pins Clearpen’s own findings first, then the editor’s notes', a
   await user.click(card);
   await user.click(within(card).getByRole('button', { name: 'Apply' }));
   await waitFor(() => assert.match(view.state.doc.toString(), /\| Total {4}\| \$10,000 \| \$8,500 \|/));
+  assert.equal(margin().queryByText(/held back/), null);
+});
+
+test('Review holds sentence notes back on a paragraph that hasn’t made its point', async () => {
+  const { user } = await launch([UNFINISHED]);
+  await user.click(screen.getByRole('button', { name: /Review/ }));
+
+  // The exact finding is never held, and the paragraph gets one note saying what it is missing.
+  await waitFor(() => assert.ok(margin().getByText(/add up to \$8,500/)));
+  await waitFor(() => assert.ok(margin().getByText(/it still needs why the saving matters/)));
+  await waitFor(() => assert.ok(margin().getByText('Editor’s notes · 2')), 'the review has finished');
+  // The model's concision note is not in the margin: it waits under the paragraph note.
+  assert.equal(margin().queryByText(/Padding/), null);
+  assert.ok(margin().getByText(/1 sentence note held back until this paragraph makes its point/));
+  assert.ok(document.querySelector('.cm-note-argument'), 'the paragraph is underlined');
+
+  // Asking for them puts them in the margin, pinned to their passages.
+  const card = margin()
+    .getByText(/it still needs/)
+    .closest('[data-note-id]') as HTMLElement;
+  await user.click(card);
+  await user.click(within(card).getByRole('button', { name: 'Show them anyway' }));
+  await waitFor(() => assert.ok(margin().getByText(/Padding/)));
+  assert.equal(margin().queryByText(/held back/), null);
+  assert.ok(margin().getByText('Editor’s notes · 3'));
 });
 
 test('Fact-check on a selection gives a verdict, double-checked, without touching the text', async () => {

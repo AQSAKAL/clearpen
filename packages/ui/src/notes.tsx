@@ -26,6 +26,8 @@ export interface NoteCard {
   origin?: Origin;
   /** The other passage a consistency note is about. */
   related?: string;
+  /** Sentence notes held back under this one until its paragraph makes its point, in the text they were found in. */
+  held?: { list: NoteInput[]; snapshot: string };
 }
 
 export interface NoteInput extends Span {
@@ -36,6 +38,8 @@ export interface NoteInput extends Span {
   verdict?: string;
   origin?: Origin;
   related?: Span;
+  /** Notes to keep under this one, shown only when the writer asks (the point-made gate). */
+  held?: NoteInput[];
 }
 
 export interface NotesSummary {
@@ -55,6 +59,10 @@ export interface NotesValue {
   active: string | null;
   /** Adds notes found in `snapshot` (the text as it was when the work began); returns how many landed. */
   add(list: NoteInput[], snapshot?: string): number;
+  /** Keeps each note under the holder covering its passage, found in the same `snapshot`; one with no holder is shown. Returns how many were kept. */
+  hold(list: NoteInput[], snapshot?: string): number;
+  /** Shows the notes held under `id`. */
+  release(id: string): void;
   /** Removes notes of `categories` inside [from, to) — before a check runs there again. */
   clearIn(from: number, to: number, categories: readonly string[]): void;
   overlaps(from: number, to: number, categories: readonly string[]): boolean;
@@ -121,7 +129,7 @@ export function NotesProvider({ mod, children }: { mod: string; children: ReactN
   const value = useMemo<NotesValue>(() => {
     const ed = () => page.editor.current;
     const text = () => ed()?.getText() ?? '';
-    const add = (list: NoteInput[], snapshot = text()) => {
+    const add = (list: NoteInput[], snapshot = text()): number => {
       const editor = ed();
       if (!editor) return 0;
       const now = editor.getText();
@@ -130,9 +138,14 @@ export function NotesProvider({ mod, children }: { mod: string; children: ReactN
       // Never two notes of a kind on the same words.
       const taken = (category: string, at: Span) =>
         [...existing, ...fresh].some((n) => n.category === category && n.from < at.to && at.from < n.to);
+      // Notes held under a holder that can't be placed are shown instead: nothing is lost.
+      const orphans: NoteInput[] = [];
       for (const x of list) {
         const at = relocate(x, snapshot, now);
-        if (!at || taken(x.category, at)) continue;
+        if (!at || taken(x.category, at)) {
+          if (x.held) orphans.push(...x.held);
+          continue;
+        }
         const id = `n${++seq.current}`;
         const quote = now.slice(at.from, at.to);
         cards.current.set(id, {
@@ -144,12 +157,37 @@ export function NotesProvider({ mod, children }: { mod: string; children: ReactN
           ...(x.verdict ? { verdict: x.verdict } : {}),
           ...(x.origin ? { origin: x.origin } : {}),
           ...(x.related ? { related: snapshot.slice(x.related.from, x.related.to) } : {}),
+          ...(x.held ? { held: { list: [...x.held], snapshot } } : {}),
         });
         fresh.push({ id, from: at.from, to: at.to, category: x.category });
       }
       if (fresh.length) editor.setNotes([...existing, ...fresh].sort((a, b) => a.from - b.from));
       sync();
-      return fresh.length;
+      return fresh.length + (orphans.length ? add(orphans, snapshot) : 0);
+    };
+
+    const hold = (list: NoteInput[], snapshot = text()): number => {
+      const editor = ed();
+      if (!editor) return 0;
+      const now = editor.getText();
+      const shown: NoteInput[] = [];
+      let kept = 0;
+      for (const x of list) {
+        const at = relocate(x, snapshot, now);
+        const holder =
+          at &&
+          editor.notes().find((n) => {
+            const h = cards.current.get(n.id)?.held;
+            return h?.snapshot === snapshot && n.from < at.to && at.from < n.to;
+          });
+        if (holder) {
+          cards.current.get(holder.id)!.held!.list.push(x);
+          kept++;
+        } else shown.push(x);
+      }
+      if (shown.length) add(shown, snapshot);
+      else sync();
+      return kept;
     };
 
     const dismiss = (id: string) => {
@@ -165,6 +203,14 @@ export function NotesProvider({ mod, children }: { mod: string; children: ReactN
       summary,
       active,
       add,
+      hold,
+      release(id) {
+        const c = cards.current.get(id);
+        if (!c?.held) return;
+        const { held, ...rest } = c;
+        cards.current.set(id, rest);
+        add(held.list, held.snapshot);
+      },
       clearIn(from, to, categories) {
         const editor = ed();
         for (const n of editor?.notes() ?? []) {

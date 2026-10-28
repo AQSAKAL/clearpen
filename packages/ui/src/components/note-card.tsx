@@ -28,6 +28,7 @@ export const NoteCardView = forwardRef<
   const c = notes.card(id);
   if (!c) return null;
   const fixWarning = c.suggestion && c.quote ? warning(c.quote, c.suggestion) : '';
+  const held = c.held?.list.length ?? 0;
   return (
     // biome-ignore lint/a11y/useSemanticElements: a card that also holds its own buttons.
     <div
@@ -70,6 +71,11 @@ export const NoteCardView = forwardRef<
       )}
       {fixWarning && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">⚠ {fixWarning}</p>}
       {c.origin && <p className="mt-2 text-xs text-muted-foreground">{ORIGIN[c.origin]}</p>}
+      {held > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {held} sentence note{held === 1 ? '' : 's'} held back until this paragraph makes its point.
+        </p>
+      )}
       {open && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {c.suggestion && (
@@ -81,6 +87,18 @@ export const NoteCardView = forwardRef<
               }}
             >
               Apply
+            </Button>
+          )}
+          {held > 0 && (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                notes.release(id);
+              }}
+            >
+              Show them anyway
             </Button>
           )}
           {c.related && (

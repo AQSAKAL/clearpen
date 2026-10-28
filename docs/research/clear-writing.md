@@ -98,9 +98,8 @@ Chapin's observation on Graham's own prose: what makes it work is not the plainn
 
 An expert editor judges a paragraph by what it does for the argument before judging how it reads (Hayes; Bereiter & Scardamalia); sentence clarity is the lowest of three levels (Hobbs); real documents have many faults at once and the editor triages (Eisenberg).
 
-- **Prompt:** the review reads at three named levels and reports in that order: the argument, the structure, the sentences. Sentence notes on a paragraph that has not made its point "are not worth making".
-- **Code:** the engine's exact checks run first and the style findings last, so a wrong figure outranks a weak ending on the same words; the model is handed what code already flagged and told not to repeat it.
-- **Not yet:** suppressing sentence notes until the paragraph judge says "point made".
+- **Prompt:** the review reads at three named levels and reports in that order: the argument, the structure, the sentences. Sentence notes on a paragraph that has not made its point "are not worth making"; before any note, the same call lists the paragraphs that have not yet made their point, by number, with what each is missing.
+- **Code:** the engine's exact checks run first and the style findings last, so a wrong figure outranks a weak ending on the same words; the model is handed what code already flagged and told not to repeat it. On a paragraph the model listed as unfinished, `heldBack` holds the sentence-level notes — the style findings, and the model's clarity, concision and style notes — under one note on the paragraph saying what it is missing, shown on request; exact checks and structure notes are never held.
 
 ### 2.11 Say what you found, early
 
@@ -114,8 +113,8 @@ Most readers never get past the opening. An abstract or lede that says what the 
 Pak's readers read titles, maybe abstracts, maybe the introduction, and skip to the main result; Halevi's reviewer has a few hours and does not remember earlier sections. Both want the structure described before the details, important things said more than once, pointers forward and back, no detours, no notation where words would do, no tale of how hard the problem was. (Pak; Halevi.)
 
 - **Prompt:** `READERS` gives the review a reader per kind of piece, and the scientific reader is this one.
-- **Code:** in the scientific and technical genres, `spatial-ref` flags "the figure below" (figures move when the page is laid out again) and `significant` asks whether the word means a test or just "large".
-- **Not yet:** section openings that say what the section does, a signpost count, a notation registry, citation-range and locator checks.
+- **Code:** in the scientific and technical genres, `spatial-ref` flags "the figure below" (figures move when the page is laid out again) and `significant` asks whether the word means a test or just "large". The signposts (`signposts.ts`), in the same genres: `section-opening` flags a section of three paragraphs or more whose first sentence neither says what the section does ("This section…", "We now…", show, prove, describe, compare) nor states a claim with a number, a named thing or a result verb; `vague-pointer` flags "as discussed above", "see below", "later" and "previously" in a sentence that names no section, figure, table or theorem, and names the place itself when only one section lies that way; `no-map` leaves one note on an introduction to four or more sections with no pointer forward ("Section 2", "we first… then…", "the rest of this paper", a list of the parts); and, in the scientific genre only, `hardship` flags a sentence about how hard the problem was ("after many attempts", "surprisingly difficult", "it took us").
+- **Not yet:** a notation registry, citation-range and locator checks.
 
 ### 2.13 Writing is thinking: views and questions, not answers
 
@@ -158,4 +157,4 @@ Choosing "A scientific paper" in Insights sets the article's genre. It changes t
 
 ## 5. Next
 
-In rough order of value, each grounded above: a terms list with every name used for one thing (2.5); gating sentence notes behind "point made" (2.10); a Simplify diff guard (2.9); section openings and signposts for the technical genres (2.12); a notation and defined-term registry with long-gap reminders (2.7); two alternatives for stylistic edits (2.14); a free-write mode with a discovery pass, sentence cards, and the brief as five reader questions (2.13).
+In rough order of value, each grounded above: a terms list with every name used for one thing (2.5); gating sentence notes behind "point made" (2.10); a Simplify diff guard (2.9); a notation and defined-term registry with long-gap reminders (2.7); two alternatives for stylistic edits (2.14); a free-write mode with a discovery pass, sentence cards, and the brief as five reader questions (2.13).

@@ -12,10 +12,10 @@ export function completedString(text: string, key: string): string | null {
   }
 }
 
-/** Every object in the array under `key` that has been completely written so far. */
-export function completedItems(text: string, key: string): unknown[] {
+/** The objects written so far in the array under `key`, and whether its closing bracket has arrived. */
+function scanArray(text: string, key: string): { items: unknown[]; closed: boolean } | null {
   const k = text.search(new RegExp(`"${key}"\\s*:\\s*\\[`));
-  if (k === -1) return [];
+  if (k === -1) return null;
   const items: unknown[] = [];
   let depth = 0;
   let start = -1;
@@ -42,8 +42,19 @@ export function completedItems(text: string, key: string): unknown[] {
         start = -1;
       }
     } else if (ch === ']' && depth === 0) {
-      break;
+      return { items, closed: true };
     }
   }
-  return items;
+  return { items, closed: false };
+}
+
+/** Every object in the array under `key` that has been completely written so far. */
+export function completedItems(text: string, key: string): unknown[] {
+  return scanArray(text, key)?.items ?? [];
+}
+
+/** The whole array under `key` once its closing bracket has arrived, or null while it is still being written. */
+export function completedArray(text: string, key: string): unknown[] | null {
+  const a = scanArray(text, key);
+  return a?.closed ? a.items : null;
 }

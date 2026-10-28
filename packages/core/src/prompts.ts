@@ -481,27 +481,41 @@ Read at three levels, and give your notes in that order of importance:
 1. The argument: a claim with nothing to support it; a step that does not follow; a paragraph that never says why its point matters; an opening that promises a topic but withholds what was found or argued.
 2. The structure: a sentence that opens on something new and ends on what the reader already knew; a paragraph whose sentences each open on a different subject, so no story holds; a step between two sentences left for the reader to guess; an aside that interrupts a subject on its way to its verb; a term or initials used before they are explained; a list told in prose.
 3. The sentences: an action hidden in a noun ("made a decision" for "decided"); a word that repeats an idea already there; a pompous word with a plain twin; a tired phrase; a sentence that trails off on an afterthought.
-Sentence notes on a paragraph that has not yet made its point are not worth making.
+Sentence notes on a paragraph that has not yet made its point are not worth making: say what the paragraph is missing instead.
 
 Do not nitpick, and never invent problems: a strong draft gets few notes. Never praise inside notes. Never flag "I think" or an honest "I'm not sure": a hedge that says how sure the author is carries information. A word repeated into the next sentence to carry the thought is not repetition, and a single question, intensifier or informal phrase is voice, not padding — flag these only when they run through a whole passage. A passive is wrong only when it hides who did something the reader needs to know; length alone is never the problem. A suggestion must actually fix the problem you name — if you flag a cliché, your replacement must not contain it.`;
+
+/** How much of the draft the review reads. */
+export const REVIEW_CHARS = 24_000;
 
 export function reviewMessages({
   title = '',
   content,
   brief,
   facts = '',
+  paragraphs = [],
 }: {
   title?: string;
   content: string;
   brief?: Brief;
   /** What Clearpen's own checks found, so the model doesn't repeat them. */
   facts?: string;
+  /** The opening words of each paragraph to judge, numbered from 1 in the prompt (`judgedParagraphs`). */
+  paragraphs?: string[];
 }): ChatMessage[] {
   const genre = brief?.genre ?? 'article';
   const structural =
     genre === 'scientific' || genre === 'technical' || genre === 'business' || genre === 'investment'
       ? `\nFor this kind of piece, also check the opening: if the first paragraphs never state the main result or recommendation, or never say what is new here, leave one note on the first sentence saying what the reader is still waiting for.\n`
       : '';
+  // The verdict on each paragraph comes before the notes, by number: a model
+  // about to polish a sentence always finds a reason to (see notes.ts).
+  const judged = paragraphs.length
+    ? `\nIts paragraphs, numbered by their opening words:\n${paragraphs.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n`
+    : '';
+  const verdicts = paragraphs.length
+    ? 'the numbered paragraphs that have not yet made their point — no claim stated, or a claim with nothing behind it (a reason, evidence, an example or an experience), or no word on why it matters or what follows. Judge these before writing any note. Each has "paragraph" (its number) and "missing" (what it still needs, in a few plain words, such as "a reason to believe the claim"). A paragraph that does its job, including a short lead-in or transition, is not listed.'
+    : 'an empty list.';
   return [
     {
       role: 'system',
@@ -512,11 +526,12 @@ export function reviewMessages({
       content: `Title: ${title || '(untitled)'}
 ${withBrief(brief, '\nBrief:\n', '\n')}
 <draft>
-${head(content, 24000)}
+${head(content, REVIEW_CHARS)}
 </draft>
-${facts ? `\n${facts}\n` : ''}${structural}
+${facts ? `\n${facts}\n` : ''}${structural}${judged}
 Review this draft. Return JSON with:
 - "summary": two or three sentences of overall assessment — the draft's biggest strength and the most important thing to fix.
+- "unfinished": ${verdicts}
 - "notes": up to 10 margin notes (fewer if the draft is strong), the most important first. Each note has:
   - "quote": the exact words from the draft the note is about, copied character for character (one phrase or sentence, 4 to 40 words);
   - "category": one of ${NOTE_CATEGORIES.join(', ')};
@@ -528,8 +543,18 @@ Review this draft. Return JSON with:
 
 export const reviewSchema: JsonSchema = {
   type: 'object',
+  // In this order: the model server's grammar emits properties as listed, so
+  // the summary streams first and every verdict arrives before the notes.
   properties: {
     summary: { type: 'string' },
+    unfinished: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { paragraph: { type: 'integer' }, missing: { type: 'string' } },
+        required: ['paragraph', 'missing'],
+      },
+    },
     notes: {
       type: 'array',
       items: {
@@ -544,7 +569,7 @@ export const reviewSchema: JsonSchema = {
       },
     },
   },
-  required: ['summary', 'notes'],
+  required: ['summary', 'unfinished', 'notes'],
 };
 
 // ─────────────────────────────────────────────────────────── checking a passage
