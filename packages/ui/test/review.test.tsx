@@ -107,7 +107,7 @@ test('Review holds sentence notes back on a paragraph that hasn’t made its poi
   // The exact finding is never held, and the paragraph gets one note saying what it is missing.
   await waitFor(() => assert.ok(margin().getByText(/add up to \$8,500/)));
   await waitFor(() => assert.ok(margin().getByText(/it still needs why the saving matters/)));
-  await waitFor(() => assert.ok(margin().getByText('Editor’s notes · 2')), 'the review has finished');
+  await waitFor(() => assert.ok(margin().getByText('Editor’s notes · 2'), 'the review has finished'));
   // The model's concision note is not in the margin: it waits under the paragraph note.
   assert.equal(margin().queryByText(/Padding/), null);
   assert.ok(margin().getByText(/1 sentence note held back until this paragraph makes its point/));
