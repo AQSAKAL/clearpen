@@ -87,6 +87,24 @@ describe('ghost text', () => {
     expect(ed.suggestions()).toHaveLength(1);
   });
 
+  test('a frame shows the sentence to complete with its blank, and nothing takes it', () => {
+    const ed = mount('');
+    ed.setSelection(0);
+    ed.showGhost(0, '', 'I feel ___ today.', 'frame');
+    expect(all(ed, '.cm-ghost.cm-ghost-frame').map((el) => el.textContent)).toEqual(['I feel  today.']);
+    expect(all(ed, '.cm-ghost-blank')).toHaveLength(1);
+    expect(ed.ghost()).toEqual({ pos: 0, text: '', display: 'I feel ___ today.', kind: 'frame' });
+    expect(ed.acceptGhost()).toBe(false);
+    press(ed, 'Tab');
+    press(ed, 'ArrowRight', { mod: true });
+    expect(ed.getText()).toBe('');
+    expect(ed.ghost()).not.toBeNull();
+    // The first keystroke takes it away: the author types the whole sentence.
+    ed.insertAt(0, 'I');
+    expect(ed.ghost()).toBeNull();
+    expect(all(ed, '.cm-ghost')).toHaveLength(0);
+  });
+
   test('clearGhost and acceptGhost with nothing showing', () => {
     const ed = mount('Text');
     ed.clearGhost();

@@ -5,6 +5,7 @@ import { createAnchorer, type Span } from '../anchor.ts';
 import { factsBlock, runChecks } from '../checks.ts';
 import { completedItems, completedString } from '../jsonstream.ts';
 import type { LLMClient } from '../llm/client.ts';
+import { checkOptions } from '../modes.ts';
 import * as P from '../prompts.ts';
 import { InputError, loadingNotice, type NoticeEvent, type TaskOptions, wordCount } from './common.ts';
 
@@ -44,8 +45,9 @@ export async function* review(
   if (notice) yield notice;
 
   // What Clearpen's own checks found goes to the model as settled, so the
-  // notes it adds are the ones only a reader can make.
-  const exact = runChecks(content, { genre: input.brief?.genre || 'article', sources: input.brief?.notes || '' });
+  // notes it adds are the ones only a reader can make. (In a free-writing
+  // mode the checks are off and the model listens rather than edits.)
+  const exact = runChecks(content, checkOptions(input.brief));
   const facts = factsBlock(exact);
 
   const place = createAnchorer(content);

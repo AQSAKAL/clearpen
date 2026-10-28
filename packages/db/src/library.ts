@@ -142,6 +142,11 @@ const clean = {
       notes: s(b.notes, 20000),
     };
     if (b.genre) out.genre = s(b.genre, 40);
+    if (b.mode) out.mode = s(b.mode, 40);
+    // Where the author is in a guided template: the template and the frame to fill next.
+    const g = b.guide && typeof b.guide === 'object' ? (b.guide as Record<string, unknown>) : null;
+    if (g && typeof g.template === 'string' && g.template && Number.isInteger(g.step) && (g.step as number) >= 0)
+      out.guide = { template: s(g.template, 40), step: g.step as number };
     return out;
   },
   meta: (v: unknown): Meta | null => (v && typeof v === 'object' ? normaliseMeta(v) : null),

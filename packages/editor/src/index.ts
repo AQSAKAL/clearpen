@@ -276,8 +276,8 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
     },
 
     // Ghost text
-    showGhost(pos, text, display = '') {
-      view.dispatch({ effects: setGhost.of({ pos, text, display }) });
+    showGhost(pos, text, display = '', kind) {
+      view.dispatch({ effects: setGhost.of({ pos, text, display, ...(kind ? { kind } : {}) }) });
     },
     ghost: () => view.state.field(ghostField),
     clearGhost() {

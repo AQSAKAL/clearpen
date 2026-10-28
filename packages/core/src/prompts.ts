@@ -8,7 +8,9 @@
 // - One focused job per prompt: small models do one job well and five badly.
 
 import { firstWord, notesProgress, paragraphSentences, splitParagraph } from './autocomplete.ts';
+import type { Template } from './guide.ts';
 import type { Lens } from './intent.ts';
+import { modeOf } from './modes.ts';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -27,7 +29,12 @@ export interface Brief {
   length?: string;
   /** The writer's research notes and sources — the only facts the AI may add. */
   notes?: string;
+  /** What kind of piece: which checks run and who the review reads for (see `GENRES`). */
   genre?: string;
+  /** The writing mode (see `MODES`); a mode sets the genre. */
+  mode?: string;
+  /** Where the author is in a guided template: which one, and the frame to fill next. */
+  guide?: { template: string; step: number };
 }
 
 export interface OutlineSection {
@@ -91,7 +98,7 @@ export const READERS: Record<string, string> = {
     'The reader is a portfolio manager who reads the thesis and the valuation first, holds every figure against the tables, and distrusts any forecast stated as a fact.',
 };
 
-const readerLine = (brief?: Brief) => READERS[brief?.genre ?? ''] ?? READERS.article!;
+const readerLine = (brief?: Brief) => READERS[modeOf(brief).genre] ?? READERS.article!;
 
 // ─────────────────────────────────────────────────────────── the next logical sentence
 
@@ -429,6 +436,7 @@ export function thinkMessages({
 }: ThinkInput): ChatMessage[] {
   const k = THINK_KINDS[kind];
   const groups = k.groups.map(([label, what]) => `  - "${label}": ${what}`).join('\n');
+  const coach = modeOf(brief).coach;
   return [
     { role: 'system', content: COACH_SYSTEM },
     {
@@ -439,7 +447,7 @@ The author's text so far:
 <<<
 ${clip(before, 9000) || '(nothing yet)'}
 >>>
-${passage ? `\nThe selected passage:\n<<<\n${head(passage, 4000)}\n>>>\n` : ''}${notes.length ? `\nThe author's own notes for this section:\n${notes.map((n) => `- ${n}`).join('\n')}\n` : ''}${after.trim() ? `\nWhat comes after:\n<<<\n${head(after, 1500)}\n>>>\n` : ''}
+${passage ? `\nThe selected passage:\n<<<\n${head(passage, 4000)}\n>>>\n` : ''}${notes.length ? `\nThe author's own notes for this section:\n${notes.map((n) => `- ${n}`).join('\n')}\n` : ''}${after.trim() ? `\nWhat comes after:\n<<<\n${head(after, 1500)}\n>>>\n` : ''}${coach ? `\n${coach}\n` : ''}
 ${k.task.replace('{heading}', heading)}
 
 Return JSON {"groups": [{"label": "...", "items": ["...", "..."]}]} with these groups, in this order:
@@ -464,10 +472,91 @@ export const thinkSchema: JsonSchema = {
   required: ['groups'],
 };
 
+// ─────────────────────────────────────────────────────────── guided writing
+
+// A template's frames are questions in the shape of a sentence; the author
+// types the whole sentence. After each, the coach may ask one question about
+// what it leaves unsaid, and asks the next frame's question. The judge's
+// verdict on the paragraph (autocomplete.ts) comes in as `missing`, decided
+// by code. The coach never fills a blank: a reply is kept only when it is a
+// question (tasks/guide.ts).
+export interface GuidePromptInput {
+  title?: string;
+  brief?: Brief;
+  template: Template;
+  /** The frame just filled, as an index into the template's frames. */
+  step: number;
+  /** The author's text so far. */
+  before?: string;
+  /** The sentence that filled the frame. */
+  sentence: string;
+  /** What the paragraph is still missing, from `paragraphVerdict`, or ''. */
+  missing?: string;
+}
+
+export function guideMessages({
+  title = '',
+  brief,
+  template,
+  step,
+  before = '',
+  sentence,
+  missing = '',
+}: GuidePromptInput): ChatMessage[] {
+  const frames = template.frames
+    .map((f, i) => {
+      const state = i < step ? ' — filled' : i === step ? ' — just filled' : i === step + 1 ? ' — next' : '';
+      return `${i + 1}. "${f.text}"${state}`;
+    })
+    .join('\n');
+  const next = template.frames[step + 1];
+  const coach = modeOf(brief).coach;
+  return [
+    { role: 'system', content: COACH_SYSTEM },
+    {
+      role: 'user',
+      content: `Title: ${title || '(untitled)'}
+${withBrief(brief, '\nBrief:\n', '\n')}
+The author is writing with a template, "${template.label}": ${template.about}. They complete one frame at a time — a sentence with a blank — and you ask the next question. You never fill a blank and never write a sentence for them.
+
+The frames, in order:
+${frames}
+
+Their text so far:
+<<<
+${clip(before, 6000) || '(nothing yet)'}
+>>>
+
+The sentence that just filled frame ${step + 1}: "${sentence}"
+${missing ? `\nThe paragraph is still missing ${missing}.\n` : ''}${coach ? `\n${coach}\n` : ''}
+Return JSON {"missing": "...", "next": "..."}:
+- "missing": one question, in your voice as a coach, about what this sentence leaves unsaid — what a listener would still want to know — or "" when it says enough. A question, never words for the author to use.
+- "next": ${next ? `the question frame ${step + 2} asks, put to this author about their own situation in your words — never the frame itself, and never a sentence they could paste into the piece.` : '"" — there is no next frame.'}`,
+    },
+  ];
+}
+
+export const guideSchema: JsonSchema = {
+  type: 'object',
+  properties: { missing: { type: 'string' }, next: { type: 'string' } },
+  required: ['missing', 'next'],
+};
+
 // ─────────────────────────────────────────────────────────── review
 
-export const NOTE_CATEGORIES = ['clarity', 'concision', 'structure', 'evidence', 'tone', 'grammar', 'style'] as const;
+export const NOTE_CATEGORIES = [
+  'clarity',
+  'concision',
+  'structure',
+  'evidence',
+  'tone',
+  'grammar',
+  'style',
+  'idea',
+] as const;
 export type NoteCategory = (typeof NOTE_CATEGORIES)[number];
+/** The editor's categories; `idea` is the listener's. */
+const EDITOR_CATEGORIES = NOTE_CATEGORIES.filter((c) => c !== 'idea');
 
 // The review reads at three levels and reports in that order — the argument,
 // then the structure, then the sentences — because a clear thought in a
@@ -485,6 +574,13 @@ Sentence notes on a paragraph that has not yet made its point are not worth maki
 
 Do not nitpick, and never invent problems: a strong draft gets few notes. Never praise inside notes. Never flag "I think" or an honest "I'm not sure": a hedge that says how sure the author is carries information. A word repeated into the next sentence to carry the thought is not repetition, and a single question, intensifier or informal phrase is voice, not padding — flag these only when they run through a whole passage. A passive is wrong only when it hides who did something the reader needs to know; length alone is never the problem. A suggestion must actually fix the problem you name — if you flag a cliché, your replacement must not contain it.`;
 
+// Free writing is read by a listener, not an editor. The author wrote to
+// think, and what they want afterwards is to hear what is there — the idea
+// worth following, the thing they circled without saying, a claim they could
+// test — never a correction. (Galbraith's discovery pass; a question joins
+// the author's thinking where an answer would replace it.)
+const LISTENER_SYSTEM = `You are a careful listener, not an editor. The author has been writing to think — free writing, a journal entry, a problem worked through on the page — and now wants to hear what is there. You never correct the prose: not grammar, wording, length, repetition or structure, and you never suggest replacement words. You read for the thinking. Each note is an observation or a question in one plain sentence, in your own voice, and never praise or a fix. Never invent what the author did not write, and never answer a question the author is working on: a question joins their own thinking where an answer would replace it. You answer only with JSON.`;
+
 export function reviewMessages({
   title = '',
   content,
@@ -497,15 +593,32 @@ export function reviewMessages({
   /** What Clearpen's own checks found, so the model doesn't repeat them. */
   facts?: string;
 }): ChatMessage[] {
-  const genre = brief?.genre ?? 'article';
+  const mode = modeOf(brief);
+  const genre = mode.genre;
+  const listener = mode.review === 'listener';
   const structural =
-    genre === 'scientific' || genre === 'technical' || genre === 'business' || genre === 'investment'
+    !listener && (genre === 'scientific' || genre === 'technical' || genre === 'business' || genre === 'investment')
       ? `\nFor this kind of piece, also check the opening: if the first paragraphs never state the main result or recommendation, or never say what is new here, leave one note on the first sentence saying what the reader is still waiting for.\n`
       : '';
+  const ask = listener
+    ? `Listen to this draft. Return JSON with:
+- "summary": two or three sentences: what this writing is about, as you heard it, and the one idea most worth following.
+- "notes": up to 5 margin notes, the most useful first. Each note has:
+  - "quote": the exact words from the draft the note is about, copied character for character (one phrase or sentence, 4 to 40 words);
+  - "category": "idea" for an idea worth following or a wish the author states, "evidence" for a claim they could test against something, "clarity" for something they circle without quite saying;
+  - "issue": what you heard there — an observation, or a question to the author — in one plain sentence;
+  - "suggestion": always "".`
+    : `Review this draft. Return JSON with:
+- "summary": two or three sentences of overall assessment — the draft's biggest strength and the most important thing to fix.
+- "notes": up to 10 margin notes (fewer if the draft is strong), the most important first. Each note has:
+  - "quote": the exact words from the draft the note is about, copied character for character (one phrase or sentence, 4 to 40 words);
+  - "category": one of ${EDITOR_CATEGORIES.join(', ')};
+  - "issue": what a reader does at this passage and why that is a problem, in one plain sentence;
+  - "suggestion": the replacement text for the quoted words, built from the author's own words, or "" if the fix needs the author (for example a missing source or an unstated step).`;
   return [
     {
       role: 'system',
-      content: `${REVIEW_SYSTEM}\n\n${readerLine(brief)} Read on their behalf.`,
+      content: listener ? LISTENER_SYSTEM : `${REVIEW_SYSTEM}\n\n${readerLine(brief)} Read on their behalf.`,
     },
     {
       role: 'user',
@@ -515,13 +628,7 @@ ${withBrief(brief, '\nBrief:\n', '\n')}
 ${head(content, 24000)}
 </draft>
 ${facts ? `\n${facts}\n` : ''}${structural}
-Review this draft. Return JSON with:
-- "summary": two or three sentences of overall assessment — the draft's biggest strength and the most important thing to fix.
-- "notes": up to 10 margin notes (fewer if the draft is strong), the most important first. Each note has:
-  - "quote": the exact words from the draft the note is about, copied character for character (one phrase or sentence, 4 to 40 words);
-  - "category": one of ${NOTE_CATEGORIES.join(', ')};
-  - "issue": what a reader does at this passage and why that is a problem, in one plain sentence;
-  - "suggestion": the replacement text for the quoted words, built from the author's own words, or "" if the fix needs the author (for example a missing source or an unstated step).`,
+${ask}`,
     },
   ];
 }

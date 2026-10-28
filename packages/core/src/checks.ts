@@ -31,7 +31,9 @@ export type Category =
   | 'evidence'
   | 'tone'
   | 'grammar'
-  | 'style';
+  | 'style'
+  /** A listener's note on free writing: an idea worth following. */
+  | 'idea';
 
 /** A number as written in the text. */
 export interface NumberToken {
@@ -2090,6 +2092,7 @@ export const CATEGORY_LABELS = {
   tone: 'Tone',
   grammar: 'Grammar',
   style: 'Style',
+  idea: 'Idea',
 };
 
 /** One finding per passage per category, and never two on the identical span. */
@@ -2106,17 +2109,28 @@ function dedupe(list: Finding[]): Finding[] {
   return kept.sort((a, b) => a.from - b.from || a.to - b.to);
 }
 
+export interface CheckOptions {
+  genre?: string;
+  /** The writer's own notes and sources. */
+  sources?: string;
+  /** Whether to run at all: a free-writing mode turns Clearpen's checks off (see `checkOptions` in modes.ts). */
+  checks?: boolean;
+  /** Whether to note how the prose reads (the style findings) as well as what it gets wrong. */
+  style?: boolean;
+}
+
 /**
  * Runs every check that applies to `genre`.
  * @param {string} text  the draft (Markdown)
- * @param {{ genre?: string, sources?: string }} opts  `sources`: the writer's own notes
+ * @param {CheckOptions} opts
  * @returns {{ findings: Array<{from,to,kind,category,title,message,suggestion?,related?}>, facts: string[] }}
  *   `facts` state every calculation made — right or wrong — for a model to treat as ground truth.
  */
 export function runChecks(
   text: string,
-  { genre = 'article', sources = '' }: { genre?: string; sources?: string } = {},
+  { genre = 'article', sources = '', checks = true, style = true }: CheckOptions = {},
 ): CheckResult {
+  if (!checks) return { findings: [], facts: [] };
   const c: Ctx = {
     text,
     genre: (GENRES as readonly string[]).includes(genre) ? (genre as Genre) : 'article',
@@ -2150,10 +2164,12 @@ export function runChecks(
   checkLogic(c);
   checkNames(c);
   checkSpellingVariants(c);
-  // The terms registry: used before defined, derived forms, several names for one thing, back after a gap.
-  c.out.push(...termFindings(c.text, c.S));
-  // How it reads comes last: a wrong figure outranks a weak sentence ending on the same words.
-  c.out.push(...styleFindings(c.text, c.genre, c.S));
+  if (style) {
+    // The terms registry: used before defined, derived forms, several names for one thing, back after a gap.
+    c.out.push(...termFindings(c.text, c.S));
+    // How it reads comes last: a wrong figure outranks a weak sentence ending on the same words.
+    c.out.push(...styleFindings(c.text, c.genre, c.S));
+  }
   return { findings: dedupe(c.out), facts: [...new Set(c.facts)] };
 }
 

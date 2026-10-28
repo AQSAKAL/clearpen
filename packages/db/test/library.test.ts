@@ -65,6 +65,28 @@ test('articles: create, save, list newest first', async () => {
   await rejects(lib.documents.update('nope', { title: 'x' }), 404);
 });
 
+test('the brief keeps its mode and its place in a guided template, and drops what it does not know', async () => {
+  const lib = await open();
+  const a = await lib.documents.create({
+    brief: { mode: 'reflect', genre: 'article', guide: { template: 'reflect', step: 1 }, bogus: 1 } as never,
+  });
+  assert.deepEqual(a.brief, {
+    topic: '',
+    audience: '',
+    angle: '',
+    tone: '',
+    length: '',
+    notes: '',
+    genre: 'article',
+    mode: 'reflect',
+    guide: { template: 'reflect', step: 1 },
+  });
+  await lib.documents.update(a.id, { brief: { ...a.brief, guide: { template: 'reflect', step: -1 } } });
+  assert.equal((await lib.documents.get(a.id))?.brief.guide, undefined);
+  await lib.documents.update(a.id, { brief: { mode: 'clear' } });
+  assert.equal((await lib.documents.get(a.id))?.brief.genre, undefined, 'the brief is replaced, not merged');
+});
+
 test('search looks in titles and text, and treats % and _ literally', async () => {
   const lib = await open();
   const a = await lib.documents.create({ title: 'Shared inbox', content: 'Tickets fell by 25%.' });

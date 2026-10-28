@@ -244,6 +244,18 @@
   opacity: 0.7;
   vertical-align: 2px;
 }
+/* A guided frame: a sentence to complete, in the prose's own face; nothing to insert. */
+.cm-ghost-frame {
+  color: var(--faint);
+  font-style: italic;
+}
+.cm-ghost-blank {
+  display: inline-block;
+  min-width: 3.5em;
+  border-bottom: 1px solid var(--faint);
+  vertical-align: baseline;
+  line-height: 0.9;
+}
 
 /* ───────────────────────────────────────── autocorrect: a fix, underlined for a moment */
 
@@ -429,6 +441,9 @@
 }
 .cm-note-coach {
   --note-c: var(--ai);
+}
+.cm-note-idea {
+  --note-c: var(--c-idea);
 }
 
 /* ───────────────────────────────────────── writing analysis */

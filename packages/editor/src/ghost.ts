@@ -1,6 +1,7 @@
 // Ghost text: autocomplete's suggestion in grey at the cursor, the rest of the
 // sentence. Tab takes it; any edit or cursor move makes it go away — except
-// autocorrect's fixes, which it moves with.
+// autocorrect's fixes, which it moves with. A guided-writing frame is a ghost
+// with nothing to insert: shown, never taken.
 
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
@@ -9,24 +10,43 @@ import type { Ghost } from './types.ts';
 
 export const setGhost = StateEffect.define<Ghost | null>();
 
+/** The blank in a frame: "I feel ___ today." */
+const BLANK = '___';
+
 // `display` shows something other than what Tab inserts — "¶ point made"
-// for a paragraph break.
+// for a paragraph break — and, for a frame, the sentence to complete.
 class GhostWidget extends WidgetType {
   readonly text: string;
   readonly display: string | undefined;
+  readonly kind: Ghost['kind'];
 
-  constructor(text: string, display: string | undefined) {
+  constructor(text: string, display: string | undefined, kind: Ghost['kind']) {
     super();
     this.text = text;
     this.display = display;
+    this.kind = kind;
   }
 
   override eq(other: GhostWidget): boolean {
-    return other.text === this.text && other.display === this.display;
+    return other.text === this.text && other.display === this.display && other.kind === this.kind;
   }
 
   toDOM(): HTMLElement {
     const span = document.createElement('span');
+    if (this.kind === 'frame') {
+      span.className = 'cm-ghost cm-ghost-frame';
+      const parts = (this.display || this.text).split(BLANK);
+      parts.forEach((part, i) => {
+        if (i) {
+          const blank = document.createElement('span');
+          blank.className = 'cm-ghost-blank';
+          blank.setAttribute('aria-label', 'blank');
+          span.appendChild(blank);
+        }
+        if (part) span.appendChild(document.createTextNode(part));
+      });
+      return span;
+    }
     span.className = this.display ? 'cm-ghost cm-ghost-hint' : 'cm-ghost';
     span.textContent = this.display || this.text;
     return span;
@@ -49,13 +69,15 @@ export const ghostField = StateField.define<Ghost | null>({
   },
   provide: (f) =>
     EditorView.decorations.from(f, (v) =>
-      v?.text
-        ? Decoration.set([Decoration.widget({ widget: new GhostWidget(v.text, v.display), side: 1 }).range(v.pos)])
+      v && (v.text || v.display)
+        ? Decoration.set([
+            Decoration.widget({ widget: new GhostWidget(v.text, v.display, v.kind), side: 1 }).range(v.pos),
+          ])
         : Decoration.none,
     ),
 });
 
-/** Inserts the ghost text, or with `wordOnly` just its next word. False when there's nothing to take. */
+/** Inserts the ghost text, or with `wordOnly` just its next word. False when there's nothing to take — a frame included. */
 export function acceptGhost(view: EditorView, { wordOnly = false }: { wordOnly?: boolean } = {}): boolean {
   const g = view.state.field(ghostField);
   if (!g?.text) return false;
