@@ -15,6 +15,8 @@ export interface PageEvents {
   note: string | null;
   /** The editor's layout changed: anything placed beside the text should move. */
   geometry: null;
+  /** A guided frame changed (started, skipped): show it. */
+  guide: null;
 }
 
 export interface Page {

@@ -1,5 +1,6 @@
 // The bar above the page: save state, word count, reader mode and the ⋯ menu.
 
+import type { Mode } from '@clearpen/core';
 import { BookOpenIcon, MessageSquareTextIcon, MoreHorizontalIcon, PanelRightIcon, PencilLineIcon } from 'lucide-react';
 import { cn } from '../lib/utils.ts';
 import { type SaveState, useLibrary } from '../library.tsx';
@@ -52,6 +53,7 @@ export function TopBar({
   focus,
   autocomplete,
   autocorrect,
+  mode,
   mod,
   onCommand,
 }: {
@@ -60,6 +62,8 @@ export function TopBar({
   focus: boolean;
   autocomplete: boolean;
   autocorrect: boolean;
+  /** The article's writing mode: it may turn an aid off. */
+  mode: Mode;
   /** ⌘ on Mac, Ctrl elsewhere. */
   mod: string;
   onCommand(c: Command): void;
@@ -131,11 +135,25 @@ export function TopBar({
           <DropdownMenuCheckboxItem checked={focus} onSelect={() => onCommand('focus')}>
             Focus mode <DropdownMenuShortcut>{mod}.</DropdownMenuShortcut>
           </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem checked={autocomplete} onSelect={() => onCommand('autocomplete')}>
-            Next-sentence suggestions <DropdownMenuShortcut>{mod}J</DropdownMenuShortcut>
+          <DropdownMenuCheckboxItem
+            checked={autocomplete && mode.aids.next}
+            disabled={!mode.aids.next}
+            onSelect={() => onCommand('autocomplete')}
+          >
+            Next-sentence suggestions{' '}
+            {mode.aids.next ? (
+              <DropdownMenuShortcut>{mod}J</DropdownMenuShortcut>
+            ) : (
+              <span className="ml-auto text-xs text-muted-foreground">off in {mode.label}</span>
+            )}
           </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem checked={autocorrect} onSelect={() => onCommand('autocorrect')}>
+          <DropdownMenuCheckboxItem
+            checked={autocorrect && mode.aids.typos}
+            disabled={!mode.aids.typos}
+            onSelect={() => onCommand('autocorrect')}
+          >
             Fix typos as I write
+            {!mode.aids.typos && <span className="ml-auto text-xs text-muted-foreground">off in {mode.label}</span>}
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem onSelect={() => onCommand('reader')}>
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>

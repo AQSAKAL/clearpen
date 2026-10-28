@@ -2,8 +2,10 @@
 // drag-to-move, and the trash. Shadcn's Sidebar does the layout, the ⌘\
 // toggle and the narrow-window sheet.
 
+import { briefForMode, MODE, MODE_GROUPS, type ModeId } from '@clearpen/core';
 import type { DocumentSummary, Project } from '@clearpen/db';
 import {
+  ChevronDownIcon,
   ChevronRightIcon,
   FilePlusIcon,
   FolderIcon,
@@ -24,7 +26,14 @@ import { ModelStatus } from './model-status.tsx';
 import { Button } from './ui/button.tsx';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible.tsx';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from './ui/context-menu.tsx';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu.tsx';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu.tsx';
 import {
   Sidebar,
   SidebarContent,
@@ -118,9 +127,10 @@ export function LibrarySidebar({
     if (isMobile) setOpenMobile(false);
   };
 
-  const newArticle = (projectId?: string) => {
+  /** A new article, in a writing mode if one is chosen; otherwise a plain article. */
+  const newArticle = (projectId?: string, mode?: ModeId) => {
     lib
-      .create(projectId ? { projectId } : {})
+      .create({ ...(projectId ? { projectId } : {}), ...(mode ? { brief: briefForMode(mode) } : {}) })
       .then(() => isMobile && setOpenMobile(false))
       .catch((err) => toast.error(String(err.message ?? err)));
   };
@@ -240,9 +250,39 @@ export function LibrarySidebar({
           </div>
         )}
         <div className="flex gap-1.5">
-          <Button variant="outline" className="flex-1 justify-start" onClick={() => newArticle()}>
-            <FilePlusIcon /> New article
-          </Button>
+          <div className="flex min-w-0 flex-1">
+            <Button
+              variant="outline"
+              className="min-w-0 flex-1 justify-start rounded-r-none border-r-0"
+              onClick={() => newArticle()}
+            >
+              <FilePlusIcon /> New article
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-l-none" aria-label="Start in a mode">
+                  <ChevronDownIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-72">
+                {MODE_GROUPS.map(([label, ids]) => (
+                  <DropdownMenuGroup key={label}>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">{label}</DropdownMenuLabel>
+                    {ids.map((id) => (
+                      <DropdownMenuItem
+                        key={id}
+                        className="flex-col items-start gap-0"
+                        onSelect={() => newArticle(undefined, id)}
+                      >
+                        <span>{MODE[id].label}</span>
+                        <span className="text-xs text-muted-foreground">{MODE[id].hint}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="icon" onClick={newProject} aria-label="New project">
