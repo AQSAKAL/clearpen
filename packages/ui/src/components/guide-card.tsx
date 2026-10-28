@@ -28,7 +28,7 @@ export function GuideCard({ placement }: { placement: 'margin' | 'floating' }) {
   const g = useGuide();
   const box = cn(
     'rounded-md border border-l-[3px] border-l-ai bg-card p-3 text-sm shadow-xs',
-    placement === 'margin' ? 'sticky top-14 z-10 mb-4' : 'fixed right-4 bottom-16 z-30 w-[300px] shadow-md',
+    placement === 'margin' ? 'sticky top-14 z-10 mb-4' : 'pointer-events-auto z-20 w-[300px] shadow-md',
   );
   if (g.offer) {
     const t = g.offer;

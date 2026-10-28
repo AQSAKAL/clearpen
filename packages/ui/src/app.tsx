@@ -413,7 +413,12 @@ function Workspace() {
                 </div>
               )}
             </div>
-            {!notesInMargin && !reading && <GuideCard placement="floating" />}
+            {/* No room beside the page: the card keeps to the bottom of the page's own scroll area. */}
+            {!notesInMargin && !reading && (
+              <div className="pointer-events-none sticky bottom-4 flex justify-end px-4">
+                <GuideCard placement="floating" />
+              </div>
+            )}
             {reading && (
               <Reader
                 title={reading.title}
