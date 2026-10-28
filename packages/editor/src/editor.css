@@ -249,6 +249,10 @@
   color: var(--faint);
   font-style: italic;
 }
+/* On an empty page the frame is the invitation: no "Start writing…" beside it. */
+.cm-content:has(.cm-ghost-frame) .cm-placeholder {
+  display: none;
+}
 .cm-ghost-blank {
   display: inline-block;
   min-width: 3.5em;
