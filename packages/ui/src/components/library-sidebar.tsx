@@ -223,14 +223,22 @@ export function LibrarySidebar({
   return (
     <Sidebar>
       <SidebarHeader className="gap-2 pt-0">
-        {/* Level with the top bar; on a Mac the window's buttons sit at its left. */}
-        <div
-          data-tauri-drag-region
-          className={cn('flex h-12 shrink-0 items-center justify-between px-2', lib.backend.overlayTitleBar && 'pl-18')}
-        >
-          <Logo />
-          <SidebarTrigger className="text-muted-foreground" />
-        </div>
+        {lib.backend.overlayTitleBar ? (
+          <>
+            {/* The title bar: the window's buttons at its left, level with the top bar; the logo on its own row beneath. */}
+            <div data-tauri-drag-region className="flex h-12 shrink-0 items-center justify-end px-2">
+              <SidebarTrigger className="text-muted-foreground" />
+            </div>
+            <div data-tauri-drag-region className="flex h-8 shrink-0 items-center px-2">
+              <Logo />
+            </div>
+          </>
+        ) : (
+          <div className="flex h-12 shrink-0 items-center justify-between px-2">
+            <Logo />
+            <SidebarTrigger className="text-muted-foreground" />
+          </div>
+        )}
         <div className="flex gap-1.5">
           <Button variant="outline" className="flex-1 justify-start" onClick={() => newArticle()}>
             <FilePlusIcon /> New article

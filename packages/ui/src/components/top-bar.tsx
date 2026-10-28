@@ -67,7 +67,9 @@ export function TopBar({
   const { backend, saveState, failures } = useLibrary();
   const { open, isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
-  // tauri.conf.json's trafficLightPosition centres the window's buttons in this 48px bar.
+  // tauri.conf.json's trafficLightPosition centres the window's buttons in this
+  // 48px bar. Its y is not the buttons' top: macOS keeps them a few points
+  // below it, so y: 27 was measured to put their centre at 24px.
   const roomForLights = backend.overlayTitleBar && (!open || isMobile);
 
   return (
