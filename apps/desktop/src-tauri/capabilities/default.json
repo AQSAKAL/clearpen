@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Clearpen's window may do: open its library database and its images folder, save files where the writer chooses, talk to Ollama on this machine, and open ollama.com in the browser. Nothing else leaves the computer.",
+  "description": "What Clearpen's window may do: open its library database and its images folder, save files where the writer chooses, talk to Ollama on this machine, and open ollama.com and tradingview.com (a ticker's full chart, from the price tag an investment note shows) in the browser. Nothing else leaves the computer.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -58,6 +58,9 @@
       "allow": [
         {
           "url": "https://ollama.com/*"
+        },
+        {
+          "url": "https://www.tradingview.com/*"
         }
       ]
     },

@@ -27,6 +27,7 @@ export type Command =
   | 'insights'
   | 'autocomplete'
   | 'autocorrect'
+  | 'prices'
   | 'focus'
   | 'reader'
   | 'fonts'
@@ -54,6 +55,7 @@ export function TopBar({
   focus,
   autocomplete,
   autocorrect,
+  prices,
   mode,
   mod,
   onCommand,
@@ -63,6 +65,7 @@ export function TopBar({
   focus: boolean;
   autocomplete: boolean;
   autocorrect: boolean;
+  prices: boolean;
   /** The article's writing mode: it may turn an aid off. */
   mode: Mode;
   /** ⌘ on Mac, Ctrl elsewhere. */
@@ -155,6 +158,14 @@ export function TopBar({
           >
             Fix typos as I write
             {!mode.aids.typos && <span className="ml-auto text-xs text-muted-foreground">off in {mode.label}</span>}
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={prices && mode.aids.tickers}
+            disabled={!mode.aids.tickers}
+            onSelect={() => onCommand('prices')}
+          >
+            Live prices beside tickers
+            {!mode.aids.tickers && <span className="ml-auto text-xs text-muted-foreground">investment notes only</span>}
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem onSelect={() => onCommand('reader')}>
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>

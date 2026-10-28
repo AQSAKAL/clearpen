@@ -26,6 +26,8 @@ export interface Settings {
   autocomplete: boolean;
   /** Fix typos as the writer types. */
   autocorrect: boolean;
+  /** A live price from TradingView beside each ticker, in the modes that have them (investment notes). */
+  prices: boolean;
   /** The writer said "not now" to setting up the AI: don't offer it at launch again. */
   setupSkipped: boolean;
 }
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   models: {},
   autocomplete: true,
   autocorrect: true,
+  prices: true,
   setupSkipped: false,
 };
 

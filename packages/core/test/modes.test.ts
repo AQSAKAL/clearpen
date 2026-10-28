@@ -47,9 +47,14 @@ test('free writing turns Clearpen’s checks and the next sentence off; the othe
   for (const mode of ['clear', 'reflect', 'problem'] as const) {
     assert.deepEqual(runChecks(text, checkOptions({ mode })), { findings: [], facts: [] }, mode);
     assert.equal(MODE[mode].checks, false);
-    assert.deepEqual(MODE[mode].aids, { next: false, typos: true, style: false });
+    assert.deepEqual(MODE[mode].aids, { next: false, typos: true, style: false, tickers: false });
     assert.equal(MODE[mode].review, 'listener');
   }
+  // Only a piece about companies prices its tickers.
+  assert.deepEqual(
+    MODES.filter((m) => MODE[m].aids.tickers),
+    ['investment'],
+  );
   // Style off on its own keeps what the text gets wrong and drops how it reads.
   assert.deepEqual(kinds(runChecks(text, { genre: 'article', style: false })), ['generalisation', 'table-total']);
   assert.deepEqual(checkOptions({ mode: 'scientific', notes: 'my notes' }), {

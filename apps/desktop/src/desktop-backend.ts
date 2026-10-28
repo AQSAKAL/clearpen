@@ -36,7 +36,26 @@ const SAVE_FILTERS: Record<string, { name: string; extensions: string[] }> = {
   'text/html': { name: 'Web page', extensions: ['html'] },
 };
 
+/**
+ * The webview opens no windows of its own, so a `window.open` — TradingView's
+ * "Launch full view" behind a ticker's price tag — would do nothing. Web links
+ * go to the browser instead, through the opener plugin, whose scope in
+ * capabilities/default.json says which sites may open; any other is refused
+ * there. The app's own links use openLink. (The plugin does the same for
+ * `<a target="_blank">`; this covers the call.)
+ */
+function openNewWindowsInBrowser(): void {
+  const native = window.open.bind(window);
+  window.open = (url, target, features) => {
+    const href = url == null ? '' : String(url);
+    if (!/^https?:\/\//i.test(href)) return native(url, target, features);
+    openUrl(href).catch((err) => console.warn(`Couldn’t open ${href} in the browser`, err));
+    return null;
+  };
+}
+
 export async function createDesktopBackend(): Promise<Backend> {
+  openNewWindowsInBrowser();
   const db = await Database.load('sqlite:library.db');
   const driver: SqlDriver = {
     async run(sql, params) {

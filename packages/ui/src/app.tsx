@@ -330,6 +330,10 @@ function Workspace() {
           set('autocorrect', !settings.autocorrect);
           toast(settings.autocorrect ? 'Typo fixes off' : 'Typo fixes on — undo any one to keep what you typed');
           break;
+        case 'prices':
+          set('prices', !settings.prices);
+          toast(settings.prices ? 'Live prices off' : 'Live prices on — from TradingView, beside each ticker');
+          break;
         case 'focus':
           setFocus((f) => !f);
           toast(focus ? 'Focus mode off' : 'Focus mode — only your paragraph stays bright');
@@ -431,6 +435,7 @@ function Workspace() {
           focus={focus}
           autocomplete={settings.autocomplete}
           autocorrect={settings.autocorrect}
+          prices={settings.prices}
           mode={mode}
           mod={mod}
           onCommand={run}

@@ -12,7 +12,8 @@ Clearpen's engine. Pure TypeScript with no platform APIs, so the same code runs 
 | `integrity` | Flags figures, links, versions and code a rewrite changed, dropped or invented. |
 | `analysis` | Instant writing stats and highlights: long sentences, passive voice, filler, clichés. |
 | `anchor` | Finds a model's (slightly wrong) quote in the draft. |
-| `markdown` | Safe Markdown → HTML for exports. |
+| `markdown` | Safe Markdown → HTML for exports; with `tickers` on, TradingView's price tag after each ticker. |
+| `tickers` | Finds the tickers a note names: `$AAPL`, `NASDAQ:AAPL`, `(NASDAQ: AAPL)` — and not `$45`, `$M` or `NOTE: THIS`. |
 | `outline` | The article's own outline: its sections and the notes under each. |
 | `autocomplete` | The rules for the next logical sentence: when to ask (`nextSentenceSpot`), whether the paragraph has made its point (`paragraphVerdict`, from the judge's quotes), and whether a suggestion earns its place (`nextSentenceOk`). |
 | `intent` | Is a typed instruction a check, a question, or an edit? And the guards that keep edits edits: `asksToWrite` refuses requests for new writing, `writesNewMaterial` drops a returned edit that writes a paragraph of new words. |

@@ -2,6 +2,8 @@
 // Covers what articles use: headings, paragraphs, emphasis, links, images,
 // lists, quotes, callouts, tables, code and rules. Everything is escaped first.
 
+import { findTickers } from './tickers.ts';
+
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const escapeHTML = (s: string) => s.replace(/[&<>"']/g, (c) => ENTITIES[c]!);
 const esc = escapeHTML;
@@ -23,6 +25,11 @@ function image(alt: string, url: string): string {
   return `<img src="${esc(SAFE_IMAGE.test(src) ? src : '#')}" alt="${esc(alt)}">`;
 }
 
+// Whether each ticker is followed by TradingView's tag, for a page that loads
+// its script. Set only for the length of one `toHTML` call, like imageSrc.
+let tickers = false;
+const tickerTag = (symbol: string) => `<tv-ticker-tag symbol="${esc(symbol)}" size="small"></tv-ticker-tag>`;
+
 function emphasis(s: string): string {
   return s
     .replace(
@@ -35,9 +42,9 @@ function emphasis(s: string): string {
 }
 
 /**
- * Inline Markdown. Code, images and links are lifted out into sealed slots
- * first, so no later pattern can ever run over the tags they produce; only
- * then is the remaining text escaped and emphasised.
+ * Inline Markdown. Code, images, links and tickers are lifted out into sealed
+ * slots first, so no later pattern can ever run over the tags they produce;
+ * only then is the remaining text escaped and emphasised.
  */
 function inline(src: string): string {
   const slots: string[] = [];
@@ -48,6 +55,16 @@ function inline(src: string): string {
   s = s.replace(/\[([^[\]]+)\]\(([^()\s]+)\)/g, (_, label: string, url: string) =>
     hold(`<a href="${esc(safeUrl(url))}">${emphasis(esc(label))}</a>`),
   );
+  if (tickers) {
+    // The ticker stays as written; the tag follows it.
+    let out = '';
+    let last = 0;
+    for (const t of findTickers(s)) {
+      out += s.slice(last, t.from) + hold(esc(s.slice(t.from, t.to)) + tickerTag(t.symbol));
+      last = t.to;
+    }
+    s = out + s.slice(last);
+  }
   s = emphasis(esc(s));
   return s.replace(/\u0000(\d+)\u0000/g, (_, i: string) => slots[Number(i)]!);
 }
@@ -224,19 +241,27 @@ function renderBlocks(lines: string[]): string {
 export interface MarkdownOptions {
   /** Maps an image's Markdown source to the URL to show; null leaves just its alt text. */
   imageSrc?: (src: string) => string | null;
+  /**
+   * Follows each ticker ($AAPL, NASDAQ:AAPL) with TradingView's `<tv-ticker-tag>`, a live price for a page
+   * that loads the element's script. Off by default: without the script the tag shows nothing.
+   */
+  tickers?: boolean;
 }
 
 export function toHTML(md: string, opts: MarkdownOptions = {}): string {
   imageSrc = opts.imageSrc;
+  tickers = !!opts.tickers;
   try {
     return renderBlocks(String(md).replace(/\r\n?/g, '\n').split('\n'));
   } finally {
     imageSrc = undefined;
+    tickers = false;
   }
 }
 
-/** A complete, self-contained HTML page for an article. */
+/** A complete, self-contained HTML page for an article: nothing in it needs another server's script. */
 export function toDocument(title: string, md: string, opts: MarkdownOptions = {}): string {
+  opts = { ...opts, tickers: false };
   return `<!doctype html>
 <html lang="en">
 <head>

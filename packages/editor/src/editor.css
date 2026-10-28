@@ -231,6 +231,19 @@
   display: none;
 }
 
+/* ───────────────────────────────────────── tickers */
+
+/* TradingView's price tag, after the ticker it prices. An empty element until the app loads its script. */
+.cm-ticker {
+  margin-left: 0.35em;
+  vertical-align: 0.1em;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1;
+  user-select: none;
+}
+
 /* ───────────────────────────────────────── ghost text */
 
 .cm-ghost {

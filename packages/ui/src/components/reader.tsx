@@ -3,6 +3,7 @@
 import { toHTML } from '@clearpen/core';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLibrary } from '../library.tsx';
+import { usePrices } from '../tickers.ts';
 import type { Counts } from './article-editor.tsx';
 
 export function Reader({
@@ -17,7 +18,11 @@ export function Reader({
   onExit(): void;
 }) {
   const { backend } = useLibrary();
-  const html = useMemo(() => toHTML(content, { imageSrc: (src) => backend.media.url(src) }), [content, backend]);
+  const prices = usePrices();
+  const html = useMemo(
+    () => toHTML(content, { imageSrc: (src) => backend.media.url(src), tickers: prices }),
+    [content, backend, prices],
+  );
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => ref.current?.focus(), []);
@@ -34,7 +39,7 @@ export function Reader({
         {counts.words.toLocaleString()} words · {counts.minutes} min read
       </p>
       {content.trim() ? (
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: core's renderer escapes everything and allows only safe URLs.
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: core's renderer escapes everything, allows only safe URLs, and adds only TradingView's ticker tag.
         <div dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <p className="text-muted-foreground">Nothing to read yet.</p>

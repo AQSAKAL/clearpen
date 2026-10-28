@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { usePage } from '../editor-ref.tsx';
 import { useLibrary } from '../library.tsx';
+import { usePrices } from '../tickers.ts';
 import { Textarea } from './ui/textarea.tsx';
 
 export interface Counts {
@@ -34,6 +35,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
   const countsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef({ edit, onCounts });
   latest.current = { edit, onCounts };
+  const prices = usePrices();
 
   // One editor for the life of the page.
   useEffect(() => {
@@ -106,6 +108,13 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
     onCounts(countsOf(current.content));
     if (!current.title && !current.content) titleRef.current?.focus();
   }, [current, ref, onCounts]);
+
+  // Prices follow the article's mode and the setting. Loading an article
+  // resets the editor's, so they're applied again after each load.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the article's id stands for the load above.
+  useEffect(() => {
+    ref.current?.setTickers(prices);
+  }, [prices, current?.id, ref]);
 
   // Let actions outside the page read and replace the title.
   page.title.current = title;

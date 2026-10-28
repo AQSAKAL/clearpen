@@ -24,6 +24,7 @@ import {
   suggestionField,
   updateSuggestion,
 } from './suggestions.ts';
+import { tickerCompartment, tickerPlugin } from './tickers.ts';
 import type { ClearpenEditor, EditorOptions } from './types.ts';
 
 export type {
@@ -101,6 +102,7 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
     imageField(opts),
     sectionField(opts, sugField),
     focusCompartment.of([]),
+    tickerCompartment.of(opts.tickers ? tickerPlugin : []),
     aiKeys({
       escapedJustNow,
       latestGroup,
@@ -375,6 +377,11 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
     // Focus mode
     setFocus(on) {
       view.dispatch({ effects: focusCompartment.reconfigure(on ? focusPlugin : []) });
+    },
+
+    // Live prices
+    setTickers(on) {
+      view.dispatch({ effects: tickerCompartment.reconfigure(on ? tickerPlugin : []) });
     },
 
     scrollTo(pos) {

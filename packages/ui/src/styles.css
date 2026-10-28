@@ -176,6 +176,23 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* TradingView's ticker tag, in the editor and the reader: the app's own face, and
+   nothing at all until its script has loaded (or where it never does). It follows
+   the page's color-scheme for light and dark. */
+tv-ticker-tag {
+  --tv-widget-font-family: var(--f-ui);
+}
+tv-ticker-tag:not(:defined) {
+  display: none;
+}
+.prose tv-ticker-tag {
+  margin-left: 0.35em;
+  vertical-align: 0.1em;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

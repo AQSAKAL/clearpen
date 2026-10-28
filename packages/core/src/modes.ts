@@ -31,6 +31,8 @@ export interface ModeAids {
   typos: boolean;
   /** Clearpen's own notes on how the prose reads: style, clarity, structure, terms. */
   style: boolean;
+  /** A live price beside each ticker the piece names — $AAPL, NASDAQ:AAPL — from TradingView. */
+  tickers: boolean;
 }
 
 export interface Mode {
@@ -52,11 +54,12 @@ export interface Mode {
   template?: { id: TemplateId; start: 'now' | 'offer' };
 }
 
-const ALL: ModeAids = { next: true, typos: true, style: true };
+// Every aid but prices, which only a piece about companies wants.
+const ALL: ModeAids = { next: true, typos: true, style: true, tickers: false };
 // Free writing: nothing suggests a sentence or notes the prose while the
 // author thinks (Galbraith: spontaneous drafting produces ideas planning does
 // not, if left alone). Typo fixes stay: the author's own words, spelled right.
-const FREE: ModeAids = { next: false, typos: true, style: false };
+const FREE: ModeAids = { next: false, typos: true, style: false, tickers: false };
 
 const THINKING =
   'The author is writing to think, not to publish: ask about what they mean, feel, want or have tried — never about the prose.';
@@ -136,10 +139,10 @@ export const MODE: Record<ModeId, Mode> = {
   investment: {
     id: 'investment',
     label: 'An investment note',
-    hint: 'Read for a portfolio manager: every figure held against the tables, no forecast stated as fact.',
+    hint: 'Read for a portfolio manager: every figure held against the tables, no forecast stated as fact. Tickers carry a live price.',
     genre: 'investment',
     checks: true,
-    aids: ALL,
+    aids: { ...ALL, tickers: true },
     review: 'editor',
   },
 };

@@ -118,6 +118,11 @@ export interface EditorOptions {
    * The default shows https:// images only.
    */
   resolveImage?: (src: string) => string | null;
+  /**
+   * Put TradingView's `<tv-ticker-tag>` after each ticker in the text ($AAPL, NASDAQ:AAPL). The app
+   * loads the element's script; without it the tag shows nothing. Off by default; see setTickers.
+   */
+  tickers?: boolean;
 }
 
 /** What createEditor returns: everything the app needs, without touching CodeMirror. */
@@ -128,7 +133,7 @@ export interface ClearpenEditor {
   getText(): string;
   /**
    * Loads a different document with a clean undo history and nothing left over: no suggestions, notes,
-   * highlights or ghost text, and focus mode off.
+   * highlights or ghost text, focus mode off, and tickers as the `tickers` option says.
    */
   setText(text: string): void;
   focus(): void;
@@ -195,5 +200,7 @@ export interface ClearpenEditor {
   setAnalysis(ranges: readonly AnalysisRange[] | null | undefined): void;
   /** Focus mode: dims everything but the paragraph being written. */
   setFocus(on: boolean): void;
+  /** Live prices: TradingView's tag after each ticker, on or off. */
+  setTickers(on: boolean): void;
   destroy(): void;
 }

@@ -7,3 +7,4 @@ The UI talks to the outside world only through the `Backend` interface (`src/bac
 - **Components** in `src/components/ui` come from the shadcn CLI (`components.json`, style `radix-nova`). Add more with `pnpm dlx shadcn@latest add <name>` in this folder. Biome leaves that folder alone.
 - **Theme:** Clearpen's paper-and-ink palette lives in `src/styles.css`, mapped onto shadcn's tokens; dark mode is the `dark` class on `<html>`.
 - **Settings** — theme, fonts, the open article, collapsed projects — are kept in the library, not in browser storage.
+- **Live prices:** in an investment note, each ticker gets TradingView's `<tv-ticker-tag>` after it, in the editor and the reader (`src/tickers.ts`). The element's script is loaded from TradingView only once an article in that mode is open, and ⋯ → Live prices turns it off; nothing else ever leaves the machine.

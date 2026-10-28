@@ -18,6 +18,8 @@ planted:
 
 We are initiating on [the company] ([TICK]) with a Buy rating and a $60 price target, implying 40% upside from the current $45.00. [The company] sells [what] to [whom], and the market still values it as [a hardware vendor] at 18.0x FY2025E EPS of $2.50. Recurring revenue is now [x]% of the total and rising. Revenue will reach $2.0 billion by FY2027 as the mix shifts. For patient holders this is close to risk-free.
 
+> ✎ Write a ticker — $AAPL, say, or NYSE:BRK.B — and TradingView's price follows it; hover it for the chart. The prices are only in investment notes, and ⋯ → Live prices turns them off.
+
 > ✎ Press ⌘⇧E. Every figure is held against the tables by code: the upside does not follow from the price and the target, a forecast is stated as a fact, and a promise that cannot be made is flagged as a compliance problem. The AI's notes follow, read for a portfolio manager who distrusts any forecast stated as a fact.
 
 ## Company snapshot

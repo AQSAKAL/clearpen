@@ -39,4 +39,5 @@ export * from './tasks/review.ts';
 export * from './tasks/think.ts';
 export * from './tasks/write.ts';
 export * from './terms.ts';
+export * from './tickers.ts';
 export * from './tidy.ts';
