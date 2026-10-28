@@ -47,7 +47,17 @@ test('with no Ollama, setup links to it, finds it once it runs, and downloads th
 });
 
 test('the download shows its progress, here and in the sidebar', async () => {
-  const machine: FakeMachine = { running: true, installed: [] };
+  // The download waits part-way until the test has seen it: left to run, it
+  // finished before the sidebar was looked at on a slow runner, and the window
+  // on screen was "Clearpen is ready".
+  let finish = () => {};
+  const machine: FakeMachine = {
+    running: true,
+    installed: [],
+    pullHold: new Promise<void>((r) => {
+      finish = r;
+    }),
+  };
   const { user } = await launch(machine, 32 * GB);
   await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
   assert.equal(screen.getByRole('radio', { name: /Qwen3 8B/ }).getAttribute('aria-checked'), 'true');
@@ -57,6 +67,7 @@ test('the download shows its progress, here and in the sidebar', async () => {
   // Keep writing: the window goes, the download doesn't.
   await user.click(screen.getByRole('button', { name: 'Keep writing' }));
   await screen.findByRole('button', { name: /Models: Downloading Qwen3 8B · \d+%/ });
+  finish();
   await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
 });
 

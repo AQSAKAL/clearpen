@@ -10,6 +10,8 @@ export interface FakeMachine {
   installed: string[];
   /** Makes the next download fail with this message. */
   pullFails?: string;
+  /** A download waits here, part-way through, until the test lets it finish — so the test can look at it in progress. */
+  pullHold?: Promise<void>;
 }
 
 export interface Reply {
@@ -32,7 +34,8 @@ export function fakeModel(
       if (!machine.running) throw new TypeError('fetch failed');
       return [...machine.installed];
     },
-    // A download in four steps, a few milliseconds apart.
+    // A download in four steps, a few milliseconds apart — too quick to look
+    // at on a slow runner, so a test that needs to see it in progress holds it.
     async *pull(model, { signal } = {}) {
       const total = 4000;
       yield { status: 'pulling manifest', completed: 0, total: 0, done: false };
@@ -45,6 +48,7 @@ export function fakeModel(
           throw new Error(message);
         }
         yield { status: `pulling ${model}`, completed, total, done: false };
+        if (completed === 2500 && machine.pullHold) await machine.pullHold;
       }
       machine.installed.push(model);
       yield { status: 'success', completed: total, total, done: true };
