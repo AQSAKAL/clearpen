@@ -48,6 +48,8 @@ interface SetupValue {
   open(at?: 'choose'): void;
   /** The download under way, for the sidebar while the window is closed. */
   downloading: { offer: ModelOffer; fraction: number } | null;
+  /** Nothing of the setup is on screen or under way, and the look at launch is done: what comes after it can start. */
+  idle: boolean;
 }
 
 const SetupContext = createContext<SetupValue | null>(null);
@@ -70,6 +72,8 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
   const [step, setStep] = useState<Step>({ kind: 'checking' });
   const [status, setStatus] = useState<LLMStatus | null>(null);
   const [memory, setMemory] = useState<number | null>(null);
+  // The look at launch has finished (or was never needed), so nothing more opens on its own.
+  const [settled, setSettled] = useState(settings.setupSkipped);
   const ctrl = useRef<AbortController | null>(null);
   const live = useRef({ models: settings.models });
   live.current = { models: settings.models };
@@ -94,7 +98,10 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
       .then(setMemory)
       .catch(() => {});
     if (settings.setupSkipped) return;
-    void look().then((s) => s && !s.ok && setShown(true));
+    void look().then((s) => {
+      if (s && !s.ok) setShown(true);
+      setSettled(true);
+    });
   }, [backend]);
 
   // While the writer installs Ollama, look for it every couple of seconds.
@@ -168,8 +175,9 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
       },
       downloading:
         step.kind === 'downloading' ? { offer: step.offer, fraction: fraction(step.offer, step.progress) } : null,
+      idle: settled && !shown && step.kind !== 'downloading',
     }),
-    [step, look],
+    [step, look, settled, shown],
   );
 
   return (

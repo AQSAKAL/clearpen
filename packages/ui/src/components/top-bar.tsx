@@ -36,6 +36,7 @@ export type Command =
   | 'save-md'
   | 'save-html'
   | 'shortcuts'
+  | 'example'
   | 'move'
   | 'trash';
 
@@ -160,6 +161,8 @@ export function TopBar({
           <DropdownMenuItem onSelect={() => onCommand('save-html')}>Save as web page…</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onCommand('shortcuts')}>Keyboard shortcuts</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCommand('example')}>Start from an example…</DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onCommand('move')}>Move to project…</DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => onCommand('trash')}>
             Move to trash

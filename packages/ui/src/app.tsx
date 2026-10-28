@@ -2,6 +2,7 @@
 // settings and the library, opens the right article, and runs the commands
 // from the ⋯ menu and the keyboard.
 
+import { type Goal, goalOf } from '@clearpen/core';
 import type { Version } from '@clearpen/db';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -28,17 +29,18 @@ import { SidebarInset, SidebarProvider } from './components/ui/sidebar.tsx';
 import { Toaster } from './components/ui/sonner.tsx';
 import { TooltipProvider } from './components/ui/tooltip.tsx';
 import { EditorRefProvider, usePage } from './editor-ref.tsx';
+import { exampleArticle } from './examples/index.ts';
 import { applyFonts } from './fonts.ts';
 import { copyMarkdown, copyRichText, documentOf, fileName, markdownOf } from './lib/export.ts';
 import { cn } from './lib/utils.ts';
 import { LibraryProvider, useLibrary } from './library.tsx';
 import { NotesProvider } from './notes.tsx';
+import { GoalDialog } from './onboarding.tsx';
 import { useReviewActions } from './review-actions.ts';
 import { loadSettings, type Settings, SettingsProvider, useSettings } from './settings.tsx';
-import { SetupProvider } from './setup.tsx';
+import { SetupProvider, useSetup } from './setup.tsx';
 import { StatusProvider } from './status.tsx';
 import { ThemeProvider } from './theme.tsx';
-import { WELCOME_TITLE, welcomeText } from './welcome.ts';
 
 /** A version is saved this often while an article is open, if its text changed. */
 export const AUTO_VERSION_MS = 10 * 60 * 1000;
@@ -127,6 +129,9 @@ function Shell({ backend }: { backend: Backend }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, at launch.
   useEffect(() => backend.ai.setModels(settings.models, { preload: settings.autocomplete }), [backend]);
 
+  // New articles start as the kind the writer said they write.
+  const goal = goalOf(settings.goal);
+
   return (
     <ThemeProvider theme={settings.theme} onChange={onTheme}>
       <TooltipProvider delayDuration={400}>
@@ -134,7 +139,11 @@ function Shell({ backend }: { backend: Backend }) {
           <SetupProvider backend={backend}>
             <AIProvider>
               <AskProvider>
-                <LibraryProvider backend={backend} onOpen={onOpen}>
+                <LibraryProvider
+                  backend={backend}
+                  defaultBrief={goal ? { genre: goal.genre } : undefined}
+                  onOpen={onOpen}
+                >
                   <EditorRefProvider>
                     <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
                       <Workspace />
@@ -161,7 +170,10 @@ function Workspace() {
   const [counts, setCounts] = useState<Counts>({ words: 0, minutes: 1 });
   const [reading, setReading] = useState<{ title: string; content: string } | null>(null);
   const [focus, setFocus] = useState(false);
-  const [dialog, setDialog] = useState<'history' | 'fonts' | 'shortcuts' | 'trash' | 'models' | null>(null);
+  const [dialog, setDialog] = useState<'history' | 'fonts' | 'shortcuts' | 'trash' | 'models' | 'goal' | null>(null);
+  // The goal step is the first run's, with no article open yet, until it is answered or skipped.
+  const [firstRun, setFirstRun] = useState(false);
+  const setup = useSetup();
   const [moving, setMoving] = useState<string | null>(null);
   const [panel, setPanel] = useState<AssistTab | null>(null);
   const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
@@ -180,8 +192,9 @@ function Workspace() {
   const libRef = useRef(lib);
   libRef.current = lib;
 
-  // Open the article in the address, else the last one, else the newest; a
-  // first launch gets the welcome article. Once, even where React mounts twice.
+  // Open the article in the address, else the last one, else the newest. A
+  // first launch, with nothing in the library, asks what the writer will
+  // write and opens that example instead. Once, even where React mounts twice.
   const booted = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once, on launch.
   useEffect(() => {
@@ -194,12 +207,30 @@ function Workspace() {
       if (want) await lib.open(want);
       else if (docs[0]) await lib.open(docs[0].id);
       else if (!settings.welcomed) {
-        set('welcomed', true);
-        await lib.create({ title: WELCOME_TITLE, content: welcomeText(backend.platform === 'mac' ? '⌘' : 'Ctrl+') });
+        setFirstRun(true);
+        setDialog('goal');
       } else await lib.create();
       setReady(true);
     })().catch((err) => toast.error(`Couldn’t open the library: ${err.message ?? err}`));
   }, []);
+
+  // The goal step, answered: the example for that kind of piece opens as a new
+  // article, and new articles start as that kind from now on. Skipped on the
+  // first run, a blank page opens instead; from the menu, nothing changes.
+  const chooseGoal = async (goal: Goal) => {
+    set('goal', goal.id);
+    if (firstRun) set('welcomed', true);
+    setFirstRun(false);
+    setDialog(null);
+    await lib.create(exampleArticle(goal, mod));
+  };
+  const skipGoal = async () => {
+    setDialog(null);
+    if (!firstRun) return;
+    set('welcomed', true);
+    setFirstRun(false);
+    await lib.create();
+  };
 
   // Following #/<id> links and the back button.
   useEffect(() => {
@@ -330,6 +361,10 @@ function Workspace() {
         case 'shortcuts':
           setDialog('shortcuts');
           break;
+        case 'example':
+          setFirstRun(false);
+          setDialog('goal');
+          break;
         case 'move':
           if (current) setMoving(current.id);
           break;
@@ -433,6 +468,14 @@ function Workspace() {
       <TrashDialog open={dialog === 'trash'} onOpenChange={(o) => setDialog(o ? 'trash' : null)} />
       <MoveDialog docId={moving} onOpenChange={(o) => !o && setMoving(null)} />
       <ModelsDialog open={dialog === 'models'} onOpenChange={(o) => setDialog(o ? 'models' : null)} />
+      {/* After the model setup, never over it: the step waits while that dialog is up or a download runs. */}
+      <GoalDialog
+        open={dialog === 'goal' && setup.idle}
+        firstRun={firstRun}
+        goal={settings.goal}
+        onOpenChange={(o) => !o && void skipGoal().catch((err) => toast.error(String(err.message ?? err)))}
+        onChoose={(g) => void chooseGoal(g).catch((err) => toast.error(String(err.message ?? err)))}
+      />
       {!reading && <SelectionToolbar mod={mod} check={check} />}
       <Autocomplete />
       <Autocorrect />

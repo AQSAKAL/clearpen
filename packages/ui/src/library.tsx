@@ -2,6 +2,7 @@
 // article, and autosave. Saves are queued per article and sent after a short
 // pause; a failed save keeps its changes and retries with a growing delay.
 
+import type { Brief } from '@clearpen/core';
 import type { Document, DocumentPatch, DocumentSummary, NewDocument, Project } from '@clearpen/db';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Backend } from './backend.ts';
@@ -40,10 +41,13 @@ const LibraryContext = createContext<LibraryValue | null>(null);
 
 export function LibraryProvider({
   backend,
+  defaultBrief,
   onOpen,
   children,
 }: {
   backend: Backend;
+  /** What a new article starts with when nothing is given: the kind the writer said they write. */
+  defaultBrief?: Brief;
   /** Called after an article opens, with its id. */
   onOpen?(id: string): void;
   children: ReactNode;
@@ -156,13 +160,15 @@ export function LibraryProvider({
   const create = useCallback(
     async (fields: NewDocument = {}) => {
       await flush();
-      const doc = await lib.documents.create(fields);
+      const doc = await lib.documents.create(
+        fields.brief || !defaultBrief ? fields : { ...fields, brief: defaultBrief },
+      );
       await refresh();
       setCurrent(doc);
       onOpen?.(doc.id);
       return doc;
     },
-    [flush, lib, refresh, onOpen],
+    [flush, lib, refresh, onOpen, defaultBrief],
   );
 
   /** After the open article leaves the list: open the newest remaining, or a blank one. */

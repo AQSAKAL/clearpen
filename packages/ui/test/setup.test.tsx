@@ -1,6 +1,8 @@
 // First-run setup, end to end on a fake computer: no Ollama, then Ollama with
 // no model, the model downloaded with its progress, a download that stops,
-// "Not now", and another model from the Models dialog.
+// "Not now", and another model from the Models dialog. On a fresh library the
+// goal step ("What will you write?") follows the setup; onboarding.test.tsx
+// walks it, and these tests only see it come after.
 
 import assert from 'node:assert/strict';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -40,7 +42,8 @@ test('with no Ollama, setup links to it, finds it once it runs, and downloads th
   assert.ok(machine.installed.includes('qwen3:4b-instruct'));
   assert.deepEqual(await backend.library.settings.get('models'), { quick: 'qwen3:4b-instruct' });
   await user.click(screen.getByRole('button', { name: 'Start writing' }));
-  await waitFor(() => assert.equal(screen.queryByRole('dialog'), null));
+  // Only then, the goal step.
+  await screen.findByRole('heading', { name: 'What will you write?' });
 });
 
 test('the download shows its progress, here and in the sidebar', async () => {
@@ -73,8 +76,11 @@ test('“Not now” lets the writer write without AI, and setup waits in the sid
   const { backend, user } = await launch(machine);
   await screen.findByRole('heading', { name: 'Set up Clearpen’s AI' });
   await user.click(screen.getByRole('button', { name: 'Not now' }));
-  await waitFor(() => assert.equal(screen.queryByRole('dialog'), null));
   assert.equal(await backend.library.settings.get('setupSkipped'), true);
+  // The goal step follows; skipped too, a blank page opens.
+  await screen.findByRole('heading', { name: 'What will you write?' });
+  await user.click(screen.getByRole('button', { name: 'Not now' }));
+  await waitFor(() => assert.equal(screen.queryByRole('dialog'), null));
 
   // The sidebar offers it again.
   await user.click(await screen.findByRole('button', { name: 'Models: Set up the AI' }));
@@ -91,8 +97,11 @@ test('“Not now” lets the writer write without AI, and setup waits in the sid
 test('with a model ready there is no setup, and Models can download another', async () => {
   const machine: FakeMachine = { running: true, installed: ['qwen3:8b'] };
   const { backend, user } = await launch(machine, 16 * GB);
+  // No setup: the goal step comes straight away, and is skipped here.
+  await user.click(await screen.findByRole('button', { name: 'Not now' }));
+  await waitFor(() => assert.equal(screen.queryByRole('dialog'), null));
+  assert.equal(screen.queryByRole('heading', { name: 'Set up Clearpen’s AI' }), null);
   const status = await screen.findByRole('button', { name: 'Models: qwen3:8b' });
-  assert.equal(screen.queryByRole('dialog'), null);
   await user.click(status);
   await user.click(await screen.findByRole('button', { name: 'Download a model…' }));
   await screen.findByRole('heading', { name: 'Choose your writing model' });

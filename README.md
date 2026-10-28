@@ -80,6 +80,10 @@ Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which
 
 You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
 
+### The first run
+
+Once the model is set up, Clearpen asks what you will write — an article, a technical guide, a scientific paper, a reflection or journal, a business case or an investment note — and opens a short example of that kind. The example is yours to edit: its blanks are in [brackets], and the lines marked ✎ are a tour, each beside a passage planted for Clearpen to catch — a table whose total is wrong, a sweeping claim, initials never spelled out, an abstract that never states the result — saying what to press. Your answer also sets what new articles start as; change any one article under Insights → **What this is**, and open another example any time from ⋯ → **Start from an example…**.
+
 ## Run it from source
 
 You need:

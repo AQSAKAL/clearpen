@@ -4,13 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { test } from 'vitest';
 import { App } from '../src/app.tsx';
 import { SAVE_DELAY_MS } from '../src/library.tsx';
-import { WELCOME_TITLE } from '../src/welcome.ts';
 import { testBackend } from './memory-backend.ts';
+
+/** The example a fresh library opens here: "An article", the first choice of the goal step. */
+const WELCOME_TITLE = 'Why we moved support to a shared inbox';
 
 async function launch() {
   const backend = await testBackend();
   const user = userEvent.setup();
   render(<App backend={backend} />);
+  // A fresh library asks what you will write; these tests take the article example.
+  await user.click(await screen.findByRole('button', { name: 'Open the example' }));
   const title = (await screen.findByLabelText('Title')) as HTMLTextAreaElement;
   await waitFor(() => assert.notEqual(title.value, undefined));
   return { backend, user, title };
@@ -19,11 +23,12 @@ async function launch() {
 const sidebar = () => within(document.querySelector('[data-sidebar="sidebar"]') as HTMLElement);
 const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 
-test('first launch opens the welcome article, once', async () => {
+test('first launch opens the example article, once', async () => {
   const { backend, title } = await launch();
   await waitFor(() => assert.equal(title.value, WELCOME_TITLE));
   await waitFor(() => assert.ok(sidebar().getByText(WELCOME_TITLE)));
   assert.equal(await backend.library.settings.get('welcomed'), true);
+  assert.equal(await backend.library.settings.get('goal'), 'article');
   assert.equal((await backend.library.documents.list()).length, 1);
 });
 
@@ -32,12 +37,12 @@ test('the title saves after a pause, and the library list follows', async () => 
   await waitFor(() => assert.equal(title.value, WELCOME_TITLE));
   await user.click(sidebar().getByRole('button', { name: /new article/i }));
   await waitFor(() => assert.equal(title.value, ''));
-  await user.type(title, 'Why we moved support to a shared inbox');
+  await user.type(title, 'Why we keep the inbox open on Fridays');
   assert.ok(screen.getByText(/Editing|Saving/));
   await wait(SAVE_DELAY_MS + 200);
-  await waitFor(() => assert.ok(sidebar().getByText('Why we moved support to a shared inbox')));
+  await waitFor(() => assert.ok(sidebar().getByText('Why we keep the inbox open on Fridays')));
   const docs = await backend.library.documents.list();
-  assert.equal(docs[0]?.title, 'Why we moved support to a shared inbox');
+  assert.equal(docs[0]?.title, 'Why we keep the inbox open on Fridays');
   assert.ok(screen.getByText('Saved'));
 });
 
@@ -84,8 +89,11 @@ test('⌘S saves a version, and the menu exports Markdown', async () => {
   await user.click(screen.getByRole('button', { name: 'More' }));
   await user.click(await screen.findByRole('menuitem', { name: 'Save as Markdown…' }));
   await waitFor(() => assert.equal(backend.saved.length, 1));
-  assert.equal(backend.saved[0]?.name, 'welcome-to-clearpen.md');
-  assert.match(backend.saved[0]!.contents, /^# Welcome to Clearpen\n\nClearpen is a quiet place/);
+  assert.equal(backend.saved[0]?.name, 'why-we-moved-support-to-a-shared-inbox.md');
+  assert.match(
+    backend.saved[0]!.contents,
+    /^# Why we moved support to a shared inbox\n\n> ✎ This is an example article/,
+  );
 });
 
 test('the theme menu switches to dark and back to the system', async () => {

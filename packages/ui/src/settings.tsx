@@ -16,8 +16,10 @@ export interface Settings {
   collapsed: string[];
   /** The article open last. */
   last: string | null;
-  /** The welcome article has been made once; never again, even if it's deleted. */
+  /** The first run's "What will you write?" was answered or skipped once; never asked again on its own. */
   welcomed: boolean;
+  /** What the writer said they will write (a goal id from core's `GOALS`): the kind new articles start as. */
+  goal: string | null;
   /** The model chosen for each role. */
   models: ModelChoice;
   /** Suggest the next sentence when a paragraph is missing one. */
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   collapsed: [],
   last: null,
   welcomed: false,
+  goal: null,
   models: {},
   autocomplete: true,
   autocorrect: true,
