@@ -1,8 +1,8 @@
 <h1 align="center">Clearpen</h1>
 
 <p align="center">
-  <strong>You write. Clearpen edits.</strong><br>
-  An open-source writing app for articles that hold up — on your own computer, with AI that runs offline.
+  <strong>Writing that's truly yours, with AI that helps.</strong><br>
+  An open-source writing app where AI helps you while you write instead of writing for you. It runs on your own computer, with a model that works offline.
 </p>
 
 <p align="center">
@@ -17,9 +17,11 @@
   <img src="docs/screenshots/next-sentence-light.png" alt="Clearpen on a Mac: a library of projects and articles on the left, and an article open on the right. After the sentence “Requests now reach whoever is free first.”, Clearpen's suggestion for the paragraph's missing sentence waits in grey.">
 </picture>
 
-Clearpen helps you write articles that hold up. You do the writing; Clearpen edits and helps you think. It marks small edits that you accept or reject, checks your facts, logic and numbers, and tells you what a paragraph is missing. It never writes your article from scratch.
+Most AI writing tools offer to write for you. Clearpen helps you write. It gives you a calm page where every word is yours, and the AI works beside you. It marks small edits that you accept or reject, checks your facts, logic and numbers, tells you what a paragraph is missing, and asks the question that leads to your next sentence. You can also add the pages you're drawing on, as a link or as pasted text. Its suggestions and fact-checks then use the passages that bear on what you're writing. It never writes your article from scratch, so what you publish sounds like you, because you wrote it.
 
-Everything runs on your machine. The AI is a local model through [Ollama](https://ollama.com), your library is a single file, and every article exports to plain Markdown.
+That's the idea behind Clearpen: less writing done by AI, and more help from AI while you write.
+
+Your writing stays on your machine. The AI is a local model through [Ollama](https://ollama.com), your library is a single file, and every article exports to plain Markdown.
 
 > **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing — on a local model. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
 
@@ -85,8 +87,9 @@ Installers for Mac and Windows are on the [Releases page](https://github.com/AQS
 
 Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which is free. The first time you open Clearpen, it checks for Ollama and links you to it if it's missing. Then it downloads a writing model for you, with its progress:
 
-- **Qwen3 8B** (5.2 GB), for computers with 16 GB of memory or more;
-- **Qwen3 4B** (2.5 GB), lighter and quicker, for 8 GB.
+- **Qwen3.5 4B** (4.0 GB), quick and the best at drawing on your sources, for computers with 8 GB of memory or more;
+- **Qwen3 8B** (5.2 GB), larger and slower, for 16 GB or more;
+- **Qwen3 4B** (2.5 GB), the lightest, for less memory.
 
 You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
 
@@ -114,8 +117,8 @@ pnpm --filter @clearpen/desktop tauri dev
 The first run compiles the Rust side of the app and takes a few minutes; after that, the window opens in seconds and reloads as you edit. On first launch Clearpen offers to download a model through Ollama. To get one yourself:
 
 ```bash
-ollama pull qwen3:8b             # 16 GB of memory or more
-ollama pull qwen3:4b-instruct    # 8 GB
+ollama pull qwen3.5:4b           # 8 GB of memory or more
+ollama pull qwen3:4b-instruct    # less memory
 ```
 
 Your library lives in one SQLite file, `library.db`, in `~/Library/Application Support/app.clearpen.desktop/` on Mac or `%APPDATA%\app.clearpen.desktop\` on Windows.
