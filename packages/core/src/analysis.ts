@@ -258,7 +258,11 @@ export function sentences(text: string): Sentence[] {
   return out;
 }
 
-const plain = (s: string) => s.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`#>]/g, ' ');
+const plain = (s: string) =>
+  s
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<\/?u>/gi, '')
+    .replace(/[*_`#>]/g, ' ');
 const wordsOf = (s: string): string[] => plain(s).match(/[\p{L}\p{N}’']+/gu) || [];
 
 /** Words in a Markdown text, counted the way `stats` counts them, so every count in the app agrees. */

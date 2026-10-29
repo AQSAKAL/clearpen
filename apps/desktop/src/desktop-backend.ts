@@ -4,7 +4,7 @@
 
 import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI } from '@clearpen/ui';
+import { type Backend, localAI, pageFetcher } from '@clearpen/ui';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { appConfigDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -115,6 +115,8 @@ export async function createDesktopBackend(): Promise<Backend> {
 
     ai: localAI(llm),
     openLink: (url) => openUrl(url),
+    // Through the HTTP plugin, which no page's CORS stops; capabilities/default.json lets it reach the web.
+    fetchPage: pageFetcher((input, init) => tauriFetch(input, init)),
     memory: () => invoke<number>('total_memory').catch(() => null),
 
     beforeClose(saveAll) {

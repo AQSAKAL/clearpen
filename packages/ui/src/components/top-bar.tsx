@@ -25,6 +25,7 @@ export type Command =
   | 'review'
   | 'assist'
   | 'insights'
+  | 'sources'
   | 'autocomplete'
   | 'autocorrect'
   | 'prices'
@@ -125,7 +126,7 @@ export function TopBar({
         size="icon-sm"
         onClick={() => onCommand('assist')}
         aria-label="Assist"
-        title={`Assist: notes and insights (${mod}⇧A)`}
+        title={`Assist: notes, insights and sources (${mod}⇧A)`}
       >
         <PanelRightIcon />
       </Button>
@@ -170,6 +171,7 @@ export function TopBar({
           <DropdownMenuItem onSelect={() => onCommand('reader')}>
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCommand('sources')}>Sources…</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('fonts')}>Fonts…</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs text-muted-foreground">Theme</DropdownMenuLabel>

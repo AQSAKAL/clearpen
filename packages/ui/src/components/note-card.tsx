@@ -14,6 +14,7 @@ export const ORIGIN: Record<Origin, string> = {
   knowledge: 'From the model’s own knowledge — it can’t browse. Verify before you publish.',
   verified:
     'From the model’s own knowledge, confirmed when asked again — it can’t browse, so verify before you publish.',
+  source: 'From the pages you saved as sources, as the AI read them. Check the page before you publish.',
 };
 
 const BAD = /incorrect|contradict|fallacy|does not follow|unsupported|misleading/i;

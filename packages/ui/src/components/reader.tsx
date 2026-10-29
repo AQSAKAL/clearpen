@@ -28,13 +28,22 @@ export function Reader({
   useEffect(() => ref.current?.focus(), []);
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the click it handles is a link's, which Enter on the link also fires.
     <article
       ref={ref}
       tabIndex={-1}
       onDoubleClick={onExit}
-      className="prose prose-stone dark:prose-invert mx-auto w-full max-w-[700px] px-6 pt-10 pb-32 font-read text-[20px] leading-[1.7] outline-none sm:px-8 prose-headings:font-read prose-img:rounded-md"
+      // A link opens in the browser; followed in place, it would take the app's window with it.
+      onClick={(e) => {
+        const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        e.preventDefault();
+        const href = a.getAttribute('href') || '';
+        if (/^(https?:|mailto:)/i.test(href)) void backend.openLink(href);
+      }}
+      className="prose prose-stone dark:prose-invert mx-auto w-full max-w-[700px] px-6 pt-10 pb-32 font-read text-[calc(18px*var(--f-read-scale))] leading-[1.7] outline-none sm:px-8 prose-headings:font-read prose-img:rounded-md [&_:is(h1,h2,h3,h4,h5,h6)_strong]:font-black"
     >
-      <h1 className="mb-2 text-[40px] leading-[1.15]">{title || 'Untitled'}</h1>
+      <h1 className="mb-2 text-[calc(36px*var(--f-read-scale))] leading-[1.15]">{title || 'Untitled'}</h1>
       <p className="mt-0 font-sans text-sm text-muted-foreground">
         {counts.words.toLocaleString()} words · {counts.minutes} min read
       </p>

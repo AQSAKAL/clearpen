@@ -2,7 +2,7 @@
 // Explicit queries per operation (no ORM relations), validated here so every
 // backend stores the same thing. Deletes are tombstones until purged.
 
-import { type Brief, countWords, type Meta, normaliseMeta } from '@clearpen/core';
+import { type Brief, countWords, type Meta, normaliseMeta, normaliseSources } from '@clearpen/core';
 import { and, asc, count, desc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { connect, type Db, type SqlDriver } from './driver.ts';
 import { now, uuidv7 } from './ids.ts';
@@ -147,6 +147,9 @@ const clean = {
     const g = b.guide && typeof b.guide === 'object' ? (b.guide as Record<string, unknown>) : null;
     if (g && typeof g.template === 'string' && g.template && Number.isInteger(g.step) && (g.step as number) >= 0)
       out.guide = { template: s(g.template, 40), step: g.step as number };
+    // Pages the writer saved with the article, as Markdown.
+    const sources = normaliseSources(b.sources);
+    if (sources.length) out.sources = sources;
     return out;
   },
   meta: (v: unknown): Meta | null => (v && typeof v === 'object' ? normaliseMeta(v) : null),

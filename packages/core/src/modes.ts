@@ -10,6 +10,7 @@
 import { GENRES, type Genre } from './checks.ts';
 import type { TemplateId } from './guide.ts';
 import type { Brief } from './prompts.ts';
+import { sourcesText } from './sources.ts';
 
 export const MODES = [
   'article',
@@ -169,5 +170,6 @@ export const briefForMode = (id: ModeId): { mode: ModeId; genre: Genre } => ({ m
 export function checkOptions(brief?: Brief): { genre: Genre; sources: string; checks: boolean; style: boolean } {
   const mode = modeOf(brief);
   const genre = (GENRES as readonly string[]).includes(mode.genre) ? mode.genre : 'article';
-  return { genre, sources: brief?.notes ?? '', checks: mode.checks, style: mode.aids.style };
+  // A figure the writer's notes or saved pages give isn't one they made up.
+  return { genre, sources: sourcesText(brief), checks: mode.checks, style: mode.aids.style };
 }

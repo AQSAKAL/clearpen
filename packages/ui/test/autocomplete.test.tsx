@@ -2,6 +2,7 @@
 // scripted model, the pause that triggers it, ghost text and Tab.
 
 import assert from 'node:assert/strict';
+import type { NewDocument } from '@clearpen/db';
 import { EditorView } from '@codemirror/view';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -20,13 +21,13 @@ const missingMeaning: Reply[] = [
   { when: /Article title:/, reply: NEXT },
 ];
 
-async function launch(replies: Reply[]) {
+async function launch(replies: Reply[], doc: NewDocument = { title: 'Inbox', content: '' }) {
   const backend = await testBackend(replies);
-  await backend.library.documents.create({ title: 'Inbox', content: '' });
+  await backend.library.documents.create(doc);
   const user = userEvent.setup();
   render(<App backend={backend} />);
   const title = (await screen.findByLabelText('Title')) as HTMLTextAreaElement;
-  await waitFor(() => assert.equal(title.value, 'Inbox'));
+  await waitFor(() => assert.equal(title.value, doc.title));
   const view = EditorView.findFromDOM(document.querySelector('.cm-editor') as HTMLElement)!;
   return { backend, user, view };
 }
@@ -112,6 +113,21 @@ test('⌘J after a lead-in suggests what its colon introduces; mid-sentence it s
   assert.equal(ghost(), '');
 });
 
+test('the suggestion knows what the article is about: its brief, and how it opens', async () => {
+  const opening = 'The security issues found in systems are not technical. They are social.';
+  const answer = 'The `root` user travels in a URL that anyone can paste.';
+  const { view } = await launch(
+    [{ when: /Topic: Application security[\s\S]*How the article opens[\s\S]*They are social\./, reply: answer }],
+    {
+      title: 'Leaks',
+      content: `${opening}\n\nOne leaked string:\n\nmysql://app.root:B2Bqr2e3W887JYkODVju@db.example.com/x\n\n`,
+      brief: { topic: 'Application security' },
+    },
+  );
+  type(view, 'What can we see here?');
+  await waitFor(() => assert.equal(ghost().trim(), answer), slow);
+});
+
 test('the ⋯ menu turns suggestions off', async () => {
   const { backend, user, view } = await launch(missingMeaning);
   await user.click(screen.getByRole('button', { name: 'More' }));
@@ -120,4 +136,14 @@ test('the ⋯ menu turns suggestions off', async () => {
   type(view, `${POINT} ${SUPPORT}`);
   await new Promise((r) => setTimeout(r, 1200));
   assert.equal(ghost(), '');
+});
+
+test('while a suggestion is on its way, three dots at the cursor say so, and go when the writer types on', async () => {
+  const { view } = await launch([{ when: /Article title:/, reply: 'hang' }]);
+  type(view, 'A shared inbox fixes three things:');
+  askNow(view);
+  await waitFor(() => assert.ok(document.querySelector('.cm-ghost-pending')), slow);
+  assert.equal(view.state.doc.toString(), 'A shared inbox fixes three things:', 'nothing is in the text');
+  type(view, ' Requests');
+  await waitFor(() => assert.equal(document.querySelector('.cm-ghost-pending'), null));
 });

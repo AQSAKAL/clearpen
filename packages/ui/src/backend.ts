@@ -21,6 +21,8 @@ import type {
   RewriteDone,
   RewriteInput,
   Role,
+  SourceAnswer,
+  SourceQuestion,
   TaskOptions,
   TokenEvent,
 } from '@clearpen/core';
@@ -31,6 +33,13 @@ export interface StoredImage {
   src: string;
   type: string;
   bytes: number;
+}
+
+/** A page as fetched: where it ended up after redirects, its content type, and its text. */
+export interface FetchedPage {
+  url: string;
+  type: string;
+  text: string;
 }
 
 /** Which model plays which role; a missing or null role uses the best model installed. */
@@ -53,11 +62,13 @@ export interface AI {
   proofread(input: ProofreadInput, opts?: TaskOptions): Promise<Fix[]>;
   /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing, as it's written. */
   nextSentence(
-    input: { title?: string; before: string; heading?: string; notes?: string[] },
+    input: { title?: string; before: string; heading?: string; notes?: string[]; brief?: Brief; opening?: string },
     opts?: TaskOptions,
   ): AsyncIterable<NextSentenceEvent>;
   /** After a guided frame is filled: what the sentence leaves unsaid, and the next frame's question. */
   guide(input: GuideInput, opts?: TaskOptions): Promise<GuideReply>;
+  /** The writer's question, answered from their saved sources alone, with the passages it came from. */
+  askSources(input: SourceQuestion, opts?: TaskOptions): Promise<SourceAnswer>;
 }
 
 export interface Backend {
@@ -87,6 +98,12 @@ export interface Backend {
 
   /** Opens a web page in the writer's browser. */
   openLink(url: string): Promise<void>;
+  /**
+   * Fetches a page the writer adds as a source, once, when they add or
+   * refresh it — the one request Clearpen makes to the web for the writing.
+   * Absent where the app can't reach the web; text can still be pasted.
+   */
+  fetchPage?(url: string, opts?: TaskOptions): Promise<FetchedPage>;
   /** The computer's memory in bytes, to offer a model that fits; null when it can't tell. */
   memory(): Promise<number | null>;
 

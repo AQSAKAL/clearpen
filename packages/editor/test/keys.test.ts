@@ -1,5 +1,5 @@
 // Tab keeps the writer in the editor (unless they've just pressed Esc), and
-// ⌘B / ⌘I wrap or unwrap the selection.
+// ⌘B / ⌘I / ⌘U wrap or unwrap the selection.
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { wrapSelection } from '../src/keys.ts';
@@ -108,6 +108,16 @@ describe('wrapSelection', () => {
     ed.setSelection(11, 15);
     press(ed, 'i', { mod: true });
     expect(ed.getText()).toBe('a **word** *here*');
+  });
+
+  test('⌘U underlines, and undoes it', () => {
+    const ed = mount('a word here');
+    ed.setSelection(2, 6);
+    expect(press(ed, 'u', { mod: true })).toBe(true);
+    expect(ed.getText()).toBe('a <u>word</u> here');
+    expect(ed.getSelection()).toMatchObject({ from: 2, to: 13 });
+    press(ed, 'u', { mod: true });
+    expect(ed.getText()).toBe('a word here');
   });
 });
 

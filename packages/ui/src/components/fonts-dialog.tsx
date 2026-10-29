@@ -1,7 +1,7 @@
 // The writing font (editor and title) and the reading font (reader mode).
 
 import { useEffect, useState } from 'react';
-import { DEFAULT_FONTS, FONTS, type FontSettings, fontStack } from '../fonts.ts';
+import { DEFAULT_FONTS, FONTS, type FontSettings, fontScale, fontStack } from '../fonts.ts';
 import { useSettings } from '../settings.tsx';
 import { Button } from './ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog.tsx';
@@ -50,7 +50,10 @@ function FontPicker({
           ))}
         </SelectContent>
       </Select>
-      <p className="rounded-md border bg-card p-3 text-[17px] leading-relaxed" style={{ fontFamily: fontStack(value) }}>
+      <p
+        className="rounded-md border bg-card p-3 leading-relaxed"
+        style={{ fontFamily: fontStack(value), fontSize: 17 * fontScale(value) }}
+      >
         {SAMPLE}
       </p>
     </div>

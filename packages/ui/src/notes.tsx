@@ -12,7 +12,7 @@ import { useLibrary } from './library.tsx';
 import { useStatus } from './status.tsx';
 
 /** Where a note came from, so the writer knows how far to trust it. */
-export type Origin = 'software' | 'rule' | 'knowledge' | 'verified';
+export type Origin = 'software' | 'rule' | 'knowledge' | 'verified' | 'source';
 
 export interface NoteCard {
   category: string;

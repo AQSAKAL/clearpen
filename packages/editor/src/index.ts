@@ -9,12 +9,14 @@ import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import { EditorState, type Extension, type StateEffect, Transaction } from '@codemirror/state';
 import { drawSelection, EditorView, keymap, placeholder, type ViewUpdate } from '@codemirror/view';
 import { analysisField, setAnalysis } from './analysis.ts';
+import { markdownBlocks } from './blocks.ts';
+import { codeBlocks, codeHighlight, codeLanguages } from './code.ts';
 import { addFixes, correction, FIX_SHOWN_MS, fadeFixes, fixesField, isKept } from './corrections.ts';
 import { focusCompartment, focusPlugin } from './focus.ts';
 import { acceptGhost, ghostField, setGhost } from './ghost.ts';
 import { imageField } from './images.ts';
 import { aiKeys } from './keys.ts';
-import { lineStyles, proseHighlight } from './markdown.ts';
+import { lineStyles, proseHighlight, underline } from './markdown.ts';
 import { notesField, removeNote, setActiveNote, setNotes } from './notes.ts';
 import { sectionField } from './sections.ts';
 import {
@@ -48,6 +50,7 @@ const NOT_PROSE = new Set([
   'URL',
   'Autolink',
   'HTMLTag',
+  'UnderlineMark',
   'HTMLBlock',
   'CommentBlock',
   'ProcessingInstruction',
@@ -89,9 +92,12 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
     history(),
     drawSelection(),
     EditorView.lineWrapping,
-    markdown({ base: markdownLanguage }),
+    markdown({ base: markdownLanguage, extensions: [underline], codeLanguages }),
     syntaxHighlighting(proseHighlight),
+    syntaxHighlighting(codeHighlight),
     lineStyles,
+    codeBlocks,
+    markdownBlocks(sugField),
     highlightSelectionMatches({ minSelectionLength: 3 }),
     placeholder(opts.placeholder || 'Start writing…'),
     sugField,

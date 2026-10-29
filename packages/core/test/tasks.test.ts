@@ -3,16 +3,28 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
+  articleOpening,
   CODE_LEAD_IN_MISSING,
   commandOk,
+  copiesSecret,
+  describesExample,
+  EXAMPLE_LEAD_IN_MISSING,
+  EXAMPLES_LEAD_IN_MISSING,
+  echoes,
   endsCodeLeadIn,
+  endsExampleLeadIn,
   endsLeadIn,
+  endsQuestionLeadIn,
   LEAD_IN_MISSING,
+  madeUpAboutReal,
+  maskSecrets,
   nextSentenceOk,
   nextSentenceSpot,
+  notAQuery,
   notesProgress,
   paragraphLength,
   paragraphVerdict,
+  QUESTION_LEAD_IN_MISSING,
 } from '../src/autocomplete.ts';
 import { runChecks } from '../src/checks.ts';
 import { applyHunks } from '../src/diff.ts';
@@ -22,6 +34,7 @@ import { sectionAt } from '../src/outline.ts';
 import {
   completeMessages,
   judgeMessages,
+  questionMessages,
   REWRITES,
   THINK_KINDS,
   type ThinkKind,
@@ -583,6 +596,108 @@ test('a lead-in ending in a colon skips the judge and gets what it introduces', 
   assert.match(lastUser(writes.provider.requests[0]!), /missing what the colon at its end introduces/);
 });
 
+test('a paragraph that only asks skips the judge and gets its answer from the text before it', async () => {
+  const shown = 'One leaked string, verbatim:\n\nmysql://app.root:B2Bqr2e3W887JYkODVju@db.example.com:4000/x';
+  assert.ok(endsQuestionLeadIn(`${shown}\n\nWhat can we see here?`));
+  assert.ok(endsQuestionLeadIn(`${shown}\n\nWhat can we see here? And what does it say about us? `));
+  assert.ok(!endsQuestionLeadIn('What can we see here?'), 'nothing before it to answer from');
+  assert.ok(!endsQuestionLeadIn('## Leaks\n\nWhat can we see here?'), 'a heading is not text to answer from');
+  assert.ok(!endsQuestionLeadIn(`${shown}\n\nIt failed. Why?`), 'a paragraph with a point of its own is judged');
+  assert.ok(!endsQuestionLeadIn(`${shown}\n\n## What can we see here?`), 'headings are the writer’s');
+  assert.ok(!endsQuestionLeadIn(`${shown}\n\n“Did you see that?”`), 'a line of dialogue is a character’s');
+
+  // A suggestion never copies a key or password out of the text…
+  assert.ok(copiesSecret(shown, 'The password B2Bqr2e3W887JYkODVju sits in plain text.'));
+  // …though it may name what the text shows.
+  assert.ok(!copiesSecret(shown, 'The `root` user and its password travel together in one string.'));
+  assert.ok(!copiesSecret(shown, 'It reached gateway02 through tidbcloud before anyone noticed.'));
+  assert.equal(nextSentenceOk(shown, 'Anyone can log in with B2Bqr2e3W887JYkODVju as root.'), false);
+  // The model only ever sees it masked; carrying the mask over is copying it too.
+  assert.match(maskSecrets(shown), /mysql:\/\/app\.root:<redacted>@db\.example\.com:4000\/x$/);
+  assert.equal(maskSecrets('APID-11887 hit gateway02 and tidbcloud'), 'APID-11887 hit gateway02 and tidbcloud');
+  assert.ok(copiesSecret(shown, 'The string `mysql://<redacted>` gives it away.'));
+
+  const before = `${shown}\n\nWhat can we see here?`;
+  const writes = fakeLLM({
+    complete: () => 'never asked',
+    stream: () => [' The `root` user', ' and its password travel in one string.', ' More.'],
+  });
+  const events = await collect(nextSentenceStream(writes.llm, { before, heading: 'Leaks', notes: ['root is shared'] }));
+  assert.deepEqual(events[0], { type: 'verdict', complete: false, missing: QUESTION_LEAD_IN_MISSING });
+  assert.deepEqual(events.at(-1), { type: 'done', next: ' The `root` user and its password travel in one string.' });
+  // No judge: one call, to the question prompt, with the text before it and the section's notes.
+  assert.equal(writes.provider.requests.length, 1);
+  const req = writes.provider.requests[0]!;
+  assert.match(req.messages[0]!.content, /So far it only asks a question/);
+  assert.match(req.messages[0]!.content, /Never copy a password, key, token or ID/);
+  assert.match(
+    lastUser(req),
+    /The text before the question:\n<<<\nOne leaked string[\s\S]*mysql:\/\/app\.root:<redacted>@/,
+  );
+  assert.ok(!lastUser(req).includes('B2Bqr2e3W887JYkODVju'), 'the password never reaches the model');
+  assert.match(lastUser(req), /The paragraph being written:\n<<<\nWhat can we see here\?\n>>>/);
+  assert.match(lastUser(req), /notes for it:\n- root is shared/);
+  assert.match(
+    questionMessages({ before })[1]!.content,
+    /Answer its question from the text before it, in one sentence\.$/,
+  );
+
+  // An answer that copies the password is dropped, and stopped before the password shows.
+  const leaks = fakeLLM({ stream: () => ['The password ', 'B2Bqr2e3W887JYkODVju', ' is right there.'] });
+  const leaked = await collect(nextSentenceStream(leaks.llm, { before }));
+  assert.ok(!leaked.some((e) => e.type === 'text' && e.text.includes('B2Bq')));
+  assert.deepEqual(leaked.at(-1), { type: 'done', next: '' });
+  assert.equal(leaks.provider.requests[0]!.signal?.aborted, true);
+  // A question that ends a paragraph with a point of its own is still judged.
+  const judged = fakeLLM({ complete: () => JSON.stringify({ point: 1, support: 2, meaning: 3 }) });
+  await nextSentence(judged.llm, { before: `${shown}\n\nIt failed for a reason. Nobody rotated the key. Why?` });
+  assert.match(judged.provider.requests[0]!.messages[0]!.content, /Do not write or suggest anything/);
+});
+
+test('a suggestion knows what the article is about: the brief, the kind of piece, how it opens', async () => {
+  const opening = 'The security issues found in systems are not technical. They are social.';
+  // The opening is the first paragraph of prose, however far the cursor has come.
+  assert.equal(articleOpening(`# Leaks\n\n${opening}\n\nMore.`), opening);
+  assert.equal(articleOpening('```\ncode\n```\n\n| a | b |\n\nFirst prose.'), 'First prose.');
+  assert.equal(articleOpening(''), '');
+  assert.equal(articleOpening('x'.repeat(900)).length, 600);
+
+  const brief = { topic: 'Application security', audience: 'engineers', notes: 'my research', length: '1500' };
+  const prompt = completeMessages({
+    before: `${opening}\n\nIt failed. `,
+    brief: { ...brief, genre: 'scientific' },
+    opening,
+  })[1]!.content;
+  assert.match(
+    prompt,
+    /What the author has said about the article:\nTopic: Application security\nAudience: engineers\n/,
+  );
+  assert.ok(!prompt.includes('my research') && !prompt.includes('1500'), 'not the research notes or the length');
+  assert.match(prompt, /The reader is a reviewer/, 'who reads this kind of piece');
+  assert.match(prompt, /How the article opens — its subject and argument:\n<<<\nThe security issues[^<]*social\.\n>>>/);
+  // With nothing said, an article's reader; and the opening isn't repeated while it is being written.
+  const first = completeMessages({ before: 'The security issues found. ', opening: 'The security issues found.' })[1]!
+    .content;
+  assert.match(first, /The reader is intelligent and busy/);
+  assert.ok(!first.includes('How the article opens'));
+
+  // The task passes both to the prompt that answers a question, the opening masked like the rest.
+  const writes = fakeLLM({ stream: () => ['The `root` user is shared.'] });
+  await nextSentence(writes.llm, {
+    before: `${opening}\n\nmysql://app.root:B2Bqr2e3W887JYkODVju@db.example.com/x\n\nWhat can we see here?`,
+    brief: { topic: 'Application security' },
+    opening: `${opening} Key B2Bqr2e3W887JYkODVju.`,
+  });
+  const req = writes.provider.requests[0]!;
+  assert.match(req.messages[0]!.content, /as a specialist in the article's subject would/);
+  assert.match(
+    lastUser(req),
+    /^Article title: \(untitled\)\n\nWhat the author has said about the article:\nTopic: Application security\n/,
+  );
+  assert.match(lastUser(req), /How the article opens[\s\S]*Key <redacted>\.\n>>>/);
+  assert.ok(!lastUser(req).includes('B2Bqr2e3W887JYkODVju'), 'the password never reaches the model');
+});
+
 test('a lead-in that introduces a command gets the command, as inline code', async () => {
   assert.ok(endsCodeLeadIn('How to create an SSH key, use this CLI command:'));
   assert.ok(endsCodeLeadIn('SSH is: a protocol. To install it, run the following:'));
@@ -636,4 +751,171 @@ test('a lead-in that introduces a command gets the command, as inline code', asy
   const plain = fakeLLM({ stream: () => ['Requests reach whoever is free first.'] });
   await nextSentence(plain.llm, { before: 'A shared inbox fixes three things:' });
   assert.match(plain.provider.requests[0]!.messages[0]!.content, /Write ONE sentence/);
+});
+
+test('a lead-in that introduces an example gets the example itself, made up only when the author asks', async () => {
+  const hyde = 'HyDE turns a query into a hypothetical document before matching it.';
+  assert.deepEqual(endsExampleLeadIn(`${hyde}\n\nHere is an example of a generated response:`), {
+    madeUp: true,
+    many: false,
+    kind: 'document',
+    anchors: [],
+  });
+  assert.deepEqual(
+    endsExampleLeadIn('Revenue rose. For example:'),
+    { madeUp: false, many: false, kind: '', anchors: [] },
+    'what is known',
+  );
+  assert.equal(endsExampleLeadIn('It fixes three things:'), null);
+  // Several are wanted when the lead-in says so — "examples", "a variety of them like:".
+  assert.deepEqual(endsExampleLeadIn(`${hyde}\n\nGenerated examples:`), {
+    madeUp: true,
+    many: true,
+    kind: '',
+    anchors: [],
+  });
+  assert.deepEqual(endsExampleLeadIn(`${hyde}\n\nNow HyDE will generate a variety of them like:`), {
+    madeUp: true,
+    many: true,
+    kind: '',
+    anchors: [],
+  });
+  // A search query is not code: "a query, for example…:" is an example, not a command.
+  const query = `${hyde}\n\nYou create a query, for example to research financial results on earnings:`;
+  assert.equal(endsCodeLeadIn(query), false);
+  assert.deepEqual(endsExampleLeadIn(query), { madeUp: true, many: false, kind: 'query', anchors: [] });
+  assert.ok(endsCodeLeadIn('Find the rows with this SQL query:'));
+
+  // Made-up figures never go under a real company the author hasn't named; bare punctuation is no suggestion.
+  assert.ok(madeUpAboutReal(hyde, 'Apple reported Q3 revenue of $94.7 billion.'));
+  assert.ok(!madeUpAboutReal(hyde, 'Contoso reported Q3 revenue of $450M.'));
+  assert.ok(
+    !madeUpAboutReal('A synthetic Apple report:', 'Apple reported Q3 revenue of $94.7 billion.'),
+    'the author named it',
+  );
+  assert.equal(nextSentenceOk(hyde, '"'), false);
+
+  const before = `${hyde}\n\nHere is a synthetic example of a generated response:`;
+  const writes = fakeLLM({ stream: () => [' Contoso reported Q3 revenue', ' of $450M, up 12%.', ' More.'] });
+  const events = await collect(nextSentenceStream(writes.llm, { before }));
+  assert.deepEqual(events[0], { type: 'verdict', complete: false, missing: EXAMPLE_LEAD_IN_MISSING });
+  assert.deepEqual(events.at(-1), { type: 'done', next: ' Contoso reported Q3 revenue of $450M, up 12%.' });
+  const req = writes.provider.requests[0]!;
+  assert.match(
+    req.messages[0]!.content,
+    /Each example is only the thing itself, in double quotes: the generated document/,
+  );
+  assert.match(req.messages[0]!.content, /asked for a made-up example/);
+  assert.match(req.messages[0]!.content, /never repeat one or reword it/);
+  assert.equal(req.temperature, 0.6);
+  assert.match(lastUser(req), /Write the new example its colon introduces — documents, the things themselves\.$/);
+  // A plain example may not make anything up.
+  const real = fakeLLM({ stream: () => ['Sales rose 4%.'] });
+  await nextSentence(real.llm, { before: 'Revenue rose last year. For example:' });
+  assert.match(real.provider.requests[0]!.messages[0]!.content, /never invent a figure, name or result/);
+  // An invented example under a real company is dropped.
+  const apple = fakeLLM({ stream: () => [' Apple reported Q3 revenue of $94.7 billion.'] });
+  assert.equal((await nextSentence(apple.llm, { before })).next, '');
+});
+
+test('a lead-in that promises several gets a short list, and never an example the article already gives', async () => {
+  const given =
+    'Example 1 is: HyDE transforms "financial results on earnings" into a synthetic report for Contoso Corp stating Q3 revenue hit $42.5M with a net profit margin of 18%.';
+  const before = `HyDE writes a hypothetical document first.\n\n${given}\n\nGenerated examples:`;
+  // Something said already, word for word or nearly, is an echo; something new is not.
+  assert.ok(
+    echoes(
+      before,
+      'HyDE constructs a synthetic report for Contoso Corp stating Q3 revenue hit $42.5M with an 18% net profit margin.',
+    ),
+  );
+  assert.ok(!echoes(before, 'Northwind Corp reported fourth-quarter sales of $3.1B, up 9% on a year earlier.'));
+  // The same figures and a few of the same words are the same example, however reworded.
+  assert.ok(
+    echoes(
+      before,
+      'Contoso Corp Q3 revenue hit $42.5M with an 18% net profit margin, aligning closely with search results.',
+    ),
+  );
+  assert.ok(!echoes(before, 'Northwind reported an 18% rise in sales.'), 'one figure in common is a coincidence');
+
+  const lists = fakeLLM({
+    stream: () => [
+      'Here are three:\n',
+      '- Northwind Corp reported Q4 sales of $3.1B, up 9%.\n',
+      '- HyDE turns it into a synthetic report for Contoso Corp stating Q3 revenue hit $42.5M with an 18% net profit margin.\n',
+      '- Fabrikam posted a Q2 loss of $12M on lower margins.\n',
+      '- A fourth one.\n',
+    ],
+  });
+  const events = await collect(nextSentenceStream(lists.llm, { before }));
+  assert.deepEqual(events[0], { type: 'verdict', complete: false, missing: EXAMPLES_LEAD_IN_MISSING });
+  // Three items, one a line, as a list — the one the article already gives taken out, and the next read in its place.
+  assert.deepEqual(events.at(-1), {
+    type: 'done',
+    next: '\n- Northwind Corp reported Q4 sales of $3.1B, up 9%.\n- Fabrikam posted a Q2 loss of $12M on lower margins.\n- A fourth one.',
+  });
+  const req = lists.provider.requests[0]!;
+  assert.match(req.messages[0]!.content, /Write three, as a Markdown list/);
+  assert.match(lastUser(req), /Write the three new examples its colon introduces — queries, the things themselves\.$/);
+  assert.equal(req.signal?.aborted, true, 'stopped once three are written');
+
+  // An ordinary suggestion that says again what a paragraph further up said is dropped too.
+  const again = fakeLLM({
+    complete: () => JSON.stringify({ point: 1, support: 0, meaning: 0 }),
+    stream: () => [' HyDE transforms the query into a synthetic report for Contoso Corp with Q3 revenue of $42.5M.'],
+  });
+  assert.equal((await nextSentence(again.llm, { before: `${before.slice(0, -21)}\n\nIt works well. ` })).next, '');
+});
+
+test('an example is the thing itself — the query as typed, the document as written — of the kind asked for', async () => {
+  const article =
+    'You create a query, for example "financial results on earnings".\n\nHyDE turns it into a synthetic report.';
+  // The lead-in names the kind; failing that, the article's own quoted example decides it — a few words are a query.
+  assert.deepEqual(endsExampleLeadIn(`${article}\n\nExample queries:`)?.kind, 'query');
+  assert.deepEqual(
+    endsExampleLeadIn(`${article}\n\nSome synthetic examples of generated responses:`)?.kind,
+    'document',
+  );
+  assert.deepEqual(endsExampleLeadIn(`${article}\n\nGenerated examples:`), {
+    madeUp: true,
+    many: true,
+    kind: 'query',
+    anchors: ['financial results on earnings'],
+  });
+
+  // Talking about an example isn't one, in quotes or not; a query is what someone types.
+  assert.ok(describesExample('HyDE transforms "Q3 earnings" into a synthetic report for Contoso.'));
+  assert.ok(describesExample('- "The model generates fabricated earnings data for Contoso."'));
+  assert.ok(describesExample('Generated text depicting Jane Doe posting $38.7M.'));
+  assert.ok(!describesExample('"Northwind Corp reported Q4 revenue of $75.2M."'));
+  assert.ok(notAQuery('Jane Doe seeks quarterly revenue for Northwind Corp via HyDE'));
+  assert.ok(!notAQuery('"Northwind Q4 2024 operating margin"'));
+  assert.ok(!notAQuery('why did Contoso miss revenue estimates'));
+
+  const before = `${article}\n\nGenerated examples:`;
+  const lists = fakeLLM({
+    stream: () => [
+      '- "Northwind Q4 2024 operating margin"\n',
+      '- "HyDE converts the query into a report for Contoso."\n',
+      '- Jane Doe seeks quarterly revenue via HyDE\n',
+      '- "why did Contoso miss revenue estimates"\n',
+    ],
+  });
+  const out = await nextSentence(lists.llm, { before });
+  // The queries stay, quotes and all; the description and the sentence about searching go.
+  assert.equal(out.next, '\n- "Northwind Q4 2024 operating margin"\n- "why did Contoso miss revenue estimates"');
+  const req = lists.provider.requests[0]!;
+  assert.match(req.messages[0]!.content, /Each example is only the thing itself, in double quotes: a search query/);
+  assert.match(
+    lastUser(req),
+    /The article's own example, whose subject the new ones keep to: "financial results on earnings"/,
+  );
+  // Short as a query is, the article's own figures make it a copy.
+  assert.ok(
+    echoes(
+      'Contoso Q3 revenue hit $42.5M with a net profit margin of 18%.',
+      'Contoso Q3 revenue $42.5M net profit 18%',
+    ),
+  );
 });

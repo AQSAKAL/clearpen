@@ -4,7 +4,32 @@
 import { HighlightStyle, syntaxTree } from '@codemirror/language';
 import { type Range, RangeSetBuilder } from '@codemirror/state';
 import { Decoration, type DecorationSet, type EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
-import { tags as t } from '@lezer/highlight';
+import { Tag, tags as t } from '@lezer/highlight';
+import type { MarkdownConfig } from '@lezer/markdown';
+
+const underlined = Tag.define();
+const UNDERLINE = { resolve: 'Underline', mark: 'UnderlineMark' };
+
+/** Underline, which Markdown lacks, written as HTML's <u>…</u>, the way GitHub and most editors read it. */
+export const underline: MarkdownConfig = {
+  defineNodes: [
+    { name: 'Underline', style: { 'Underline/...': underlined } },
+    { name: 'UnderlineMark', style: t.processingInstruction },
+  ],
+  parseInline: [
+    {
+      name: 'Underline',
+      parse(cx, next, pos) {
+        if (next !== 60 /* < */) return -1;
+        const tag = cx.slice(pos, pos + 4).toLowerCase();
+        if (tag.startsWith('<u>')) return cx.addDelimiter(UNDERLINE, pos, pos + 3, true, false);
+        if (tag === '</u>') return cx.addDelimiter(UNDERLINE, pos, pos + 4, false, true);
+        return -1;
+      },
+      before: 'HTMLTag',
+    },
+  ],
+};
 
 export const proseHighlight = HighlightStyle.define([
   { tag: t.heading1, class: 'md-h md-h1' },
@@ -13,6 +38,7 @@ export const proseHighlight = HighlightStyle.define([
   { tag: t.strong, class: 'md-strong' },
   { tag: t.emphasis, class: 'md-em' },
   { tag: t.strikethrough, class: 'md-strike' },
+  { tag: underlined, class: 'md-u' },
   { tag: t.link, class: 'md-link' },
   { tag: t.url, class: 'md-url' },
   { tag: t.quote, class: 'md-quote' },

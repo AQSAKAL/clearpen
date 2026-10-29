@@ -1,16 +1,17 @@
-// The Assist panel: Insights, and the notes when the margin has no room for
-// them. A column beside the page in a wide window, a sheet in a narrow one.
-// Plan, Ask and Publish join it with the thinking aids.
+// The Assist panel: Insights, the article's sources, and the notes when the
+// margin has no room for them. A column beside the page in a wide window, a
+// sheet in a narrow one. Plan, Ask and Publish join it with the thinking aids.
 
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { type HighlightState, Insights } from './insights.tsx';
 import { NotesList } from './margin-notes.tsx';
+import { Sources } from './sources-panel.tsx';
 import { Button } from './ui/button.tsx';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs.tsx';
 
-export type AssistTab = 'notes' | 'insights';
+export type AssistTab = 'notes' | 'insights' | 'sources';
 
 interface Props {
   tab: AssistTab | null;
@@ -30,6 +31,7 @@ function Body({ tab, onTab, notesInMargin, highlight, close }: Props & { close: 
         <TabsList>
           {!notesInMargin && <TabsTrigger value="notes">Notes</TabsTrigger>}
           <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="sources">Sources</TabsTrigger>
         </TabsList>
         <div className="flex-1" />
         {close}
@@ -42,6 +44,9 @@ function Body({ tab, onTab, notesInMargin, highlight, close }: Props & { close: 
         )}
         <TabsContent value="insights">
           <Insights highlight={highlight} />
+        </TabsContent>
+        <TabsContent value="sources">
+          <Sources />
         </TabsContent>
       </div>
     </Tabs>
@@ -65,12 +70,20 @@ export function AssistPanel(props: Props) {
       </aside>
     );
   }
+  // Over the page, but not in front of it: the notes are about the text, so
+  // the text stays sharp, and a click in it moves the cursor, not the panel.
   return (
-    <Sheet open={!!tab} onOpenChange={(o) => !o && onTab(null)}>
-      <SheetContent side="right" className="w-[min(380px,92vw)] gap-0 p-0 sm:max-w-none">
+    <Sheet open={!!tab} onOpenChange={(o) => !o && onTab(null)} modal={false}>
+      <SheetContent
+        side="right"
+        showOverlay={false}
+        onInteractOutside={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="w-[min(380px,92vw)] gap-0 p-0 sm:max-w-none"
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Assist</SheetTitle>
-          <SheetDescription>Notes on your draft, and insights.</SheetDescription>
+          <SheetDescription>Notes on your draft, insights, and the article’s sources.</SheetDescription>
         </SheetHeader>
         <Body {...props} close={null} />
       </SheetContent>

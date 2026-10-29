@@ -2,12 +2,14 @@
 // Clearpen asks whether the paragraph has made its point. If it has, a small
 // "¶ point made" appears (Tab starts a new paragraph); if not, one sentence
 // in grey supplies the missing part, appearing as the model writes it. Tab
-// keeps it; typing on ignores it.
+// keeps it; typing on ignores it. While the model is still thinking, three
+// dots at the cursor say something is on its way.
 // After a suggestion is taken, Clearpen waits for words of the writer's own,
 // so Tab can never write a paragraph. ⌘J asks at once, after a sentence or a
 // lead-in like "Three reasons:", and says so when there's nothing to offer.
 
 import {
+  articleOpening,
   endsLeadIn,
   endsSentence,
   NEXT_SENTENCE_PAUSE_MS,
@@ -25,6 +27,8 @@ import { useMode } from './mode.ts';
 import { useSettings } from './settings.tsx';
 
 export const POINT_MADE = ' ¶ point made · Tab for new paragraph';
+/** How long a suggestion asked for on a pause may take before the dots show that it's coming. */
+const PENDING_AFTER_MS = 300;
 
 export function Autocomplete() {
   const page = usePage();
@@ -44,8 +48,21 @@ export function Autocomplete() {
     ctrl: null as AbortController | null,
   });
   // The mode may turn suggestions off, and a guide in progress has the cursor's grey text.
-  const live = useRef({ on: settings.autocomplete, busy: ai.busy, mode, guided: !!guide.template });
-  live.current = { on: settings.autocomplete && mode.aids.next, busy: ai.busy, mode, guided: !!guide.template };
+  // The brief tells the model what the article is about.
+  const live = useRef({
+    on: settings.autocomplete,
+    busy: ai.busy,
+    mode,
+    guided: !!guide.template,
+    brief: current?.brief,
+  });
+  live.current = {
+    on: settings.autocomplete && mode.aids.next,
+    busy: ai.busy,
+    mode,
+    guided: !!guide.template,
+    brief: current?.brief,
+  };
 
   useEffect(() => {
     const s = state.current;
@@ -95,6 +112,14 @@ export function Autocomplete() {
       const stale = () => id !== s.seq || ed.cursor() !== s.at || !ed.getSelection().empty;
       let complete = false;
       let offered = false;
+      // Something is on its way: dots at the cursor — at once when the writer
+      // asked, after a moment otherwise, so a quick answer doesn't flicker.
+      const dots = setTimeout(
+        () => {
+          if (!stale() && !ed.ghost()) ed.showGhost(s.at, '', 'Working on a suggestion', 'pending');
+        },
+        force ? 0 : PENDING_AFTER_MS,
+      );
       try {
         for await (const ev of backend.ai.nextSentence(
           {
@@ -102,6 +127,9 @@ export function Autocomplete() {
             before,
             heading: section?.heading ?? '',
             notes: section?.points ?? [],
+            // What the article is about, however far the cursor has come from its opening.
+            brief: live.current.brief,
+            opening: articleOpening(text.slice(0, pos)),
           },
           { signal: ctrl.signal },
         )) {
@@ -123,6 +151,10 @@ export function Autocomplete() {
         ed.clearGhost();
         if (force) toast('Couldn’t reach the model for a suggestion');
         return;
+      } finally {
+        // The dots go with the answer — unless a newer request has put up its own.
+        clearTimeout(dots);
+        if (id === s.seq && ed.ghost()?.kind === 'pending') ed.clearGhost();
       }
       if (force && !offered && !stale()) toast('Nothing new to suggest here');
     }

@@ -53,9 +53,11 @@
   --f-ui: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --f-text: "Source Serif 4 Variable", "Source Serif Pro", Charter, "Iowan Old Style", Georgia, serif;
   --f-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
-  /* The writer's chosen fonts, set by the Fonts dialog. */
+  /* The writer's chosen fonts, set by the Fonts dialog, and how much each is scaled to read at the same size. */
   --f-write: var(--f-text);
   --f-read: var(--f-text);
+  --f-write-scale: 1;
+  --f-read-scale: 1;
 
   --radius: 0.5rem;
   --background: var(--paper);

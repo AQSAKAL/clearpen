@@ -42,6 +42,8 @@ import { GoalDialog } from './onboarding.tsx';
 import { useReviewActions } from './review-actions.ts';
 import { loadSettings, type Settings, SettingsProvider, useSettings } from './settings.tsx';
 import { SetupProvider, useSetup } from './setup.tsx';
+import { SourceLinks } from './source-links.tsx';
+import { SourceQuestions, useSourceQuestions } from './source-questions.tsx';
 import { StatusProvider } from './status.tsx';
 import { ThemeProvider } from './theme.tsx';
 
@@ -192,6 +194,7 @@ function Workspace() {
     if (!notesInMargin) setPanel('notes');
   }, [notesInMargin]);
   const { review, check } = useReviewActions(openNotes);
+  const askSources = useSourceQuestions(openNotes);
 
   // A click on a noted passage shows its note, wherever the notes are.
   useEffect(() => page.on('note', (id) => id && openNotes()), [page, openNotes]);
@@ -321,6 +324,9 @@ function Workspace() {
           break;
         case 'insights':
           setPanel('insights');
+          break;
+        case 'sources':
+          setPanel('sources');
           break;
         case 'autocomplete':
           set('autocomplete', !settings.autocomplete);
@@ -499,9 +505,11 @@ function Workspace() {
         onOpenChange={(o) => !o && void skipGoal().catch((err) => toast.error(String(err.message ?? err)))}
         onChoose={(g) => void chooseGoal(g).catch((err) => toast.error(String(err.message ?? err)))}
       />
-      {!reading && <SelectionToolbar mod={mod} check={check} />}
+      {!reading && <SelectionToolbar mod={mod} check={check} ask={askSources} />}
       <Autocomplete />
       <Autocorrect />
+      <SourceLinks />
+      <SourceQuestions />
     </SidebarProvider>
   );
 }

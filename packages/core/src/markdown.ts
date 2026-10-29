@@ -30,6 +30,24 @@ function image(alt: string, url: string): string {
 let tickers = false;
 const tickerTag = (symbol: string) => `<tv-ticker-tag symbol="${esc(symbol)}" size="small"></tv-ticker-tag>`;
 
+const link = (url: string, label: string) => `<a href="${esc(safeUrl(url))}">${label}</a>`;
+
+// A web address written out, as GitHub links one: at a line's start, or after
+// a space, an opening bracket or quote, or emphasis (<u> included).
+const BARE_URL = /(^|[\s*_~("'“‘>])((?:https?:\/\/|www\.)[\p{L}\p{N}][^\s<\u0000]*)/giu;
+
+/** Where a written-out address ends: before the sentence's punctuation, and before a ) that closes nothing in it. */
+function urlEnd(url: string): number {
+  let end = url.length;
+  for (;;) {
+    const c = url[end - 1]!;
+    const head = url.slice(0, end);
+    if ('?!.,:;*_~"\'”’'.includes(c)) end--;
+    else if (c === ')' && head.split(')').length > head.split('(').length) end--;
+    else return end;
+  }
+}
+
 function emphasis(s: string): string {
   return s
     .replace(
@@ -38,13 +56,14 @@ function emphasis(s: string): string {
     )
     .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\*)/g, '$1<em>$2</em>')
     .replace(/(^|[^_\w])_([^_\s][^_]*?)_(?!\w)/g, '$1<em>$2</em>')
-    .replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+    .replace(/&lt;u&gt;(.+?)&lt;\/u&gt;/gi, '<u>$1</u>');
 }
 
 /**
- * Inline Markdown. Code, images, links and tickers are lifted out into sealed
- * slots first, so no later pattern can ever run over the tags they produce;
- * only then is the remaining text escaped and emphasised.
+ * Inline Markdown. Code, images, links, addresses and tickers are lifted out
+ * into sealed slots first, so no later pattern can ever run over the tags they
+ * produce; only then is the remaining text escaped and emphasised.
  */
 function inline(src: string): string {
   const slots: string[] = [];
@@ -53,8 +72,14 @@ function inline(src: string): string {
   s = s.replace(/`([^`]+)`/g, (_, c: string) => hold(`<code>${esc(c)}</code>`));
   s = s.replace(/!\[([^[\]]*)\]\(([^()\s]+)(?:\s+"[^"]*")?\)/g, (_, alt: string, url: string) => hold(image(alt, url)));
   s = s.replace(/\[([^[\]]+)\]\(([^()\s]+)\)/g, (_, label: string, url: string) =>
-    hold(`<a href="${esc(safeUrl(url))}">${emphasis(esc(label))}</a>`),
+    hold(link(url, emphasis(esc(label)))),
   );
+  s = s.replace(/<((?:https?:\/\/|mailto:)[^\s<>\u0000]+)>/gi, (_, url: string) => hold(link(url, esc(url))));
+  s = s.replace(BARE_URL, (_, before: string, written: string) => {
+    const url = written.slice(0, urlEnd(written));
+    const href = /^www\./i.test(url) ? `https://${url}` : url;
+    return before + hold(link(href, esc(url))) + written.slice(url.length);
+  });
   if (tickers) {
     // The ticker stays as written; the tag follows it.
     let out = '';

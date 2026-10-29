@@ -71,6 +71,28 @@ export function tidyCompletion(raw: string, before: string): string {
   return text.replace(/\s+$/, (m) => (m.includes('\n') ? '' : m.slice(0, 1)));
 }
 
+/**
+ * A list the model wrote after a lead-in ("Generated examples:"), as it goes
+ * at the cursor: each item on a line of its own, as a Markdown list, at most
+ * `max`. A line that only introduces the list ("Here are three:") is chatter;
+ * an item's quotes are the example's, and stay.
+ */
+export function tidyList(raw: string, max = 3): string {
+  const items = String(raw)
+    .replace(THINKING, '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/:$/.test(l))
+    .map((l) => l.replace(/^(?:[-*+•]|\d+[.)])\s+/, ''))
+    .filter(Boolean)
+    .slice(0, max);
+  return items.map((i) => `\n- ${i}`).join('');
+}
+
+/** Whether the model has written `max` items of a list: the last one ended by a line break. */
+export const listComplete = (raw: string, max = 3): boolean =>
+  (String(raw).match(/^\s*(?:[-*+•]|\d+[.)])\s+\S.*\n/gm) || []).length >= max;
+
 export const PREAMBLE_RE = /^(here(’|')?s|here is)[^:\n]*:\s*/i;
 
 // A command answer, line by line: "Here's the command:" and "Command:" are

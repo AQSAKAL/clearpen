@@ -93,7 +93,8 @@ export function MarginNotes() {
 export function NotesList() {
   const notes = useNotes();
   return (
-    <div className="grid gap-2.5">
+    // One column no wider than the panel, however long a note's title.
+    <div className="grid grid-cols-1 gap-2.5">
       {notes.summary ? (
         <NotesSummaryCard summary={notes.summary} count={notes.live.length} />
       ) : (

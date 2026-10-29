@@ -14,8 +14,15 @@ import { anySignal, parseJSONAnswer } from './util.ts';
  */
 export type Role = 'quick' | 'coach' | 'checker';
 
-/** Good defaults, in order, when the writer hasn't picked a model. */
+/**
+ * Good defaults, in order, when the writer hasn't picked a model. Qwen3.5 4B
+ * first: in our tests it drew on the writer's sources best of these, and
+ * answered quickest. On Apple silicon Ollama runs it on MLX, which has no
+ * structured output, and it fills Clearpen's JSON reliably all the same.
+ */
 export const PREFERRED_MODELS = [
+  'qwen3.5:4b',
+  'qwen3.5:9b',
   'qwen3:8b',
   'qwen3:14b',
   'gemma4:12b',

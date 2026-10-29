@@ -38,13 +38,15 @@ export interface SuggestionInput {
  * The ghost text at the cursor. `display`, when set, is shown instead of
  * `text` ("¶ point made"). A `frame` is a guided-writing frame — a sentence
  * with a blank — shown in the prose's face with nothing to insert: the author
- * types the whole sentence, and Tab does nothing.
+ * types the whole sentence, and Tab does nothing. `pending` is a suggestion on
+ * its way: dots at the cursor, `display` read out to a screen reader, and
+ * nothing to insert yet.
  */
 export interface Ghost {
   pos: number;
   text: string;
   display?: string;
-  kind?: 'frame';
+  kind?: 'frame' | 'pending';
 }
 
 /** One of autocorrect's fixes: from–to becomes `insert`. */
@@ -170,9 +172,10 @@ export interface ClearpenEditor {
 
   /**
    * Shows ghost text at `pos`; `display`, if given, is shown instead of `text`.
-   * A `frame` ghost shows a sentence with a blank to complete and inserts nothing.
+   * A `frame` ghost shows a sentence with a blank to complete and inserts nothing;
+   * a `pending` one shows that a suggestion is on its way.
    */
-  showGhost(pos: number, text: string, display?: string, kind?: 'frame'): void;
+  showGhost(pos: number, text: string, display?: string, kind?: Ghost['kind']): void;
   ghost(): Ghost | null;
   clearGhost(): void;
   /** Inserts the ghost text; false when there's none. */

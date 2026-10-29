@@ -2,6 +2,7 @@
 // makes (Ollama on this machine, through whatever fetch it needs).
 
 import {
+  askSources,
   check,
   edit,
   guide,
@@ -35,5 +36,6 @@ export function localAI(llm: LLMClient): AI {
     review: (input, opts) => review(llm, input, opts),
     check: (input, opts) => check(llm, input, opts),
     guide: (input, opts) => guide(llm, input, opts),
+    askSources: (input, opts) => askSources(llm, input, opts),
   };
 }

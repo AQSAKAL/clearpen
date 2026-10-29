@@ -9,6 +9,7 @@ import {
   isWholeRewrite,
   type RewriteAction,
   type RewriteDone,
+  sourcesText,
   streamingRewrite,
   warning,
 } from '@clearpen/core';
@@ -89,7 +90,8 @@ export function useEditActions(mod: string) {
   const ai = useAI();
   const status = useStatus();
   const docId = current?.id;
-  const notes = current?.brief.notes ?? '';
+  // A figure the writer's notes or saved pages give isn't an invention.
+  const notes = sourcesText(current?.brief);
 
   // The group of suggestions the pill is about, while any of them is left.
   const pending = useRef<{ ed: ClearpenEditor; group: string; label: string; message: number } | null>(null);

@@ -146,7 +146,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
         placeholder="Title"
         aria-label="Title"
         spellCheck
-        className="mb-4 min-h-0 resize-none overflow-hidden rounded-none border-0 bg-transparent p-0 font-write text-[40px] leading-[1.15] font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-[40px] dark:bg-transparent"
+        className="mb-4 min-h-0 resize-none overflow-hidden rounded-none border-0 bg-transparent p-0 font-write text-[calc(36px*var(--f-write-scale))] leading-[1.15] font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-[calc(36px*var(--f-write-scale))] dark:bg-transparent"
         onChange={(e) => {
           const value = e.target.value.replace(/\s*\n\s*/g, ' ');
           setTitle(value);

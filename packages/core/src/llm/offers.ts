@@ -1,6 +1,7 @@
-// The models Clearpen offers to download when there's none yet: the one that
-// edits best, and a lighter one for computers with less memory. The sizes
-// are Ollama's downloads.
+// The models Clearpen offers to download when there's none yet: the one it
+// prefers, the larger one it used to, and a lighter one for computers with
+// less memory. The sizes are Ollama's downloads; the first offer that fits
+// the computer's memory is the one chosen for the writer.
 
 export interface ModelOffer {
   /** Ollama's name for it. */
@@ -15,11 +16,19 @@ export interface ModelOffer {
 
 export const MODEL_OFFERS: readonly ModelOffer[] = [
   {
+    // 4 GB in memory at Clearpen's context size, as Ollama runs it on a Mac.
+    model: 'qwen3.5:4b',
+    name: 'Qwen3.5 4B',
+    bytes: 3.97e9,
+    memoryGB: 8,
+    note: 'Quick, and the best at drawing on your sources. For computers with 8 GB of memory or more.',
+  },
+  {
     model: 'qwen3:8b',
     name: 'Qwen3 8B',
     bytes: 5.23e9,
     memoryGB: 16,
-    note: 'The sharpest edits and checks. For computers with 16 GB of memory or more.',
+    note: 'Larger and slower. For computers with 16 GB of memory or more.',
   },
   {
     // The instruct build: the plain "qwen3:4b" is a model that always thinks,
@@ -28,7 +37,7 @@ export const MODEL_OFFERS: readonly ModelOffer[] = [
     name: 'Qwen3 4B',
     bytes: 2.5e9,
     memoryGB: 8,
-    note: 'Lighter and quicker, for 8 GB of memory. Its edits are a little less sharp.',
+    note: 'The lightest, for computers with less memory. Its edits are a little less sharp.',
   },
 ];
 

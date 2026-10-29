@@ -1,4 +1,4 @@
-// The AI keys, ahead of every other binding: Tab, ⌘→, Esc, ⌘↵, ⌘J, ⌘B and ⌘I.
+// The AI keys, ahead of every other binding: Tab, ⌘→, Esc, ⌘↵, ⌘J, ⌘B, ⌘I and ⌘U.
 
 import { indentLess, indentMore } from '@codemirror/commands';
 import { type Extension, Prec } from '@codemirror/state';
@@ -20,13 +20,16 @@ export interface KeyActions {
 export const inListItem = (view: EditorView): boolean =>
   /^\s*(?:[-*+]|\d+[.)])\s/.test(view.state.doc.lineAt(view.state.selection.main.head).text);
 
-/** Wraps the selection in `mark` (** or *), or unwraps it if it's wrapped already. False with nothing selected. */
-export function wrapSelection(view: EditorView, mark: string): boolean {
+/**
+ * Wraps the selection in `mark` (** or *), or between `mark` and `close` (<u> and </u>), or unwraps it if
+ * it's wrapped already. False with nothing selected.
+ */
+export function wrapSelection(view: EditorView, mark: string, close = mark): boolean {
   const { from, to } = view.state.selection.main;
   if (from === to) return false;
   const text = view.state.sliceDoc(from, to);
-  const wrapped = text.startsWith(mark) && text.endsWith(mark) && text.length > 2 * mark.length;
-  const insert = wrapped ? text.slice(mark.length, -mark.length) : `${mark}${text}${mark}`;
+  const wrapped = text.startsWith(mark) && text.endsWith(close) && text.length > mark.length + close.length;
+  const insert = wrapped ? text.slice(mark.length, -close.length) : `${mark}${text}${close}`;
   view.dispatch({
     changes: { from, to, insert },
     selection: { anchor: from, head: from + insert.length },
@@ -76,6 +79,8 @@ export function aiKeys(actions: KeyActions): Extension {
       { key: 'Mod-j', run: () => actions.requestCompletion() },
       { key: 'Mod-b', run: (v) => wrapSelection(v, '**') },
       { key: 'Mod-i', run: (v) => wrapSelection(v, '*') },
+      // With nothing selected, ⌘U is still CodeMirror's: undo the last selection change.
+      { key: 'Mod-u', run: (v) => wrapSelection(v, '<u>', '</u>') },
     ]),
   );
 }

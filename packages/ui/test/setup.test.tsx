@@ -34,13 +34,13 @@ test('with no Ollama, setup links to it, finds it once it runs, and downloads th
   machine.running = true;
   await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
   assert.match(screen.getByText(/This Mac has 8 GB of memory/).textContent ?? '', /8 GB/);
-  // On 8 GB the lighter model is the one to have.
-  assert.equal(screen.getByRole('radio', { name: /Qwen3 4B/ }).getAttribute('aria-checked'), 'true');
-  await user.click(screen.getByRole('button', { name: 'Download 2.5 GB' }));
+  // 8 GB is room for Qwen3.5 4B.
+  assert.equal(screen.getByRole('radio', { name: /Qwen3\.5 4B/ }).getAttribute('aria-checked'), 'true');
+  await user.click(screen.getByRole('button', { name: 'Download 4.0 GB' }));
 
   await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
-  assert.ok(machine.installed.includes('qwen3:4b-instruct'));
-  assert.deepEqual(await backend.library.settings.get('models'), { quick: 'qwen3:4b-instruct' });
+  assert.ok(machine.installed.includes('qwen3.5:4b'));
+  assert.deepEqual(await backend.library.settings.get('models'), { quick: 'qwen3.5:4b' });
   await user.click(screen.getByRole('button', { name: 'Start writing' }));
   // Only then, the goal step.
   await screen.findByRole('heading', { name: 'What will you write?' });
@@ -60,13 +60,13 @@ test('the download shows its progress, here and in the sidebar', async () => {
   };
   const { user } = await launch(machine, 32 * GB);
   await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
-  assert.equal(screen.getByRole('radio', { name: /Qwen3 8B/ }).getAttribute('aria-checked'), 'true');
-  await user.click(screen.getByRole('button', { name: 'Download 5.2 GB' }));
-  await screen.findByRole('heading', { name: 'Downloading Qwen3 8B' });
+  assert.equal(screen.getByRole('radio', { name: /Qwen3\.5 4B/ }).getAttribute('aria-checked'), 'true');
+  await user.click(screen.getByRole('button', { name: 'Download 4.0 GB' }));
+  await screen.findByRole('heading', { name: 'Downloading Qwen3.5 4B' });
   await screen.findByRole('progressbar', { name: 'Download progress' });
   // Keep writing: the window goes, the download doesn't.
   await user.click(screen.getByRole('button', { name: 'Keep writing' }));
-  await screen.findByRole('button', { name: /Models: Downloading Qwen3 8B · \d+%/ });
+  await screen.findByRole('button', { name: /Models: Downloading Qwen3\.5 4B · \d+%/ });
   finish();
   await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
 });
@@ -75,7 +75,7 @@ test('a download that stops can be tried again, and carries on', async () => {
   const machine: FakeMachine = { running: true, installed: [], pullFails: 'connection reset by peer' };
   const { user } = await launch(machine, 16 * GB);
   await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
-  await user.click(screen.getByRole('button', { name: 'Download 5.2 GB' }));
+  await user.click(screen.getByRole('button', { name: 'Download 4.0 GB' }));
   await screen.findByRole('heading', { name: 'The download stopped' }, slow);
   assert.ok(screen.getByText('connection reset by peer'));
   await user.click(screen.getByRole('button', { name: 'Try again' }));

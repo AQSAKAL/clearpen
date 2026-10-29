@@ -1,5 +1,6 @@
 // The bar over a selection: Improve, Shorten, Simplify, Fix grammar, a change
-// of tone, or an instruction in your own words. It appears a moment after
+// of tone, an instruction in your own words — or, once the article has
+// sources, a question to them about the selection. It appears a moment after
 // the mouse lets go, sits above the selection (below it near the top of the
 // window), and keeps the editor's selection while you use it.
 
@@ -9,8 +10,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useAI } from '../ai.tsx';
 import { REWRITE_ACTIONS, type Span, TONES, useEditActions } from '../edit-actions.ts';
 import { usePage } from '../editor-ref.tsx';
+import { cn } from '../lib/utils.ts';
 import { LENSES } from '../review-actions.ts';
-import { useStatus } from '../status.tsx';
 import { Button } from './ui/button.tsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu.tsx';
 import { Input } from './ui/input.tsx';
@@ -18,15 +19,26 @@ import { Separator } from './ui/separator.tsx';
 
 const SHOW_AFTER_MS = 180;
 
-export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span, lens: Lens): void }) {
+export function SelectionToolbar({
+  mod,
+  check,
+  ask,
+}: {
+  mod: string;
+  check(span: Span, lens: Lens): void;
+  /** Asks the article's sources about the selection; `can` once it has any. */
+  ask: { can: boolean; ask(span: Span, question: string): void };
+}) {
   const page = usePage();
   const ai = useAI();
-  const status = useStatus();
   const { rewrite, editWith } = useEditActions(mod);
   const bar = useRef<HTMLDivElement>(null);
   const [span, setSpan] = useState<Span | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const [instruction, setInstruction] = useState('');
+  // Ask sources turns the field into a question to the article's sources.
+  const [asking, setAsking] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
   const menuOpen = useRef(false);
   const mouseDown = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -52,6 +64,7 @@ export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span
         return;
       }
       setInstruction('');
+      setAsking(false);
       setSpan({ from: sel.from, to: sel.to });
     }, SHOW_AFTER_MS);
   }, [page, hide, inBar]);
@@ -174,6 +187,21 @@ export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      {ask.can && (
+        <Button
+          size="sm"
+          variant={asking ? 'secondary' : 'ghost'}
+          aria-pressed={asking}
+          title="Ask your sources a question about the selection"
+          onClick={() => {
+            setAsking(true);
+            setInstruction('');
+            requestAnimationFrame(() => field.current?.focus());
+          }}
+        >
+          Ask sources
+        </Button>
+      )}
       <DropdownMenu
         modal={false}
         onOpenChange={(open) => {
@@ -199,19 +227,26 @@ export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span
         onSubmit={(e) => {
           e.preventDefault();
           const what = instruction.trim();
-          if (!what) return;
           const s = span;
+          // A question to the sources; with none typed, the selection itself is asked about.
+          if (asking) {
+            hide();
+            ask.ask(s, what || (page.editor.current?.slice(s.from, s.to) ?? ''));
+            return;
+          }
+          if (!what) return;
           hide();
           // "Fact-check it" or "is this right?" want a verdict, not an edit.
           const intent = intentOf(what);
-          if (intent === 'ask')
-            status.show({ text: 'Questions about a passage come with Ask, in a later update.', ms: 5000 });
+          // A question about the passage goes to the article's sources.
+          if (intent === 'ask') ask.ask(s, what);
           else if (intent) check(s, intent);
           else editWith(s, what);
         }}
       >
         <SparklesIcon className="ml-1.5 size-3.5 shrink-0 text-ai" aria-hidden />
         <Input
+          ref={field}
           id="selection-instruction"
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
@@ -223,9 +258,12 @@ export function SelectionToolbar({ mod, check }: { mod: string; check(span: Span
               page.editor.current?.focus();
             }
           }}
-          placeholder="Ask AI to…"
-          aria-label="Ask AI to change the selection"
-          className="h-8 w-48 border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
+          placeholder={asking ? 'Ask your sources about this… ↵' : 'Ask AI to…'}
+          aria-label={asking ? 'Ask your sources about the selection' : 'Ask AI to change the selection'}
+          className={cn(
+            'h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent',
+            asking ? 'w-64' : 'w-48',
+          )}
         />
       </form>
     </div>

@@ -117,6 +117,7 @@ test('a model that goes quiet is stopped, with a clear error', async () => {
 
 test('roles default sensibly and an explicit choice wins', async () => {
   assert.equal(pickModel(['nomic-embed-text', 'llama3.1:8b', 'qwen3:8b']), 'qwen3:8b');
+  assert.equal(pickModel(['qwen3:8b', 'gemma4:12b-mlx', 'qwen3.5:4b']), 'qwen3.5:4b', 'Qwen3.5 4B first');
   assert.equal(pickModel(['nomic-embed-text', 'something-new']), 'something-new');
   assert.equal(pickModel([]), null);
   const llm = createLLM({ provider: fakeProvider({}), models: { quick: 'quick-model' } });
@@ -206,10 +207,9 @@ test('status tells "Ollama isn’t running" from "no model yet"', async () => {
 
 test('the model to offer depends on the memory there is', () => {
   const GB = 2 ** 30;
-  assert.equal(recommendedOffer(null).model, 'qwen3:8b', 'unknown: the best one');
-  assert.equal(recommendedOffer(24 * GB).model, 'qwen3:8b');
-  assert.equal(recommendedOffer(15.8 * GB).model, 'qwen3:8b', 'a 16 GB machine reports a little less');
-  assert.equal(recommendedOffer(8 * GB).model, 'qwen3:4b-instruct');
+  assert.equal(recommendedOffer(null).model, 'qwen3.5:4b', 'unknown: the best one');
+  assert.equal(recommendedOffer(24 * GB).model, 'qwen3.5:4b');
+  assert.equal(recommendedOffer(7.8 * GB).model, 'qwen3.5:4b', 'an 8 GB machine reports a little less');
   assert.equal(recommendedOffer(4 * GB).model, 'qwen3:4b-instruct', 'the lightest when nothing fits');
   assert.ok(
     MODEL_OFFERS.every((o) => pickModel([o.model]) === o.model),

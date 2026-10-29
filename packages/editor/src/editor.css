@@ -50,6 +50,8 @@
  *                    'Iowan Old Style', Georgia, serif
  *   --f-ui           'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif
  *   --f-mono         'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace
+ *   --f-write-scale  how much the writer's font is scaled so its lowercase is as tall as
+ *                    Source Serif's: every font then reads at the same size (1 by default)
  *
  * Not needed: the prototype also defines --ghost (#a49f94 / #6f6b63), but its ghost text
  * is coloured with --faint, as here. Focus mode dims with a fixed opacity, not a property.
@@ -70,7 +72,7 @@
   background: transparent;
   color: var(--ink);
   font-family: var(--f-write);
-  font-size: 20px;
+  font-size: calc(18px * var(--f-write-scale, 1));
   line-height: 1.72;
 }
 .editor .cm-editor.cm-focused {
@@ -107,7 +109,7 @@
 
 @media (max-width: 860px) {
   .editor .cm-editor {
-    font-size: 18px;
+    font-size: calc(17px * var(--f-write-scale, 1));
   }
 }
 
@@ -145,13 +147,23 @@
   text-decoration: line-through;
   color: var(--muted-foreground);
 }
+.md-u {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* A heading is bold already, so bold inside one goes heavier to show. */
+.md-h.md-strong {
+  font-weight: 900;
+}
 .md-link {
   color: var(--ai);
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--ai) 40%, transparent);
   text-underline-offset: 3px;
 }
-.md-url {
+/* A link's address recedes behind its words. A bare URL, or an address in angle brackets,
+   is the words: it keeps the text's size and colour. */
+.md-link.md-url {
   color: var(--faint);
   font-size: 0.85em;
 }
@@ -184,6 +196,9 @@
 }
 .editor .md-h.md-mark {
   font-size: 0.8em;
+}
+.editor .md-u.md-mark {
+  text-decoration: none;
 }
 
 /* ───────────────────────────────────────── "Shape this section" */
@@ -497,4 +512,176 @@
 .cm-dim {
   opacity: 0.28;
   transition: opacity 0.25s;
+}
+
+/* ───────────────────────────────────────── a suggestion on its way */
+
+/* Three dots at the cursor while the model works out the next sentence. */
+.cm-ghost-pending {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+.cm-ghost-pending > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ai);
+  opacity: 0.2;
+  animation: cm-pending 1.2s ease-in-out infinite;
+}
+.cm-ghost-pending > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.cm-ghost-pending > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes cm-pending {
+  0%,
+  70%,
+  100% {
+    opacity: 0.2;
+  }
+  35% {
+    opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-ghost-pending > span {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* ───────────────────────────────────────── code blocks */
+
+/* A fenced block is one box: rounded at its first and last lines, a little air above and below. */
+.ln-code {
+  line-height: 1.6;
+}
+.ln-code-first {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding-top: 8px !important;
+}
+.ln-code-last {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding-bottom: 8px !important;
+}
+/* The fences and the language name recede: the code is what's read. */
+.ln-code .md-mark,
+.ln-code .md-code-info {
+  color: var(--faint);
+  font-size: 12px;
+}
+.ln-code .md-code-info {
+  font-family: var(--f-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Colours for the languages Clearpen highlights, quiet enough for a page of prose. */
+.editor {
+  --tok-keyword: #7c3aed;
+  --tok-string: #15803d;
+  --tok-number: #b45309;
+  --tok-comment: #8b8577;
+  --tok-function: #1d4ed8;
+  --tok-type: #0f766e;
+  --tok-property: #9d174d;
+}
+.dark .editor {
+  --tok-keyword: #c4b5fd;
+  --tok-string: #86efac;
+  --tok-number: #fcd34d;
+  --tok-comment: #8a857a;
+  --tok-function: #93c5fd;
+  --tok-type: #5eead4;
+  --tok-property: #f9a8d4;
+}
+.ln-code .tok-keyword {
+  color: var(--tok-keyword);
+}
+.ln-code .tok-string {
+  color: var(--tok-string);
+}
+.ln-code .tok-number {
+  color: var(--tok-number);
+}
+.ln-code .tok-comment {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.ln-code .tok-function {
+  color: var(--tok-function);
+}
+.ln-code .tok-type {
+  color: var(--tok-type);
+}
+.ln-code .tok-property {
+  color: var(--tok-property);
+}
+
+/* ───────────────────────────────────────── drawn Markdown: tables, tasks, bullets, rules */
+
+/* A table, drawn while the cursor is away; a click puts the cursor in the row. */
+.cm-table {
+  margin: 6px 0;
+  overflow-x: auto;
+  cursor: text;
+}
+.cm-table table {
+  border-collapse: collapse;
+  font-family: var(--f-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  min-width: 50%;
+}
+.cm-table th,
+.cm-table td {
+  border: 1px solid var(--line-2);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.cm-table th {
+  background: var(--paper-2);
+  font-weight: 600;
+}
+.cm-table tr:hover td {
+  background: color-mix(in srgb, var(--paper-2) 60%, transparent);
+}
+
+/* A task's [ ] as a checkbox; a done task recedes. */
+.cm-task {
+  width: 15px;
+  height: 15px;
+  margin: 0 8px 0 0;
+  vertical-align: -2px;
+  accent-color: var(--ai);
+  cursor: pointer;
+}
+.ln-task-done {
+  color: var(--muted-foreground);
+}
+.ln-task-done .cm-task {
+  opacity: 0.8;
+}
+
+/* A bullet's "-" as a dot. */
+.cm-bullet {
+  display: inline-block;
+  min-width: 0.75em;
+  color: var(--faint);
+}
+
+/* "---" as a rule across the page. */
+.cm-hr {
+  display: inline-block;
+  width: 100%;
+  height: 0;
+  vertical-align: middle;
+  border-top: 1px solid var(--line-2);
 }

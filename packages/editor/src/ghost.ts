@@ -1,7 +1,8 @@
 // Ghost text: autocomplete's suggestion in grey at the cursor, the rest of the
 // sentence. Tab takes it; any edit or cursor move makes it go away — except
 // autocorrect's fixes, which it moves with. A guided-writing frame is a ghost
-// with nothing to insert: shown, never taken.
+// with nothing to insert: shown, never taken; so is a pending one, the dots
+// that say a suggestion is on its way.
 
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
@@ -33,6 +34,14 @@ class GhostWidget extends WidgetType {
 
   toDOM(): HTMLElement {
     const span = document.createElement('span');
+    // A suggestion on its way: three dots, and what's happening for a screen reader.
+    if (this.kind === 'pending') {
+      span.className = 'cm-ghost cm-ghost-pending';
+      span.setAttribute('role', 'status');
+      span.setAttribute('aria-label', this.display || 'Working on a suggestion');
+      for (let i = 0; i < 3; i++) span.appendChild(document.createElement('span'));
+      return span;
+    }
     if (this.kind === 'frame') {
       span.className = 'cm-ghost cm-ghost-frame';
       const parts = (this.display || this.text).split(BLANK);

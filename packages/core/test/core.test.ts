@@ -151,6 +151,50 @@ test('Markdown export is faithful and safe', () => {
   assert.match(toDocument('A <title>', 'Body'), /<title>A &lt;title&gt;<\/title>/);
 });
 
+test('formatting stays inside a heading, underline included', () => {
+  assert.equal(
+    toHTML('## A **bold**, *italic*, ~~struck~~ and <u>underlined</u> heading'),
+    '<h2>A <strong>bold</strong>, <em>italic</em>, <del>struck</del> and <u>underlined</u> heading</h2>',
+  );
+  assert.equal(
+    toHTML('<U>**both**</U> and <u>[a link](https://x.com)</u>'),
+    '<p><u><strong>both</strong></u> and <u><a href="https://x.com">a link</a></u></p>',
+  );
+  assert.equal(
+    toHTML('<u onclick="x">no</u> <u>open'),
+    '<p>&lt;u onclick=&quot;x&quot;&gt;no&lt;/u&gt; &lt;u&gt;open</p>',
+  );
+  assert.equal(analysis.countWords('<u>Two</u> wo<u>rds</u>'), 2);
+});
+
+test('a written-out web address is a link, without the punctuation around it', () => {
+  const link = (md: string) =>
+    toHTML(md)
+      .match(/<a href="([^"]*)">([^<]*)<\/a>/)
+      ?.slice(1);
+  const url = 'https://www.aboutamazon.com/news/company-news/amazon-software-engineer-role-guideline-ai';
+  assert.deepEqual(link(`Link ${url}`), [url, url]);
+  assert.deepEqual(link(`See ${url}.`), [url, url]);
+  assert.deepEqual(link('(see https://x.com/a?b=1&c=2), then'), [
+    'https://x.com/a?b=1&amp;c=2',
+    'https://x.com/a?b=1&amp;c=2',
+  ]);
+  assert.deepEqual(link('https://en.wikipedia.org/wiki/Foo_(bar)!'), [
+    'https://en.wikipedia.org/wiki/Foo_(bar)',
+    'https://en.wikipedia.org/wiki/Foo_(bar)',
+  ]);
+  assert.deepEqual(link('Go to www.example.com, now'), ['https://www.example.com', 'www.example.com']);
+  assert.deepEqual(link('<https://x.com/a_b_c>'), ['https://x.com/a_b_c', 'https://x.com/a_b_c']);
+  assert.match(
+    toHTML('_https://x.com/a_b_'),
+    /^<p><em><a href="https:\/\/x.com\/a_b">https:\/\/x.com\/a_b<\/a><\/em><\/p>$/,
+  );
+  // Already a link, in code, or not an address at all: left as it is.
+  assert.equal(toHTML('[x](https://y.z/https://q.r)').match(/<a /g)?.length, 1);
+  assert.match(toHTML('`https://x.com`'), /^<p><code>https:\/\/x.com<\/code><\/p>$/);
+  assert.doesNotMatch(toHTML('Read the docs:https://x.com or https:// alone'), /<a /);
+});
+
 test('the analysis never produces positions beyond the text', () => {
   const t = 'İzmir is just great. It is very nice, basically.';
   const hl = analysis.highlights(t);

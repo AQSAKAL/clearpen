@@ -56,7 +56,7 @@ export function ModelsDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               ? 'Looking for models…'
               : status.ok
                 ? `Connected to ${where}. Everything runs on this computer.`
-                : `${status.error || 'No models found.'} Clearpen’s AI features need Ollama and a model, for example qwen3:8b.`}
+                : `${status.error || 'No models found.'} Clearpen’s AI features need Ollama and a model, for example qwen3.5:4b.`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-5">

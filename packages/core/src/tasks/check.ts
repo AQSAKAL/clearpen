@@ -14,6 +14,7 @@ import { completedItems, completedString } from '../jsonstream.ts';
 import type { LLMClient } from '../llm/client.ts';
 import { checkOptions } from '../modes.ts';
 import * as P from '../prompts.ts';
+import { searchPassages } from '../sources.ts';
 import { InputError, loadingNotice, MAX_PASSAGE, type NoticeEvent, type TaskOptions } from './common.ts';
 
 export interface CheckItem {
@@ -113,6 +114,8 @@ export async function* check(
     lens,
     ...(input.brief ? { brief: input.brief } : {}),
     facts,
+    // What the writer's saved pages say about the passage: the checked text is the query.
+    passages: searchPassages(input.brief?.sources, text),
   });
   for await (const chunk of llm.stream({
     model,

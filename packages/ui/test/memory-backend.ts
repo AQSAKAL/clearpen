@@ -1,6 +1,6 @@
 // A Backend for tests: the real library on in-memory SQLite, images in a Map,
-// saved files recorded instead of written, and a model that's there unless a
-// test says otherwise.
+// saved files recorded instead of written, web pages from a Map, and a model
+// that's there unless a test says otherwise.
 
 import { prepareImage } from '@clearpen/core';
 import { openLibrary } from '@clearpen/db';
@@ -14,16 +14,28 @@ export interface TestBackend extends Backend {
   images: Map<string, Uint8Array>;
   /** Links the app opened. */
   opened: string[];
+  /** Pages the app fetched. */
+  fetched: string[];
 }
 
 export async function testBackend(
   replies: Reply[] = [],
-  { machine, memory = null }: { machine?: FakeMachine; memory?: number | null } = {},
+  {
+    machine,
+    memory = null,
+    pages = {},
+  }: {
+    machine?: FakeMachine;
+    memory?: number | null;
+    /** The web, as far as the test goes: each page's content type and text. */
+    pages?: Record<string, { type?: string; text: string }>;
+  } = {},
 ): Promise<TestBackend> {
   const library = await openLibrary(nodeDriver());
   const images = new Map<string, Uint8Array>();
   const saved: TestBackend['saved'] = [];
   const opened: string[] = [];
+  const fetched: string[] = [];
   return {
     where: 'in memory',
     platform: 'mac',
@@ -32,6 +44,13 @@ export async function testBackend(
     saved,
     images,
     opened,
+    fetched,
+    async fetchPage(url) {
+      fetched.push(url);
+      const page = pages[url];
+      if (!page) throw new Error('The page answered 404 Not Found.');
+      return { url, type: page.type ?? 'text/html; charset=utf-8', text: page.text };
+    },
     media: {
       async add(file) {
         const img = await prepareImage(file);

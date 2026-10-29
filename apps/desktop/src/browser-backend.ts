@@ -5,7 +5,7 @@
 
 import { createLLM, createOllama, prepareImage } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI } from '@clearpen/ui';
+import { type Backend, localAI, pageFetcher } from '@clearpen/ui';
 import initSqlJs, { type BindParams } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
@@ -72,6 +72,8 @@ export async function createBrowserBackend(): Promise<Backend> {
     async openLink(url) {
       window.open(url, '_blank', 'noopener');
     },
+    // Most sites don't allow another origin to read them (CORS): pasting the text works everywhere.
+    fetchPage: pageFetcher((input, init) => window.fetch(input, init)),
     // Browsers don't say (Chrome caps its answer at 8 GB).
     memory: async () => null,
   };
