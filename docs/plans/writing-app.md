@@ -1,6 +1,6 @@
 # Plan: the writing app in the desktop app
 
-**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review. Later, also at your request: the next sentence streams in, and typos are fixed as you write (autocorrect).
+**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review. Later, also at your request: the next sentence streams in, and typos are fixed as you write (autocorrect). Since then: writing modes and guided writing, live prices beside tickers in investment notes, sources (pages kept with an article, with passages drawn into suggestions and fact-checks, plus questions asked of them), and Markdown and code drawn as they read in the editor.
 
 ## Context
 
