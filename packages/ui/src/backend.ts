@@ -69,6 +69,16 @@ export interface AI {
   guide(input: GuideInput, opts?: TaskOptions): Promise<GuideReply>;
   /** The writer's question, answered from their saved sources alone, with the passages it came from. */
   askSources(input: SourceQuestion, opts?: TaskOptions): Promise<SourceAnswer>;
+  /** The current paragraph's sentences, each labelled by its role (point/support/meaning). */
+  thoughtTree(
+    input: { before: string },
+    opts?: TaskOptions,
+  ): Promise<{ sentences: { index: number; text: string; role: string }[] }>;
+  /** The phrases in a passage that carry importance (bold), significance (italic) or consequence (underline), as spans. */
+  emphasize(
+    input: { title?: string; text: string; before?: string; after?: string },
+    opts?: TaskOptions,
+  ): Promise<{ spans: { from: number; to: number; kind: 'bold' | 'italic' | 'underline'; text: string }[] }>;
 }
 
 export interface Backend {

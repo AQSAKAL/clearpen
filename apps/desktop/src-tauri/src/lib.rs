@@ -7,6 +7,18 @@
 
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
 
+
+/// Failing loudly on screen still needs a record when the window is blank:
+/// the UI writes startup and render errors here so they can be read afterward.
+#[tauri::command]
+fn log_error(message: String) {
+    let path = std::path::Path::new("/tmp/clearpen-js.log");
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        use std::io::Write;
+        let _ = writeln!(f, "{message}");
+    }
+}
+
 /// The computer's memory in bytes, so first-run setup can offer a model that fits.
 #[tauri::command]
 fn total_memory() -> u64 {
@@ -24,7 +36,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![total_memory])
+        .invoke_handler(tauri::generate_handler![total_memory, log_error])
         .run(tauri::generate_context!())
         .expect("error while running Clearpen");
 }

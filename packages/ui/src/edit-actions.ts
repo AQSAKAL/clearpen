@@ -249,6 +249,44 @@ export function useEditActions(mod: string) {
     [ai, backend, page, status, notes, keepVersion, groupStatus],
   );
 
+  /** Mark a passage's important, significant and consequential phrases in place. */
+  const emphasize = useCallback(
+    (span: Span) => {
+      const ed = page.editor.current;
+      if (!ed) return;
+      const text = ed.slice(span.from, span.to);
+      if (!text.trim()) return;
+      void ai.run('Marking what matters', async (signal) => {
+        const result = await backend.ai.emphasize(
+          { title: page.title.current, text, ...surroundings(ed, span) },
+          { signal },
+        );
+        if (signal.aborted) return;
+        // Never wrap a phrase that already carries a mark, and never touch a heading.
+        const changes = result.spans
+          .filter((s) => !/[*_`]|<u>/.test(s.text))
+          .map((s) => {
+            const open = s.kind === 'bold' ? '**' : s.kind === 'italic' ? '*' : '<u>';
+            const close = s.kind === 'underline' ? '</u>' : open;
+            return { from: span.from + s.from, to: span.from + s.to, insert: `${open}${s.text}${close}` };
+          });
+        if (!changes.length) {
+          status.show('Nothing stood out as more important, significant or consequential.');
+          return;
+        }
+        await keepVersion('Emphasize');
+        ed.view.dispatch({ changes, userEvent: 'input.ai' });
+        const n = changes.length;
+        status.show({
+          text: `Emphasized ${n} phrase${n === 1 ? '' : 's'}`,
+          ms: 2400,
+          keys: [`${mod}Z to undo`],
+        });
+      });
+    },
+    [ai, backend, page, status, keepVersion, mod],
+  );
+
   // What happened to a suggestion, in a word — or, while some of its group is
   // still undecided, how many are left.
   useEffect(() => {
@@ -282,5 +320,5 @@ export function useEditActions(mod: string) {
     };
   }, [page, status, mod, groupStatus]);
 
-  return useMemo(() => ({ rewrite, editWith }), [rewrite, editWith]);
+  return useMemo(() => ({ rewrite, editWith, emphasize }), [rewrite, editWith, emphasize]);
 }

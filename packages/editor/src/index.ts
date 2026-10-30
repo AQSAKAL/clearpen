@@ -14,6 +14,7 @@ import { codeBlocks, codeHighlight, codeLanguages } from './code.ts';
 import { addFixes, correction, FIX_SHOWN_MS, fadeFixes, fixesField, isKept } from './corrections.ts';
 import { focusCompartment, focusPlugin } from './focus.ts';
 import { acceptGhost, ghostField, setGhost } from './ghost.ts';
+import { htmlToMarkdown, looksLikeMarkup } from './html-to-markdown.ts';
 import { imageField } from './images.ts';
 import { aiKeys } from './keys.ts';
 import { lineStyles, proseHighlight, underline } from './markdown.ts';
@@ -143,11 +144,32 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
       // Pasted or dropped image files go to the app; everything else pastes as usual.
       paste: (ev, v) => {
         const files = [...(ev.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'));
-        if (!files.length || !opts.onImages) return false;
-        ev.preventDefault();
-        const { from, to } = v.state.selection.main;
-        opts.onImages(files, from, to);
-        return true;
+        if (files.length && opts.onImages) {
+          ev.preventDefault();
+          const { from, to } = v.state.selection.main;
+          opts.onImages(files, from, to);
+          return true;
+        }
+        // Rich text from a page keeps its shape: turn the clipboard's HTML into
+        // Markdown. Plain-text pastes, or HTML that says no more than its text,
+        // fall through to the editor's own paste.
+        const data = ev.clipboardData;
+        const html = data?.getData('text/html') ?? '';
+        const plain = data?.getData('text/plain') ?? '';
+        if (html && looksLikeMarkup(html)) {
+          const markdown = htmlToMarkdown(html);
+          if (markdown && markdown.trim() !== plain.trim()) {
+            ev.preventDefault();
+            const { from, to } = v.state.selection.main;
+            v.dispatch({
+              changes: { from, to, insert: markdown },
+              selection: { anchor: from + markdown.length },
+              userEvent: 'input.paste',
+            });
+            return true;
+          }
+        }
+        return false;
       },
       dragover: (ev) => {
         if ([...(ev.dataTransfer?.items || [])].some((i) => i.kind === 'file' && i.type.startsWith('image/'))) {
@@ -401,3 +423,5 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
 
   return api;
 }
+
+export { htmlToMarkdown, looksLikeMarkup } from './html-to-markdown.ts';

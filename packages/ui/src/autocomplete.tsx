@@ -98,10 +98,6 @@ export function Autocomplete() {
       // One AI thing on screen at a time.
       if (ed.suggestions().length) return;
       const before = text.slice(Math.max(0, pos - 6000), pos);
-      if (force && !endsSentence(before) && !endsLeadIn(before)) {
-        toast(`${mod}J suggests what comes after a finished sentence or a colon`);
-        return;
-      }
       const id = ++s.seq;
       const ctrl = new AbortController();
       s.ctrl = ctrl;
@@ -173,7 +169,7 @@ export function Autocomplete() {
       else if (u.userEdit) s.typed += Math.max(0, length - s.length);
       s.length = length;
       cancel();
-      if (u.userEdit) s.timer = setTimeout(() => void suggest(false), NEXT_SENTENCE_PAUSE_MS);
+      // Autocomplete disabled: only manual Cmd+J remains.
     });
     const offNow = page.on('complete', () => void suggest(true));
     return () => {

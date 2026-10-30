@@ -34,6 +34,7 @@ import { exampleArticle } from './examples/index.ts';
 import { applyFonts } from './fonts.ts';
 import { GuideProvider } from './guide.tsx';
 import { copyMarkdown, copyRichText, documentOf, fileName, markdownOf } from './lib/export.ts';
+import { copyForSocial } from './lib/social.ts';
 import { cn } from './lib/utils.ts';
 import { LibraryProvider, useLibrary } from './library.tsx';
 import { useMode } from './mode.ts';
@@ -363,6 +364,15 @@ function Workspace() {
         case 'copy-rich':
           await copyRichText(title(), text(), backend);
           toast('Copied — paste into Google Docs, Medium or WordPress');
+          break;
+        case 'copy-substack':
+          toast(await copyForSocial('substack', title(), text(), backend));
+          break;
+        case 'copy-linkedin':
+          toast(await copyForSocial('linkedin', title(), text(), backend));
+          break;
+        case 'copy-x':
+          toast(await copyForSocial('x', title(), text(), backend));
           break;
         case 'save-md':
           if (await backend.files.save(fileName(title(), 'md'), markdownOf(title(), text()), 'text/markdown'))

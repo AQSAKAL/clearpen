@@ -39,6 +39,20 @@ export const MODEL_OFFERS: readonly ModelOffer[] = [
     memoryGB: 8,
     note: 'The lightest, for computers with less memory. Its edits are a little less sharp.',
   },
+  {
+    model: 'qwen3.5:9b',
+    name: 'Qwen3.5 9B',
+    bytes: 7.6e9,
+    memoryGB: 16,
+    note: 'Larger and sharper. For computers with 16 GB of memory or more.',
+  },
+  {
+    model: 'lfm2:24b-a2b',
+    name: 'LFM2 24B-A2B',
+    bytes: 14e9,
+    memoryGB: 24,
+    note: 'A bigger model for computers with 24 GB of memory or more. Keep the context short.',
+  },
 ];
 
 /** The offer that suits a computer with `memory` bytes — the best one when that's unknown. */
@@ -47,7 +61,10 @@ export function recommendedOffer(memory: number | null | undefined): ModelOffer 
   if (!memory) return offers[0]!;
   // "16 GB" machines report a little less.
   const gb = memory / 2 ** 30 + 0.5;
-  return offers.find((o) => gb >= o.memoryGB) ?? offers[offers.length - 1]!;
+  const lightest = offers.reduce((a, b) =>
+    b.memoryGB < a.memoryGB || (b.memoryGB === a.memoryGB && b.bytes < a.bytes) ? b : a,
+  );
+  return offers.find((o) => gb >= o.memoryGB) ?? lightest;
 }
 
 /** "5.2 GB", "480 MB". */

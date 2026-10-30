@@ -5,6 +5,7 @@ import {
   askSources,
   check,
   edit,
+  emphasize,
   guide,
   type LLMClient,
   nextSentenceStream,
@@ -12,6 +13,7 @@ import {
   type Role,
   review,
   rewrite,
+  thoughtTree,
 } from '@clearpen/core';
 import type { AI } from './backend.ts';
 
@@ -37,5 +39,7 @@ export function localAI(llm: LLMClient): AI {
     check: (input, opts) => check(llm, input, opts),
     guide: (input, opts) => guide(llm, input, opts),
     askSources: (input, opts) => askSources(llm, input, opts),
+    thoughtTree: (input, opts) => thoughtTree(llm, input.before, opts),
+    emphasize: (input, opts) => emphasize(llm, input, opts),
   };
 }

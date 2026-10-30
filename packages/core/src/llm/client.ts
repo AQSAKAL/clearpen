@@ -21,8 +21,9 @@ export type Role = 'quick' | 'coach' | 'checker';
  * structured output, and it fills Clearpen's JSON reliably all the same.
  */
 export const PREFERRED_MODELS = [
-  'qwen3.5:4b',
+  'lfm2:24b-a2b',
   'qwen3.5:9b',
+  'qwen3.5:4b',
   'qwen3:8b',
   'qwen3:14b',
   'gemma4:12b',

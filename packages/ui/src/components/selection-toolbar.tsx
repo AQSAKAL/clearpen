@@ -31,7 +31,7 @@ export function SelectionToolbar({
 }) {
   const page = usePage();
   const ai = useAI();
-  const { rewrite, editWith } = useEditActions(mod);
+  const { rewrite, editWith, emphasize } = useEditActions(mod);
   const bar = useRef<HTMLDivElement>(null);
   const [span, setSpan] = useState<Span | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -159,6 +159,18 @@ export function SelectionToolbar({
           {label}
         </Button>
       ))}
+      <Button
+        size="sm"
+        variant="ghost"
+        title="Bold what matters, italicise its significance, underline the consequences — without changing a word"
+        onClick={() => {
+          const s = span;
+          hide();
+          emphasize(s);
+        }}
+      >
+        Emphasize
+      </Button>
       <DropdownMenu
         modal={false}
         onOpenChange={(open) => {

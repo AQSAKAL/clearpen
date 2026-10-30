@@ -36,6 +36,9 @@ export type Command =
   | 'history'
   | 'copy-md'
   | 'copy-rich'
+  | 'copy-substack'
+  | 'copy-linkedin'
+  | 'copy-x'
   | 'save-md'
   | 'save-html'
   | 'shortcuts'
@@ -188,6 +191,11 @@ export function TopBar({
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onCommand('copy-md')}>Copy as Markdown</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('copy-rich')}>Copy as rich text</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Copy for</DropdownMenuLabel>
+          <DropdownMenuItem onSelect={() => onCommand('copy-substack')}>Substack post</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCommand('copy-linkedin')}>LinkedIn post</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCommand('copy-x')}>X post (plain text)</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('save-md')}>Save as Markdown…</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('save-html')}>Save as web page…</DropdownMenuItem>
           <DropdownMenuSeparator />

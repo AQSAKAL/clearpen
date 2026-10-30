@@ -1268,3 +1268,73 @@ export const proofreadSchema: JsonSchema = {
   properties: { sentence: { type: 'string' } },
   required: ['sentence'],
 };
+
+// ────────────────────────────────────────────────────────── emphasis
+
+// Emphasis is decided as spans, not as rewritten prose: the model only names
+// the words and what they are worth, and the app adds the marks itself. That
+// keeps the author's words — and every line — exactly as written.
+
+const EMPHASIZE_SYSTEM = `You help an author show, without changing a word, which parts of a passage matter and how. Choose a few SHORT phrases — two to seven words — from inside the running sentences. Never choose a whole sentence, a whole line, a heading, a title or a list label. Label each phrase:
+- "bold": the point, the thing the reader most needs to remember (importance);
+- "italic": the meaning or context, why it matters or what it qualifies (significance);
+- "underline": what follows or is at stake, a consequence (consequence).
+Copy each phrase into "anchor" EXACTLY, character for character, from the passage — no ellipses, no paraphrase, no added words, no punctuation of your own. Choose only words that sit on a line of running text; skip headings and labels. Leave most of the passage plain: one to three phrases is usually enough, and if nothing is clearly important, significant or consequential, return an empty list. You answer only with JSON.`;
+
+const EMPHASIZE_EXAMPLE = `Published in 2019, the study found that rents rose fastest in small cities. Most readers will find this surprising, but the effect faded within a year.`;
+
+const EMPHASIZE_EXAMPLE_ANSWER = JSON.stringify({
+  emphasis: [
+    { anchor: 'rents rose fastest', kind: 'bold' },
+    { anchor: 'will find this surprising', kind: 'italic' },
+    { anchor: 'the effect faded within a year', kind: 'underline' },
+  ],
+});
+
+export function emphasizeMessages({
+  title = '',
+  text,
+  before = '',
+  after = '',
+}: {
+  title?: string;
+  text: string;
+  before?: string;
+  after?: string;
+}): ChatMessage[] {
+  return [
+    { role: 'system', content: EMPHASIZE_SYSTEM },
+    {
+      role: 'user',
+      content: `Article title: (untitled)\n\nPassage:\n"""${EMPHASIZE_EXAMPLE}"""\n\nReturn JSON {"emphasis": [...]}.`,
+    },
+    { role: 'assistant', content: EMPHASIZE_EXAMPLE_ANSWER },
+    {
+      role: 'user',
+      content: `Article title: ${title || '(untitled)'}${before.trim() ? `\n\nContext before the passage:\n"""${clip(before, 800)}"""` : ''}${after.trim() ? `\n\nContext after the passage:\n"""${head(after, 400)}"""` : ''}
+
+Passage:
+"""${text}"""
+
+Return JSON {"emphasis": [...]} where each item is {"anchor": "exact phrase from the passage", "kind": "bold" | "italic" | "underline"}. Only phrases that appear verbatim in the passage; at most 6 items.`,
+    },
+  ];
+}
+
+export const emphasizeSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    emphasis: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          anchor: { type: 'string' },
+          kind: { type: 'string', enum: ['bold', 'italic', 'underline'] },
+        },
+        required: ['anchor', 'kind'],
+      },
+    },
+  },
+  required: ['emphasis'],
+};
