@@ -18,6 +18,7 @@ export * from './llm/offers.ts';
 export * from './llm/ollama.ts';
 export * from './llm/openai.ts';
 export type * from './llm/types.ts';
+export * from './llm/webllm.ts';
 export * from './markdown.ts';
 export * from './media.ts';
 export * from './modes.ts';

@@ -205,6 +205,21 @@ test('status tells "Ollama isn’t running" from "no model yet"', async () => {
   assert.deepEqual([(await away.status()).ok, (await away.status()).reachable], [false, false]);
 });
 
+test('a provider with a fixed catalogue ignores a model another one chose', async () => {
+  const provider = {
+    ...fakeProvider({}),
+    kind: 'webllm',
+    baseUrl: 'this browser',
+    listModels: async () => ['small-model'],
+    acceptsModel: (m: string) => m === 'small-model',
+  };
+  // The writer picked a model while Ollama was running; it isn't in this catalogue.
+  const llm = createLLM({ provider, models: { quick: 'qwen3.5:4b' }, preferred: ['small-model'] });
+  assert.equal(await llm.modelFor('quick'), 'small-model');
+  const status = await llm.status();
+  assert.deepEqual([status.ok, status.roles.quick, status.roles.coach], [true, 'small-model', 'small-model']);
+});
+
 test('the model to offer depends on the memory there is', () => {
   const GB = 2 ** 30;
   assert.equal(recommendedOffer(null).model, 'qwen3.5:4b', 'unknown: the best one');

@@ -88,7 +88,8 @@ export function createLLM({
     try {
       const installed = await provider.listModels();
       // Hosted servers may not list every model they serve: trust an explicit choice.
-      const usable = (m: string | null | undefined) => !!m && (installed.includes(m) || provider.kind !== 'ollama');
+      const usable = (m: string | null | undefined) =>
+        !!m && (provider.acceptsModel?.(m) ?? true) && (installed.includes(m) || provider.kind !== 'ollama');
       const quick = usable(chosen.quick) ? chosen.quick! : pickModel(installed, preferred);
       const role = (r: Role) => (usable(chosen[r]) ? chosen[r]! : quick);
       return {
@@ -118,7 +119,7 @@ export function createLLM({
 
   async function modelFor(role: Role = 'quick'): Promise<string> {
     const direct = chosen[role] ?? (role === 'quick' ? null : chosen.quick);
-    if (direct && provider.kind !== 'ollama') return direct;
+    if (direct && provider.kind !== 'ollama' && (provider.acceptsModel?.(direct) ?? true)) return direct;
     const s = recent && Date.now() - recent.at < STATUS_FRESH_MS ? recent.status : await status();
     recent = s.ok ? { at: Date.now(), status: s } : null;
     const m = s.roles[role];

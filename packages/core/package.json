@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.2"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.87"
   }
 }

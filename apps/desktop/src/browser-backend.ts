@@ -1,9 +1,19 @@
 // For developing the interface in a browser (`pnpm dev`, outside Tauri): the
 // real library code on SQLite compiled to WebAssembly, held in memory, with
+// the model running in the page through WebLLM when WebGPU is available, or
 // Ollama reached directly (it allows localhost origins). Never in a build.
-// `?ollama=<url>` points it elsewhere — at nothing, to see first-run setup.
+// `?webllm=0` turns the page model off; `?ollama=<url>` points Ollama
+// elsewhere — at nothing, to see first-run setup.
 
-import { createLLM, createOllama, prepareImage } from '@clearpen/core';
+import {
+  createLLM,
+  createOllama,
+  createWebLLM,
+  prepareImage,
+  WEBLLM_DEFAULT_MODEL,
+  WEBLLM_MODELS,
+  webllmSupported,
+} from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
 import { type Backend, localAI, pageFetcher } from '@clearpen/ui';
 import initSqlJs, { type BindParams } from 'sql.js';
@@ -30,8 +40,29 @@ export async function createBrowserBackend(): Promise<Backend> {
   };
   const library = await openLibrary(driver);
   const images = new Map<string, { blob: Blob; url: string }>();
-  const ollama = new URLSearchParams(location.search).get('ollama');
-  const llm = createLLM({ provider: createOllama(ollama ? { baseUrl: ollama } : {}) });
+  const params = new URLSearchParams(location.search);
+  const ollama = params.get('ollama');
+  // With WebGPU the model runs in the page, so the browser needs no Ollama.
+  // `?ollama=<url>` keeps the old server path; `?webllm=0` turns the page model
+  // off; `?model=<id>` picks another prebuilt WebLLM model.
+  const inPage = !ollama && params.get('webllm') !== '0' && webllmSupported();
+  const llm = createLLM({
+    provider: inPage
+      ? createWebLLM({
+          model: params.get('model') ?? WEBLLM_DEFAULT_MODEL,
+          contextWindowSize: 8192,
+          debug: params.get('debug') === '1',
+        })
+      : createOllama(ollama ? { baseUrl: ollama } : {}),
+    ...(inPage ? { preferred: [...WEBLLM_MODELS] } : {}),
+  });
+  // Start the download now rather than on the first suggestion; Cache Storage
+  // keeps it across reloads.
+  if (inPage)
+    void llm
+      .modelFor('quick')
+      .then((m) => llm.provider.preload(m))
+      .catch((err: unknown) => console.error('[clearpen] the browser model did not load:', err));
 
   return {
     where: 'in this browser tab (not saved)',

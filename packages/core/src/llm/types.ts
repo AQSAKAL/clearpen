@@ -45,6 +45,12 @@ export interface LLMProvider {
   isLoaded(model: string): Promise<boolean>;
   /** Loads the model ahead of the first request. Best-effort. */
   preload(model: string): Promise<void>;
+  /**
+   * Whether this provider can run a model. A provider with a fixed catalogue
+   * (WebLLM) says no to anything else, so a model left in the writer's settings
+   * by another provider is ignored rather than sent. Absent: trust any name.
+   */
+  acceptsModel?(model: string): boolean;
   /** Downloads a model onto this machine, reporting progress — on servers that can (Ollama). */
   pull?(model: string, opts?: { signal?: AbortSignal }): AsyncIterable<PullProgress>;
   /** A sentence a writer can act on, for an error from this server. */

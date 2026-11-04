@@ -21,7 +21,7 @@ Most AI writing tools offer to write for you. Clearpen helps you write. It gives
 
 That's the idea behind Clearpen: less writing done by AI, and more help from AI while you write.
 
-Your writing stays on your machine. The AI is a local model through [Ollama](https://ollama.com), your library is a single file, and every article exports to plain Markdown.
+Your writing stays on your machine. The AI is a local model — through [Ollama](https://ollama.com) in the desktop app, or running in the page itself in a browser — your library is a single file, and every article exports to plain Markdown.
 
 > **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing, sources (pages kept with an article, with passages drawn into suggestions and fact-checks), and Markdown and code drawn as they read — on a local model. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
 
@@ -85,13 +85,15 @@ Installers for Mac and Windows are on the [Releases page](https://github.com/AQS
 | **Mac** — Apple silicon or Intel, macOS 13.3 or later | `Clearpen_<version>_universal.dmg` | Open it and drag Clearpen to Applications. When macOS says it can't check the app, go to System Settings → Privacy & Security and choose **Open Anyway**. |
 | **Windows** — 10 or 11, 64-bit | `Clearpen_<version>_x64-setup.exe`, or the `.msi` | Run it. If SmartScreen says "Windows protected your PC", choose **More info** → **Run anyway**. |
 
-Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which is free. The first time you open Clearpen, it checks for Ollama and links you to it if it's missing. Then it downloads a writing model for you, with its progress:
+In the desktop app, Clearpen's AI runs on your computer, through [Ollama](https://ollama.com), which is free. The first time you open Clearpen, it checks for Ollama and links you to it if it's missing. Then it downloads a writing model for you, with its progress:
 
 - **Qwen3.5 4B** (4.0 GB), quick and the best at drawing on your sources, for computers with 8 GB of memory or more;
 - **Qwen3 8B** (5.2 GB), larger and slower, for 16 GB or more;
 - **Qwen3 4B** (2.5 GB), the lightest, for less memory.
 
 You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
+
+In a browser with WebGPU there is nothing to install: the browser version runs the model in the page itself (see [Or try it in a browser](#or-try-it-in-a-browser-without-rust)).
 
 ### The first run
 
@@ -103,7 +105,7 @@ You need:
 
 - [Node](https://nodejs.org) 24 or later and [pnpm](https://pnpm.io/installation) 11;
 - [Rust](https://rustup.rs) 1.90 or later, plus the Xcode Command Line Tools on Mac (`xcode-select --install`), or the [Microsoft C++ Build Tools and WebView2](https://tauri.app/start/prerequisites/) on Windows;
-- [Ollama](https://ollama.com), for the AI features.
+- [Ollama](https://ollama.com), for the AI features in the desktop app. The browser version can run a model in the page instead.
 
 Then:
 
@@ -129,7 +131,9 @@ Your library lives in one SQLite file, `library.db`, in `~/Library/Application S
 pnpm --filter @clearpen/desktop dev
 ```
 
-Open http://localhost:1420. The app runs on the same library code, with SQLite compiled to WebAssembly and held in memory, so **nothing is saved** when you close the tab. It talks to Ollama on `localhost` directly.
+Open http://localhost:1420. The app runs on the same library code, with SQLite compiled to WebAssembly and held in memory, so **nothing is saved** when you close the tab.
+
+Where the browser has [WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API) — current Chrome, Edge and Safari — the model runs in the page: no Ollama and no server. **Qwen3.5 2B** (~1 GB) is the default, downloaded once and kept in the browser's cache; **Models** also offers Qwen3.5 0.8B (~426 MB) and 4B (~2.3 GB). The weights come from Hugging Face on first use and then run locally, so your writing never leaves the tab. Add `?model=Qwen3.5-0.8B-q4f16_1-MLC` to choose a model from the URL, `?webllm=0` to use Ollama instead, and `?debug=1` to log what the model is asked and answers. Without WebGPU, the browser version talks to Ollama on `localhost` directly.
 
 ### Build an installer
 

@@ -100,7 +100,7 @@ So a feature like *fact-check a selection* is written once in `core` and appears
 
 ## AI
 
-- **Providers:** Ollama (default, local) · any OpenAI-compatible endpoint (LM Studio, llama.cpp, vLLM, hosted) · Anthropic.
+- **Providers:** Ollama (default, local) · any OpenAI-compatible endpoint (LM Studio, llama.cpp, vLLM, hosted) · Anthropic · WebLLM, for the browser version when WebGPU is available (the model runs in the tab, on its GPU).
 - **Roles, each its own model** (none of them writes the author's prose):
   - *quick*: autocomplete, edits, checks;
   - *coach*: outlines and section plans — the argument, never the prose;
