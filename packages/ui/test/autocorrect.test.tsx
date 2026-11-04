@@ -39,6 +39,11 @@ const doc = (view: EditorView) => view.state.doc.toString();
 const mac = /Mac/.test(navigator.platform);
 const slow = { timeout: 3000 };
 
+/** ⌘J, or Ctrl+J off the Mac. */
+function askNow(view: EditorView) {
+  fireEvent.keyDown(view.contentDOM, { key: 'j', metaKey: mac, ctrlKey: !mac });
+}
+
 /** The proofreader's answer for one sentence. */
 const proofread = (sentence: string, fixed: string): Reply => ({
   when: new RegExp(`The sentence:\\n<<<\\n${sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n`),
@@ -81,6 +86,7 @@ test('the next-sentence suggestion and the fixes don’t get in each other’s w
   ]);
   type(view, `${POINT} `);
   type(view, SUPPORT);
+  askNow(view);
   await waitFor(() => assert.equal(document.querySelector('.cm-ghost')?.textContent?.trim(), NEXT), slow);
   fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
   await waitFor(() => assert.equal(doc(view), `${POINT.replace('persn', 'person')} ${SUPPORT} ${NEXT}`));

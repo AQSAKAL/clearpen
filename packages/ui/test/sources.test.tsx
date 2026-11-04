@@ -165,6 +165,7 @@ test('a suggestion draws on the passage of a saved page that bears on the paragr
       userEvent: 'input.type',
     });
   });
+  askNow(view);
   await waitFor(() => assert.equal(document.querySelector('.cm-ghost')?.textContent?.trim(), answer), {
     timeout: 3000,
   });
@@ -179,6 +180,12 @@ function put(view: EditorView, text: string, userEvent: 'input.paste' | 'input.t
   });
 }
 const ghost = () => document.querySelector('.cm-ghost')?.textContent ?? '';
+
+/** ⌘J, or Ctrl+J off the Mac. */
+function askNow(view: EditorView) {
+  const mac = /Mac/.test(navigator.platform);
+  fireEvent.keyDown(view.contentDOM, { key: 'j', metaKey: mac, ctrlKey: !mac });
+}
 
 test('a link pasted on a line of its own is offered as a source; Tab adds it', async () => {
   assert.equal(lineUrl('  https://example.com/leak  '), 'https://example.com/leak');

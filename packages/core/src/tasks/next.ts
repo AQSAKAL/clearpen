@@ -52,6 +52,8 @@ export interface NextSentenceInput {
   title?: string;
   /** The article up to the cursor. */
   before: string;
+  /** The writer asked with ⌘J: suggest even with the sentence still unfinished. */
+  anywhere?: boolean;
   /** The section being written, and the author's notes for it. */
   heading?: string;
   notes?: string[];
@@ -94,8 +96,9 @@ export async function* nextSentenceStream(
   const madeUp = !!example?.madeUp;
   // A paragraph that only asks has no point for the judge to find yet: it gets its answer.
   const question = !leadIn && endsQuestionLeadIn(before);
-  // Whole sentences only, and a long paragraph has said enough.
-  if (!leadIn && !endsSentence(before)) {
+  // Whole sentences only, and a long paragraph has said enough — unless the
+  // writer asked with ⌘J, which answers even mid-sentence.
+  if (!leadIn && !endsSentence(before) && !input.anywhere) {
     yield { type: 'done', next: '' };
     return;
   }

@@ -54,9 +54,10 @@ function askNow(view: EditorView) {
   fireEvent.keyDown(view.contentDOM, { key: 'j', metaKey: mac, ctrlKey: !mac });
 }
 
-test('after a finished sentence and a pause, the missing sentence appears in grey; Tab keeps it', async () => {
+test('⌘J after a finished sentence shows the missing sentence in grey; Tab keeps it', async () => {
   const { view } = await launch(missingMeaning);
   type(view, `${POINT} ${SUPPORT}`);
+  askNow(view);
   await waitFor(() => assert.equal(ghost().trim(), NEXT), slow);
   // Nothing is in the text until the writer keeps it.
   assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT}`);
@@ -64,9 +65,9 @@ test('after a finished sentence and a pause, the missing sentence appears in gre
   fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
   await waitFor(() => assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT} ${NEXT}`));
 
-  // Straight after taking one, Clearpen waits for words of the writer's own.
+  // Suggestions never arrive on their own: typing on leaves the page alone.
   type(view, ' Ok.');
-  await new Promise((r) => setTimeout(r, 1200));
+  await new Promise((r) => setTimeout(r, 600));
   assert.equal(ghost(), '');
 });
 
@@ -94,13 +95,18 @@ test('a complete paragraph gets “point made”, and Tab starts a new paragraph
     { when: /The paragraph, sentence by sentence/, reply: JSON.stringify({ point: 1, support: 2, meaning: 3 }) },
   ]);
   type(view, `${POINT} ${SUPPORT} ${meaning}`);
+  askNow(view);
   await waitFor(() => assert.match(ghost(), /point made/), slow);
   fireEvent.keyDown(view.contentDOM, { key: 'Tab' });
   await waitFor(() => assert.equal(view.state.doc.toString(), `${POINT} ${SUPPORT} ${meaning}\n\n`));
 });
 
-test('⌘J after a lead-in suggests what its colon introduces; mid-sentence it says where it works', async () => {
-  const { view } = await launch([{ when: /Article title:/, reply: SUPPORT }]);
+test('⌘J after a lead-in suggests what its colon introduces; mid-sentence it asks anyway', async () => {
+  const mid = 'The queue empties before lunch.';
+  const { view } = await launch([
+    { when: /The paragraph is missing its point, stated plainly/, reply: mid },
+    { when: /what the colon at its end introduces/, reply: SUPPORT },
+  ]);
   type(view, 'A shared inbox fixes three things:');
   askNow(view);
   await waitFor(() => assert.equal(ghost(), ` ${SUPPORT}`), slow);
@@ -109,8 +115,7 @@ test('⌘J after a lead-in suggests what its colon introduces; mid-sentence it s
 
   type(view, ' Requests now reach');
   askNow(view);
-  await screen.findByText(/J suggests what comes after a finished sentence or a colon/);
-  assert.equal(ghost(), '');
+  await waitFor(() => assert.equal(ghost(), ` ${mid}`), slow);
 });
 
 test('the suggestion knows what the article is about: its brief, and how it opens', async () => {
@@ -125,6 +130,7 @@ test('the suggestion knows what the article is about: its brief, and how it open
     },
   );
   type(view, 'What can we see here?');
+  askNow(view);
   await waitFor(() => assert.equal(ghost().trim(), answer), slow);
 });
 

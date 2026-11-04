@@ -5,18 +5,11 @@
 // keeps it; typing on ignores it. While the model is still thinking, three
 // dots at the cursor say something is on its way.
 // After a suggestion is taken, Clearpen waits for words of the writer's own,
-// so Tab can never write a paragraph. ⌘J asks at once, after a sentence or a
-// lead-in like "Three reasons:", and says so when there's nothing to offer.
+// so Tab can never write a paragraph. ⌘J asks at once — after a sentence, a
+// lead-in like "Three reasons:", or mid-sentence — and says so when there's
+// nothing to offer.
 
-import {
-  articleOpening,
-  endsLeadIn,
-  endsSentence,
-  NEXT_SENTENCE_PAUSE_MS,
-  nextSentenceSpot,
-  OWN_WORDS_BETWEEN,
-  sectionAt,
-} from '@clearpen/core';
+import { articleOpening, nextSentenceSpot, OWN_WORDS_BETWEEN, sectionAt } from '@clearpen/core';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAI } from './ai.tsx';
@@ -66,7 +59,6 @@ export function Autocomplete() {
 
   useEffect(() => {
     const s = state.current;
-    const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
 
     // Any answer still on its way is now stale.
     const cancel = () => {
@@ -126,6 +118,8 @@ export function Autocomplete() {
             // What the article is about, however far the cursor has come from its opening.
             brief: live.current.brief,
             opening: articleOpening(text.slice(0, pos)),
+            // The writer asked: answer even mid-sentence.
+            anywhere: force,
           },
           { signal: ctrl.signal },
         )) {

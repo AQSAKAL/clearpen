@@ -62,7 +62,15 @@ export interface AI {
   proofread(input: ProofreadInput, opts?: TaskOptions): Promise<Fix[]>;
   /** Has the paragraph before the cursor made its point? If not, the one sentence it's missing, as it's written. */
   nextSentence(
-    input: { title?: string; before: string; heading?: string; notes?: string[]; brief?: Brief; opening?: string },
+    input: {
+      title?: string;
+      before: string;
+      anywhere?: boolean;
+      heading?: string;
+      notes?: string[];
+      brief?: Brief;
+      opening?: string;
+    },
     opts?: TaskOptions,
   ): AsyncIterable<NextSentenceEvent>;
   /** After a guided frame is filled: what the sentence leaves unsaid, and the next frame's question. */
