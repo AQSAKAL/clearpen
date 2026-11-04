@@ -14,11 +14,7 @@ export interface ThoughtTree {
   sentences: ThoughtNode[];
 }
 
-export async function thoughtTree(
-  llm: LLMClient,
-  before: string,
-  { signal }: TaskOptions = {},
-): Promise<ThoughtTree> {
+export async function thoughtTree(llm: LLMClient, before: string, { signal }: TaskOptions = {}): Promise<ThoughtTree> {
   const sentences = paragraphSentences(before);
   const model = await llm.modelFor('quick');
   let judged: unknown = null;

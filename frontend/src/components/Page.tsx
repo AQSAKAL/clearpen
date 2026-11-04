@@ -1,9 +1,9 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import Downloads from '@/components/Downloads.tsx';
 import GitHubStats from '@/components/GitHubStats.tsx';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const VERSION = '0.1.0';
 const RELEASES = 'https://github.com/AQSAKAL/clearpen/releases/latest';
@@ -24,10 +24,22 @@ const downloads = {
 };
 
 const features = [
-  { title: 'One sentence, only when a paragraph needs it', desc: 'Finish a sentence and pause. If the paragraph needs a point, the one sentence that supplies it appears in grey.' },
-  { title: 'Small, marked changes instead of a rewrite', desc: 'Only the words that change are marked, each with its own accept and reject.' },
-  { title: 'A review that shows its working', desc: 'Table totals, percentages, contradictions. Arithmetic by code, never by a model.' },
-  { title: 'Modes, and guided writing', desc: 'Article, guide, paper, business case, investment note — or write to think.' },
+  {
+    title: 'One sentence, only when a paragraph needs it',
+    desc: 'Finish a sentence and pause. If the paragraph needs a point, the one sentence that supplies it appears in grey.',
+  },
+  {
+    title: 'Small, marked changes instead of a rewrite',
+    desc: 'Only the words that change are marked, each with its own accept and reject.',
+  },
+  {
+    title: 'A review that shows its working',
+    desc: 'Table totals, percentages, contradictions. Arithmetic by code, never by a model.',
+  },
+  {
+    title: 'Modes, and guided writing',
+    desc: 'Article, guide, paper, business case, investment note — or write to think.',
+  },
   { title: 'Insights', desc: 'Reading level, the mode, the terms the draft defines, and the Skeleton.' },
   { title: 'A quiet place to write', desc: 'Plain Markdown, projects, search, trash, versions, export.' },
 ];
@@ -43,10 +55,23 @@ export default function Page() {
             Clearpen
           </a>
           <nav className="hidden gap-6 text-sm text-muted-foreground md:flex">
-            <a href="#features" className="hover:text-foreground">Features</a>
-            <a href="#downloads" className="hover:text-foreground">Download</a>
-            <a href="#modes" className="hover:text-foreground">Modes</a>
-            <a href="https://github.com/AQSAKAL/clearpen" target="_blank" rel="noopener" className="hover:text-foreground">GitHub</a>
+            <a href="#features" className="hover:text-foreground">
+              Features
+            </a>
+            <a href="#downloads" className="hover:text-foreground">
+              Download
+            </a>
+            <a href="#modes" className="hover:text-foreground">
+              Modes
+            </a>
+            <a
+              href="https://github.com/AQSAKAL/clearpen"
+              target="_blank"
+              rel="noopener"
+              className="hover:text-foreground"
+            >
+              GitHub
+            </a>
           </nav>
           <Button asChild size="sm">
             <a href="#downloads">Download</a>
@@ -57,19 +82,14 @@ export default function Page() {
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-12 overflow-hidden rounded-xl border shadow-sm">
-          <video
-            src="/promo.mp4"
-            poster="/poster.png"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full"
-          />
+          <video src="/promo.mp4" poster="/poster.png" autoPlay muted loop playsInline className="w-full" />
         </div>
-        <Badge variant="secondary" className="mb-6">Open-source</Badge>
+        <Badge variant="secondary" className="mb-6">
+          Open-source
+        </Badge>
         <h1 className="font-serif text-5xl font-medium leading-tight md:text-7xl">
-          Writing that's truly yours,<br />
+          Writing that's truly yours,
+          <br />
           <span className="italic text-primary">with AI that helps.</span>
         </h1>
         <div className="mt-8 flex flex-wrap gap-3">
@@ -88,10 +108,10 @@ export default function Page() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="font-serif text-3xl font-medium md:text-4xl">One sentence, only when a paragraph needs it</h2>
           <p className="mt-4 max-w-3xl text-muted-foreground">
-            Finish a sentence and pause. Clearpen checks whether the paragraph has made its
-            point, given a reason and said why it matters. If something is missing, the one
-            sentence that supplies it appears in grey: <strong>Tab</strong> keeps it, typing
-            ignores it. When a paragraph is complete you see <em>¶ point made</em> instead.
+            Finish a sentence and pause. Clearpen checks whether the paragraph has made its point, given a reason and
+            said why it matters. If something is missing, the one sentence that supplies it appears in grey:{' '}
+            <strong>Tab</strong> keeps it, typing ignores it. When a paragraph is complete you see <em>¶ point made</em>{' '}
+            instead.
             <strong>⌘J</strong> asks right away.
           </p>
         </div>
@@ -103,8 +123,16 @@ export default function Page() {
           <h2 className="font-serif text-3xl font-medium md:text-4xl">See it in action</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {[
-              { light: 'next-sentence-light.png', dark: 'next-sentence-dark.png', caption: 'One sentence, only when a paragraph needs it' },
-              { light: 'pinpoint-edits-light.png', dark: 'pinpoint-edits-dark.png', caption: 'Small, marked changes instead of a rewrite' },
+              {
+                light: 'next-sentence-light.png',
+                dark: 'next-sentence-dark.png',
+                caption: 'One sentence, only when a paragraph needs it',
+              },
+              {
+                light: 'pinpoint-edits-light.png',
+                dark: 'pinpoint-edits-dark.png',
+                caption: 'Small, marked changes instead of a rewrite',
+              },
               { light: 'review-light.png', dark: 'review-dark.png', caption: 'A review that shows its working' },
             ].map((s) => (
               <figure key={s.light} className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -147,10 +175,9 @@ export default function Page() {
       <section id="modes" className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="font-serif text-3xl font-medium md:text-4xl">Modes, and guided writing</h2>
         <p className="mt-4 max-w-3xl text-muted-foreground">
-          A mode is a preset: which checks run, who the review reads for, and which aids are
-          on. An article, a technical guide, a scientific paper, a business case, an
-          investment note — or write to think with Clear out ideas, Reflect, and Work a
-          problem.
+          A mode is a preset: which checks run, who the review reads for, and which aids are on. An article, a technical
+          guide, a scientific paper, a business case, an investment note — or write to think with Clear out ideas,
+          Reflect, and Work a problem.
         </p>
       </section>
 
@@ -169,9 +196,13 @@ export default function Page() {
       <footer className="mx-auto max-w-6xl px-6 py-10 text-center text-sm text-muted-foreground">
         <p>Clearpen — open source, AGPL-3.0.</p>
         <p className="mt-1">
-          <a className="underline" href={RELEASES} target="_blank" rel="noopener">GitHub</a>
+          <a className="underline" href={RELEASES} target="_blank" rel="noopener">
+            GitHub
+          </a>
           {' · '}
-          <a className="underline" href="#downloads">Download</a>
+          <a className="underline" href="#downloads">
+            Download
+          </a>
         </p>
       </footer>
     </div>

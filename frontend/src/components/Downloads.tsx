@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const REPO = 'AQSAKAL/clearpen';
 const API = `https://api.github.com/repos/${REPO}/releases/latest`;
@@ -68,10 +68,15 @@ export default function Downloads() {
         {loading
           ? 'Loading latest release from GitHub…'
           : error
-          ? 'Could not load release info.'
-          : 'Free and open source. Pick your platform.'}
+            ? 'Could not load release info.'
+            : 'Free and open source. Pick your platform.'}
         {error && (
-          <a className="ml-2 underline" href={`https://github.com/${REPO}/releases/latest`} target="_blank" rel="noopener">
+          <a
+            className="ml-2 underline"
+            href={`https://github.com/${REPO}/releases/latest`}
+            target="_blank"
+            rel="noopener"
+          >
             View releases on GitHub
           </a>
         )}

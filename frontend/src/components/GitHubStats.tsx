@@ -29,19 +29,13 @@ export default function GitHubStats() {
       <img src={repo.owner.avatar_url} alt={repo.owner.login} className="h-10 w-10 rounded-full" />
       <div className="flex flex-wrap gap-3">
         <Card>
-          <CardContent className="px-4 py-2 text-sm">
-            ⭐ {repo.stargazers_count.toLocaleString()} stars
-          </CardContent>
+          <CardContent className="px-4 py-2 text-sm">⭐ {repo.stargazers_count.toLocaleString()} stars</CardContent>
         </Card>
         <Card>
-          <CardContent className="px-4 py-2 text-sm">
-            🍴 {repo.forks_count.toLocaleString()} forks
-          </CardContent>
+          <CardContent className="px-4 py-2 text-sm">🍴 {repo.forks_count.toLocaleString()} forks</CardContent>
         </Card>
         <Card>
-          <CardContent className="px-4 py-2 text-sm">
-            🐛 {repo.open_issues_count.toLocaleString()} issues
-          </CardContent>
+          <CardContent className="px-4 py-2 text-sm">🐛 {repo.open_issues_count.toLocaleString()} issues</CardContent>
         </Card>
       </div>
       <Button asChild variant="outline" size="sm">
