@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Clearpen's window may do: open its library database and its images folder, save files where the writer chooses, talk to Ollama on this machine, fetch a web page the writer adds to an article as a source, and open web and mail links (an article's links, ollama.com, a ticker's full chart on tradingview.com) in the browser or mail app. Nothing else leaves the computer.",
+  "description": "What Clearpen's window may do: open its library database and its images folder, save files where the writer chooses, talk to Ollama on this machine, fetch a web page (one the writer adds to an article as a source, or Ollama's model library when they choose a model), and open web and mail links (an article's links, ollama.com, a ticker's full chart on tradingview.com) in the browser or mail app. Nothing else leaves the computer.",
   "windows": ["main"],
   "permissions": [
     "core:default",

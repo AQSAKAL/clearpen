@@ -135,11 +135,16 @@ export function Autocomplete() {
           }
           offered = complete || (ev.type === 'done' && !!ev.next.trim());
         }
-      } catch {
-        // The model is away: no suggestion this time.
+      } catch (err) {
+        // The model is away: no suggestion this time. Say why when the writer
+        // asked directly, so a key or model problem isn't a mystery.
+        console.error('[clearpen] the suggestion failed:', err);
         if (stale()) return;
         ed.clearGhost();
-        if (force) toast('Couldn’t reach the model for a suggestion');
+        if (force) {
+          const why = err instanceof Error && err.message ? `: ${err.message}` : '';
+          toast(`Couldn’t reach the model for a suggestion${why}`);
+        }
         return;
       } finally {
         // The dots go with the answer — unless a newer request has put up its own.

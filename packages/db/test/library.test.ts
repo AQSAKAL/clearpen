@@ -3,7 +3,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
-import { excerpt, type Library, MAX_VERSIONS, migrate, openLibrary, slugify, uuidv7 } from '../src/index.ts';
+import {
+  connect,
+  createLibrary,
+  excerpt,
+  type Library,
+  MAX_VERSIONS,
+  MIGRATIONS,
+  migrate,
+  nextOccurrence,
+  openLibrary,
+  slugify,
+  titleFor,
+  uuidv7,
+} from '../src/index.ts';
 import { nodeDriver } from '../src/node.ts';
 
 const open = () => openLibrary(nodeDriver());
@@ -27,6 +40,27 @@ test('migrations apply once and survive reopening the file', async () => {
     ['Kept'],
   );
   again.close();
+});
+
+test('a library made before schedules gains the table when reopened', async () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'clearpen-db-')), 'library.db');
+  const old = nodeDriver(file);
+  // The schema as it shipped before schedules existed.
+  await migrate(
+    old,
+    MIGRATIONS.filter((m) => m.id === '0000_init'),
+  );
+  const before = createLibrary(connect(old));
+  const project = await before.projects.create('Older blog');
+  old.close();
+
+  const upgraded = nodeDriver(file);
+  const lib = await openLibrary(upgraded);
+  const { schedule, document } = await lib.schedules.set(project.id, 'weekly');
+  assert.equal(schedule.projectId, project.id);
+  assert.equal(document?.projectId, project.id);
+  assert.equal((await lib.schedules.list()).length, 1);
+  upgraded.close();
 });
 
 test('UUIDv7 ids sort by creation time', () => {
@@ -164,6 +198,98 @@ test('versions: snapshots, unchanged, and thinning that spares labels and the ne
   assert.equal(newest?.content, `text ${MAX_VERSIONS}`);
   // The two oldest automatic versions went first.
   assert.ok(!(await Promise.all(all.map((v) => lib.versions.get(d.id, v.id)))).some((v) => v?.content === 'text 0'));
+});
+
+test('schedules pre-create an article, turn over on time, and stop when deleted', async () => {
+  const lib = await open();
+  const blog = await lib.projects.create('Blog');
+  const first = await lib.schedules.set(blog.id, 'weekly');
+  assert.equal(first.schedule.cadence, 'weekly');
+  assert.equal(first.schedule.projectId, blog.id);
+  // The first article is waiting right away, inside the project.
+  assert.ok(first.document);
+  assert.equal(first.document.projectId, blog.id);
+  assert.equal((await lib.documents.list()).length, 1);
+  assert.deepEqual(await lib.schedules.list(), [first.schedule]);
+  assert.deepEqual(await lib.schedules.get(blog.id), first.schedule);
+
+  // Nothing is due before the next period.
+  assert.deepEqual(await lib.schedules.run(first.schedule.nextAt - 1), []);
+
+  // The period turns: one article appears and the schedule moves on.
+  const made = await lib.schedules.run(first.schedule.nextAt);
+  assert.equal(made.length, 1);
+  assert.equal(made[0]?.projectId, blog.id);
+  assert.equal((await lib.documents.list()).length, 2);
+  const after = await lib.schedules.get(blog.id);
+  assert.ok(after);
+  assert.ok(after.nextAt > first.schedule.nextAt);
+
+  // Changing the rhythm keeps the articles already made and makes no new one.
+  const changed = await lib.schedules.set(blog.id, 'daily');
+  assert.equal(changed.document, undefined);
+  assert.equal(changed.schedule.cadence, 'daily');
+  assert.equal((await lib.documents.list()).length, 2);
+
+  // Deleting the schedule stops the rhythm; the articles stay.
+  await lib.schedules.remove(blog.id);
+  assert.equal(await lib.schedules.get(blog.id), null);
+  assert.deepEqual(await lib.schedules.list(), []);
+  assert.equal((await lib.documents.list()).length, 2);
+  assert.deepEqual(await lib.schedules.run(first.schedule.nextAt), []);
+
+  await rejects(lib.schedules.set(blog.id, 'hourly' as never), 400);
+  await rejects(lib.schedules.set('missing', 'weekly'), 404);
+});
+
+test('a long absence creates one catch-up article, not a backlog', async () => {
+  const lib = await open();
+  const blog = await lib.projects.create('Journal');
+  const { schedule } = await lib.schedules.set(blog.id, 'daily');
+  const later = schedule.nextAt + 10 * 24 * 60 * 60 * 1000;
+  const made = await lib.schedules.run(later);
+  assert.equal(made.length, 1);
+  const after = await lib.schedules.get(blog.id);
+  assert.ok(after);
+  assert.ok(after.nextAt > later);
+  assert.ok(after.nextAt - later <= 24 * 60 * 60 * 1000, 'the next article is a day away');
+  assert.equal((await lib.documents.list()).length, 2);
+});
+
+test('removing a project deletes its schedule but keeps its articles', async () => {
+  const lib = await open();
+  const blog = await lib.projects.create('Blog');
+  const { document } = await lib.schedules.set(blog.id, 'monthly');
+  assert.ok(document);
+  await lib.projects.remove(blog.id);
+  assert.equal(await lib.schedules.get(blog.id), null);
+  const kept = await lib.documents.get(document.id);
+  assert.ok(kept);
+  assert.equal(kept.projectId, null);
+});
+
+test('rhythms follow the calendar, and the titles name their period', () => {
+  const at = new Date(2026, 10, 9, 9, 30).getTime();
+  const day = new Date(nextOccurrence(at, 'daily'));
+  // Articles arrive at the start of the day, not the hour it was set.
+  assert.deepEqual([day.getMonth(), day.getDate(), day.getHours()], [10, 10, 0]);
+  const week = new Date(nextOccurrence(at, 'weekly'));
+  assert.deepEqual([week.getMonth(), week.getDate()], [10, 16]);
+  const twoWeeks = new Date(nextOccurrence(at, 'biweekly'));
+  assert.deepEqual([twoWeeks.getMonth(), twoWeeks.getDate()], [10, 23]);
+
+  // A month keeps the day of the month, clamped to a shorter one.
+  const jan31 = new Date(2026, 0, 31, 9).getTime();
+  const feb = new Date(nextOccurrence(jan31, 'monthly'));
+  assert.deepEqual([feb.getMonth(), feb.getDate()], [1, 28]);
+  const mar31 = new Date(2026, 2, 31, 9).getTime();
+  const apr = new Date(nextOccurrence(mar31, 'monthly'));
+  assert.deepEqual([apr.getMonth(), apr.getDate()], [3, 30]);
+
+  assert.equal(titleFor('daily', at), 'November 9, 2026');
+  assert.equal(titleFor('weekly', at), 'Week of November 9, 2026');
+  assert.equal(titleFor('biweekly', at), 'Week of November 9, 2026');
+  assert.equal(titleFor('monthly', at), 'November 2026');
 });
 
 test('media is stored once per image', async () => {

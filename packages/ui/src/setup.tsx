@@ -5,16 +5,26 @@
 // leaves it for later — the model status in the sidebar opens it again.
 
 import {
+  type CatalogModel,
+  type CatalogTag,
+  defaultTag,
   formatBytes,
   type LLMStatus,
   MODEL_OFFERS,
   type ModelOffer,
+  mainTags,
+  OLLAMA_LIBRARY,
   type PullProgress,
+  parseOllamaLibrary,
+  parseOllamaTags,
   recommendedOffer,
+  searchModels,
+  writerModels,
 } from '@clearpen/core';
 import { CheckIcon, LoaderCircleIcon } from 'lucide-react';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Backend } from './backend.ts';
+import { OpenRouterForm } from './components/openrouter-form.tsx';
 import { Badge } from './components/ui/badge.tsx';
 import { Button } from './components/ui/button.tsx';
 import {
@@ -25,9 +35,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from './components/ui/dialog.tsx';
+import { Input } from './components/ui/input.tsx';
 import { Label } from './components/ui/label.tsx';
 import { Progress } from './components/ui/progress.tsx';
 import { RadioGroup, RadioGroupItem } from './components/ui/radio-group.tsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select.tsx';
 import { cn } from './lib/utils.ts';
 import { useSettings } from './settings.tsx';
 
@@ -39,8 +51,9 @@ type Step =
   | { kind: 'checking' }
   | { kind: 'ollama' }
   | { kind: 'choose' }
+  | { kind: 'openrouter' }
   | { kind: 'downloading'; offer: ModelOffer; progress: PullProgress | null }
-  | { kind: 'ready'; model: string }
+  | { kind: 'ready'; model: string; name?: string; cloud?: boolean }
   | { kind: 'failed'; offer: ModelOffer; error: string };
 
 interface SetupValue {
@@ -54,8 +67,22 @@ interface SetupValue {
 
 const SetupContext = createContext<SetupValue | null>(null);
 
-const fraction = (offer: ModelOffer, p: PullProgress | null) =>
-  p ? (p.done ? 1 : p.completed / Math.max(p.total, offer.bytes * 0.98)) : 0;
+const fraction = (offer: ModelOffer, p: PullProgress | null) => {
+  if (!p) return 0;
+  if (p.done) return 1;
+  const total = p.total || offer.bytes;
+  return total > 0 ? p.completed / total : 0;
+};
+
+/** A model we know little about yet, as the offer the download screens show. */
+const pickedOffer = (model: string, over: Partial<ModelOffer> = {}): ModelOffer => ({
+  model,
+  name: model,
+  bytes: 0,
+  memoryGB: 0,
+  note: '',
+  ...over,
+});
 
 /** Ollama's step, in the writer's words. */
 function phase(p: PullProgress | null): string {
@@ -82,12 +109,12 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
     async (at?: 'choose') => {
       const s = await backend.ai.status().catch(() => null);
       setStatus(s);
-      if (!s?.reachable) setStep({ kind: 'ollama' });
+      if (!s?.reachable) setStep(settings.aiProvider === 'openrouter' ? { kind: 'openrouter' } : { kind: 'ollama' });
       else if (s.ok && at !== 'choose') setStep({ kind: 'ready', model: s.roles.quick! });
       else setStep({ kind: 'choose' });
       return s;
     },
-    [backend],
+    [backend, settings.aiProvider],
   );
 
   // At launch: no model ready, and the writer hasn't said "not now".
@@ -129,7 +156,7 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
         const models = { ...live.current.models, quick: offer.model };
         set('models', models);
         backend.ai.setModels(models, { preload: true });
-        setStep({ kind: 'ready', model: offer.model });
+        setStep({ kind: 'ready', model: offer.model, name: offer.name });
         setShown(true);
       } catch (err) {
         if (c.signal.aborted) return;
@@ -149,7 +176,7 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
         const models = { ...live.current.models, quick: offer.model };
         set('models', models);
         backend.ai.setModels(models, { preload: true });
-        setStep({ kind: 'ready', model: offer.model });
+        setStep({ kind: 'ready', model: offer.model, name: offer.name });
       } else void download(offer);
     },
     [status, backend, set, download],
@@ -189,11 +216,15 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
       >
         <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
           <SetupBody
+            backend={backend}
             step={step}
             status={status}
             memory={memory}
             platform={backend.platform}
             onDownloadOllama={() => void backend.openLink(OLLAMA_DOWNLOAD)}
+            onOpenRouter={() => setStep({ kind: 'openrouter' })}
+            onBackFromOpenRouter={() => setStep({ kind: status?.reachable ? 'choose' : 'ollama' })}
+            onCloudReady={(model) => setStep({ kind: 'ready', model, cloud: true })}
             onUse={use}
             onCancel={cancel}
             onNotNow={notNow}
@@ -213,22 +244,30 @@ export function useSetup(): SetupValue {
 }
 
 function SetupBody({
+  backend,
   step,
   status,
   memory,
   platform,
   onDownloadOllama,
+  onOpenRouter,
+  onBackFromOpenRouter,
+  onCloudReady,
   onUse,
   onCancel,
   onNotNow,
   onHide,
   canPull,
 }: {
+  backend: Backend;
   step: Step;
   status: LLMStatus | null;
   memory: number | null;
   platform: Backend['platform'];
   onDownloadOllama(): void;
+  onOpenRouter(): void;
+  onBackFromOpenRouter(): void;
+  onCloudReady(model: string): void;
   onUse(offer: ModelOffer): void;
   onCancel(): void;
   onNotNow(): void;
@@ -236,9 +275,6 @@ function SetupBody({
   canPull: boolean;
 }) {
   const computer = platform === 'mac' ? 'Mac' : 'computer';
-  const recommended = recommendedOffer(memory);
-  const [choice, setChoice] = useState(recommended.model);
-  useEffect(() => setChoice(recommended.model), [recommended.model]);
 
   if (step.kind === 'checking') {
     return (
@@ -279,6 +315,11 @@ function SetupBody({
         <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
           <LoaderCircleIcon className="size-3.5 animate-spin" /> Looking for Ollama…
         </p>
+        {backend.ai.openRouter && (
+          <Button variant="outline" onClick={onOpenRouter}>
+            Use OpenRouter instead
+          </Button>
+        )}
         <DialogFooter>
           <Button variant="ghost" onClick={onNotNow}>
             Not now
@@ -289,51 +330,37 @@ function SetupBody({
   }
 
   if (step.kind === 'choose') {
-    const offer = MODEL_OFFERS.find((o) => o.model === choice) ?? recommended;
-    const installed = status?.models.includes(offer.model);
+    return (
+      <ChooseModel
+        backend={backend}
+        status={status}
+        memory={memory}
+        computer={computer}
+        canPull={canPull}
+        onUse={onUse}
+        onOpenRouter={onOpenRouter}
+        onNotNow={onNotNow}
+      />
+    );
+  }
+
+  if (step.kind === 'openrouter') {
     return (
       <>
         <DialogHeader>
-          <DialogTitle>Choose your writing model</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">Use OpenRouter</DialogTitle>
           <DialogDescription>
-            It downloads once and runs on this {computer}.
-            {memory ? ` This ${computer} has ${Math.round(memory / 2 ** 30)} GB of memory.` : ''}
+            OpenRouter runs hundreds of models in the cloud through one key. Bring your own key: it stays in your
+            operating system’s keychain, and only requests for your writing go to openrouter.ai.
           </DialogDescription>
         </DialogHeader>
-        <RadioGroup value={choice} onValueChange={setChoice} aria-label="Writing model">
-          {MODEL_OFFERS.map((o) => (
-            <Label
-              key={o.model}
-              htmlFor={`offer-${o.model}`}
-              className={cn(
-                'flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal',
-                choice === o.model && 'border-primary bg-muted/40',
-              )}
-            >
-              <RadioGroupItem id={`offer-${o.model}`} value={o.model} className="mt-0.5" />
-              <span className="grid gap-1">
-                <span className="flex flex-wrap items-center gap-2 font-medium">
-                  {o.name}
-                  <span className="font-normal text-muted-foreground">{formatBytes(o.bytes)}</span>
-                  {o.model === recommended.model && <Badge variant="secondary">Recommended</Badge>}
-                  {status?.models.includes(o.model) && <Badge variant="outline">Installed</Badge>}
-                </span>
-                <span className="text-xs leading-snug text-muted-foreground">{o.note}</span>
-              </span>
-            </Label>
-          ))}
-        </RadioGroup>
-        {!canPull && !installed && (
-          <p className="text-xs text-muted-foreground">
-            This model server can’t download models. Add {offer.model} on the server, then choose it here.
-          </p>
-        )}
+        <OpenRouterForm backend={backend} onConnected={onCloudReady} />
         <DialogFooter>
+          <Button variant="ghost" className="mr-auto" onClick={onBackFromOpenRouter}>
+            Back
+          </Button>
           <Button variant="ghost" onClick={onNotNow}>
             Not now
-          </Button>
-          <Button onClick={() => onUse(offer)} disabled={!canPull && !installed}>
-            {installed ? `Use ${offer.name}` : `Download ${formatBytes(offer.bytes)}`}
           </Button>
         </DialogFooter>
       </>
@@ -353,7 +380,7 @@ function SetupBody({
           <Progress value={Math.round(f * 100)} aria-label="Download progress" />
           <p className="flex justify-between text-xs text-muted-foreground tabular-nums">
             <span>
-              {formatBytes(step.progress?.completed ?? 0)} of {formatBytes(total)}
+              {formatBytes(step.progress?.completed ?? 0)} of {total ? formatBytes(total) : '…'}
             </span>
             <span>{Math.floor(f * 100)}%</span>
           </p>
@@ -400,12 +427,317 @@ function SetupBody({
           <CheckIcon className="size-5 text-[var(--ins)]" /> Clearpen is ready
         </DialogTitle>
         <DialogDescription>
-          {MODEL_OFFERS.find((o) => o.model === step.model)?.name ?? step.model} runs on this {computer}. Select a
-          paragraph to edit it, or finish a sentence and pause.
+          {step.cloud ? (
+            <>{step.name ?? step.model} answers through OpenRouter. You can change the model later in Models.</>
+          ) : (
+            <>
+              {step.name ?? MODEL_OFFERS.find((o) => o.model === step.model)?.name ?? step.model} runs on this{' '}
+              {computer}. Select a paragraph to edit it, or finish a sentence and pause.
+            </>
+          )}
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>
         <Button onClick={onHide}>Start writing</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/**
+ * The model chooser: the models Clearpen recommends for the computer, then
+ * ollama.com's whole library, searchable, so any model (and any size) can be
+ * chosen. A name typed by hand covers what the library page doesn't list yet.
+ */
+function ChooseModel({
+  backend,
+  status,
+  memory,
+  computer,
+  canPull,
+  onUse,
+  onOpenRouter,
+  onNotNow,
+}: {
+  backend: Backend;
+  status: LLMStatus | null;
+  memory: number | null;
+  computer: string;
+  canPull: boolean;
+  onUse(offer: ModelOffer): void;
+  onOpenRouter(): void;
+  onNotNow(): void;
+}) {
+  const recommended = recommendedOffer(memory);
+  const [choice, setChoice] = useState(recommended.model);
+  const [query, setQuery] = useState('');
+  const [catalog, setCatalog] = useState<CatalogModel[] | null>(null);
+  const [catalogState, setCatalogState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [selected, setSelected] = useState<CatalogModel | null>(null);
+  const [tags, setTags] = useState<CatalogTag[] | null>(null);
+  const [tagsState, setTagsState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [manual, setManual] = useState('');
+  const tagsRequest = useRef(0);
+  const tagsCache = useRef(new Map<string, CatalogTag[]>());
+  const catalogRequest = useRef(false);
+
+  useEffect(() => setChoice(recommended.model), [recommended.model]);
+
+  // The library page is one request, made the first time the writer looks for
+  // a model. A failure leaves the recommended models and the name box.
+  function loadCatalog() {
+    if (catalogRequest.current) return;
+    catalogRequest.current = true;
+    if (!backend.fetchPage) {
+      setCatalogState('error');
+      return;
+    }
+    setCatalogState('loading');
+    backend
+      .fetchPage(OLLAMA_LIBRARY)
+      .then((page) => {
+        const models = writerModels(parseOllamaLibrary(page.text));
+        // The page came back, but not as the library we know: the name box still works.
+        if (!models.length) return setCatalogState('error');
+        setCatalog(models);
+        setCatalogState('ready');
+      })
+      .catch(() => setCatalogState('error'));
+  }
+
+  function pick(model: CatalogModel) {
+    setSelected(model);
+    setManual('');
+    setChoice(model.name);
+    setTags(null);
+    const request = ++tagsRequest.current;
+    const cached = tagsCache.current.get(model.name);
+    if (cached) {
+      setTags(cached);
+      setTagsState('ready');
+      const tag = defaultTag(cached);
+      if (tag) setChoice(`${model.name}:${tag.name}`);
+      return;
+    }
+    setTagsState('loading');
+    if (!backend.fetchPage) {
+      setTagsState('error');
+      return;
+    }
+    // The model's page lists its sizes; Ollama's own default if it can't be read.
+    backend
+      .fetchPage(`${OLLAMA_LIBRARY}/${encodeURIComponent(model.name)}/tags`)
+      .then((page) => {
+        if (request !== tagsRequest.current) return;
+        const found = parseOllamaTags(page.text);
+        tagsCache.current.set(model.name, found);
+        setTags(found);
+        setTagsState('ready');
+        const tag = defaultTag(found);
+        if (tag) setChoice(`${model.name}:${tag.name}`);
+      })
+      .catch(() => {
+        if (request === tagsRequest.current) setTagsState('error');
+      });
+  }
+
+  function typeModel(value: string) {
+    setManual(value);
+    if (!value.trim()) {
+      setChoice(recommended.model);
+      return;
+    }
+    setSelected(null);
+    setTags(null);
+    setTagsState('idle');
+    tagsRequest.current++;
+    setChoice(value.trim());
+  }
+
+  const picked = (() => {
+    if (manual.trim()) return pickedOffer(manual.trim());
+    if (selected) {
+      const tag = tags?.find((t) => `${selected.name}:${t.name}` === choice);
+      return pickedOffer(choice, {
+        ...(tag?.bytes ? { bytes: tag.bytes } : {}),
+        note: selected.description,
+      });
+    }
+    return MODEL_OFFERS.find((o) => o.model === choice) ?? recommended;
+  })();
+
+  const installed = status?.models.includes(picked.model) ?? false;
+  const installedCatalog = (model: CatalogModel) =>
+    status?.models.some((m) => m === model.name || m.startsWith(`${model.name}:`)) ?? false;
+  const results = catalog ? searchModels(catalog, query, query.trim() ? 40 : 10) : [];
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Choose your writing model</DialogTitle>
+        <DialogDescription>
+          It downloads once and runs on this {computer}.
+          {memory ? ` This ${computer} has ${Math.round(memory / 2 ** 30)} GB of memory.` : ''}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid max-h-[55vh] gap-5 overflow-y-auto pr-1">
+        {!query.trim() && (
+          <RadioGroup
+            value={choice}
+            onValueChange={(v) => {
+              setManual('');
+              setSelected(null);
+              setTags(null);
+              tagsRequest.current++;
+              setChoice(v);
+            }}
+            aria-label="Writing model"
+          >
+            {MODEL_OFFERS.map((o) => (
+              <Label
+                key={o.model}
+                htmlFor={`offer-${o.model}`}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal',
+                  choice === o.model && 'border-primary bg-muted/40',
+                )}
+              >
+                <RadioGroupItem id={`offer-${o.model}`} value={o.model} className="mt-0.5" />
+                <span className="grid gap-1">
+                  <span className="flex flex-wrap items-center gap-2 font-medium">
+                    {o.name}
+                    <span className="font-normal text-muted-foreground">{formatBytes(o.bytes)}</span>
+                    {o.model === recommended.model && <Badge variant="secondary">Recommended</Badge>}
+                    {status?.models.includes(o.model) && <Badge variant="outline">Installed</Badge>}
+                  </span>
+                  <span className="text-xs leading-snug text-muted-foreground">{o.note}</span>
+                </span>
+              </Label>
+            ))}
+          </RadioGroup>
+        )}
+
+        <div className="grid gap-2">
+          <Label htmlFor="model-search">Search Ollama’s library</Label>
+          <Input
+            id="model-search"
+            value={query}
+            onFocus={loadCatalog}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              loadCatalog();
+            }}
+            placeholder="llama, mistral, a size…"
+            autoComplete="off"
+          />
+          {catalogState === 'loading' && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+              <LoaderCircleIcon className="size-3.5 animate-spin" /> Looking through Ollama’s library…
+            </p>
+          )}
+          {catalogState === 'error' && (
+            <p className="text-xs text-muted-foreground">
+              Couldn’t reach ollama.com. Type a model’s name below instead.
+            </p>
+          )}
+          {catalogState === 'ready' && results.length === 0 && (
+            <p className="text-xs text-muted-foreground">No models match “{query}”.</p>
+          )}
+          {catalogState === 'ready' && results.length > 0 && (
+            <RadioGroup
+              value={selected?.name ?? ''}
+              onValueChange={(name) => {
+                const model = catalog?.find((m) => m.name === name);
+                if (model) pick(model);
+              }}
+              aria-label="Ollama library"
+            >
+              <div className="grid max-h-56 gap-1 overflow-y-auto">
+                {results.map((m) => (
+                  <Label
+                    key={m.name}
+                    htmlFor={`catalog-${m.name}`}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-3 rounded-lg border p-2.5 font-normal',
+                      selected?.name === m.name && 'border-primary bg-muted/40',
+                    )}
+                  >
+                    <RadioGroupItem id={`catalog-${m.name}`} value={m.name} className="mt-0.5" />
+                    <span className="grid gap-0.5">
+                      <span className="flex flex-wrap items-center gap-2 font-medium">
+                        {m.name}
+                        {m.sizes.length > 0 && (
+                          <span className="font-normal text-muted-foreground">{m.sizes.join(' · ')}</span>
+                        )}
+                        {installedCatalog(m) && <Badge variant="outline">Installed</Badge>}
+                      </span>
+                      <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{m.description}</span>
+                    </span>
+                  </Label>
+                ))}
+              </div>
+            </RadioGroup>
+          )}
+
+          {selected && (
+            <div className="grid gap-1.5 rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{selected.name}</span>
+                {tagsState === 'loading' && <LoaderCircleIcon className="size-3.5 animate-spin" />}
+              </div>
+              {tags && tags.length > 0 ? (
+                <Select value={choice} onValueChange={setChoice}>
+                  <SelectTrigger className="w-full" aria-label={`Version of ${selected.name}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mainTags(tags).map((t) => (
+                      <SelectItem key={t.name} value={`${selected.name}:${t.name}`}>
+                        {t.name}
+                        {t.bytes ? ` · ${formatBytes(t.bytes)}` : ''}
+                        {t.context ? ` · ${t.context} context` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {tagsState === 'loading' ? 'Looking for its versions…' : 'Ollama’s default version will download.'}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="model-name">Or type any model from ollama.com/library</Label>
+            <Input
+              id="model-name"
+              value={manual}
+              onChange={(e) => typeModel(e.target.value)}
+              placeholder="mistral:7b"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+        </div>
+      </div>
+      {!canPull && !installed && (
+        <p className="text-xs text-muted-foreground">
+          This model server can’t download models. Add {picked.model} on the server, then choose it here.
+        </p>
+      )}
+      <DialogFooter>
+        {backend.ai.openRouter && (
+          <Button variant="link" className="mr-auto px-0" onClick={onOpenRouter}>
+            Use OpenRouter instead
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onNotNow}>
+          Not now
+        </Button>
+        <Button onClick={() => onUse(picked)} disabled={(!canPull && !installed) || !picked.model}>
+          {installed ? `Use ${picked.name}` : picked.bytes ? `Download ${formatBytes(picked.bytes)}` : 'Download'}
+        </Button>
       </DialogFooter>
     </>
   );

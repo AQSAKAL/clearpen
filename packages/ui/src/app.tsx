@@ -131,9 +131,13 @@ function Shell({ backend }: { backend: Backend }) {
 
   // The models chosen last time; the dialog changes them later. With
   // next-sentence suggestions on, the writing model loads now, so the first
-  // suggestion doesn't wait for it.
+  // suggestion doesn't wait for it. OpenRouter's models are already in the
+  // cloud, so there is nothing to load.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, at launch.
-  useEffect(() => backend.ai.setModels(settings.models, { preload: settings.autocomplete }), [backend]);
+  useEffect(() => {
+    if (settings.aiProvider === 'openrouter') backend.ai.setModels(settings.openrouterModels);
+    else backend.ai.setModels(settings.models, { preload: settings.autocomplete });
+  }, [backend]);
 
   // New articles start as the kind the writer said they write.
   const goal = goalOf(settings.goal);
@@ -212,6 +216,8 @@ function Workspace() {
     booted.current = true;
     (async () => {
       await lib.refresh();
+      // Recurring writing: make any article whose period turned while the app was closed.
+      await lib.runSchedules();
       const docs = await backend.library.documents.list();
       const want = [hashId(), settings.last].find((id) => id && docs.some((d) => d.id === id));
       if (want) await lib.open(want);
@@ -273,6 +279,13 @@ function Workspace() {
     }, AUTO_VERSION_MS);
     return () => clearInterval(t);
   }, [backend]);
+
+  // A schedule that turns while the app is open: its article appears without
+  // waiting for a restart. One small query a minute.
+  useEffect(() => {
+    const t = setInterval(() => void libRef.current.runSchedules().catch(() => {}), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Focus mode carries over when another article opens.
   // biome-ignore lint/correctness/useExhaustiveDependencies: loading an article resets the editor's focus mode, so re-apply it.

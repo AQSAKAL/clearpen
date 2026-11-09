@@ -1,7 +1,8 @@
-// The models Clearpen offers to download when there's none yet: the one it
-// prefers, the larger one it used to, and a lighter one for computers with
-// less memory. The sizes are Ollama's downloads; the first offer that fits
-// the computer's memory is the one chosen for the writer.
+// The models Clearpen recommends when there's none yet: the one it prefers,
+// the larger one it used to, and a lighter one for computers with less
+// memory. The sizes are Ollama's downloads; the first offer that fits the
+// computer's memory is the one chosen for the writer. The setup screen also
+// searches the whole ollama.com library, so these are a shortcut, not a limit.
 
 export interface ModelOffer {
   /** Ollama's name for it. */

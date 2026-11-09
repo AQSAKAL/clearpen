@@ -23,6 +23,24 @@ export const projects = sqliteTable('projects', {
   ...stamps,
 });
 
+/**
+ * Recurring writing: one rhythm per project. Clearpen keeps an article ready
+ * for the current period, and makes the next one when the period turns.
+ */
+export const schedules = sqliteTable(
+  'schedules',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    /** How often a new article appears. */
+    cadence: text('cadence', { enum: ['daily', 'weekly', 'biweekly', 'monthly'] }).notNull(),
+    /** When the next article is due, in milliseconds. */
+    nextAt: integer('next_at').notNull(),
+    ...stamps,
+  },
+  (t) => [index('schedules_project').on(t.projectId), index('schedules_next').on(t.nextAt)],
+);
+
 export const documents = sqliteTable(
   'documents',
   {

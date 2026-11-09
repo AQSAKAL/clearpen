@@ -21,9 +21,9 @@ Most AI writing tools offer to write for you. Clearpen helps you write. It gives
 
 That's the idea behind Clearpen: less writing done by AI, and more help from AI while you write.
 
-Your writing stays on your machine. The AI is a local model — through [Ollama](https://ollama.com) in the desktop app, or running in the page itself in a browser — your library is a single file, and every article exports to plain Markdown.
+Your writing stays on your machine. The AI is a local model by default — through [Ollama](https://ollama.com) in the desktop app, or running in the page itself in a browser. If you choose OpenRouter instead, only the text each task needs is sent there, with your own key. Your library is a single file, and every article exports to plain Markdown.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing, sources (pages kept with an article, with passages drawn into suggestions and fact-checks), and Markdown and code drawn as they read — on a local model. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing, sources (pages kept with an article, with passages drawn into suggestions and fact-checks), recurring writing in a project, and Markdown and code drawn as they read — on a local model, or on OpenRouter with your own key. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
 
 ## What it does
 
@@ -76,6 +76,12 @@ A frame is a question in the shape of a sentence. It waits in grey at the cursor
 
 On Windows, **Ctrl** stands in for **⌘**.
 
+### Recurring writing in a project
+
+Hover a project in the sidebar and choose **Schedule…** from its **⋯** menu. Pick **Every day**, **Every week**, **Every two weeks** or **Every month**, and Clearpen creates the first article straight away — titled by its period (`November 9, 2026`, `Week of November 9, 2026`, `November 2026`) — so one is always waiting. Later articles appear at the start of each period. After a long absence you get one catch-up article, not a backlog.
+
+**Delete schedule**, in the same menu or inside the dialog, stops new articles; the ones already written stay in the project. Scheduled articles start with the kind of piece you usually write.
+
 ## Download
 
 Installers for Mac and Windows are on the [Releases page](https://github.com/AQSAKAL/clearpen/releases). They're early builds and not signed yet, so your computer warns you the first time you open Clearpen.
@@ -91,9 +97,11 @@ In the desktop app, Clearpen's AI runs on your computer, through [Ollama](https:
 - **Qwen3 8B** (5.2 GB), larger and slower, for 16 GB or more;
 - **Qwen3 4B** (2.5 GB), the lightest, for less memory.
 
-You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
+Those are shortcuts, not a limit: the setup screen searches [ollama.com/library](https://ollama.com/library), so you can pick any model there — and any of its sizes — or type a model's name yourself. You can write without the AI: choose **Not now**, and set it up later from the sidebar. Your writing stays on your computer.
 
-In a browser with WebGPU there is nothing to install: the browser version runs the model in the page itself (see [Or try it in a browser](#or-try-it-in-a-browser-without-rust)).
+**OpenRouter, with your own key.** If you would rather use a hosted model — Claude, Gemini, GPT, Qwen, or anything else [OpenRouter](https://openrouter.ai) serves — choose **OpenRouter** in **Models**, paste a key from [openrouter.ai/keys](https://openrouter.ai/keys), and pick from its catalogue. The key is kept in your operating system's credential store (macOS Keychain, Windows Credential Manager, or the Linux Secret Service), never in your library, a settings file or a log; Clearpen sends it only to `openrouter.ai`. Each task sends just the text it needs, and the model is billed to your OpenRouter account. Switching back to a local model is one click in the same dialog.
+
+In a browser with WebGPU there is nothing to install: the browser version runs the model in the page itself (see [Or try it in a browser](#or-try-it-in-a-browser-without-rust)). It can use OpenRouter too, but there the key is held in the tab's memory only, so closing the tab forgets it.
 
 ### The first run
 
@@ -105,7 +113,7 @@ You need:
 
 - [Node](https://nodejs.org) 24 or later and [pnpm](https://pnpm.io/installation) 11;
 - [Rust](https://rustup.rs) 1.90 or later, plus the Xcode Command Line Tools on Mac (`xcode-select --install`), or the [Microsoft C++ Build Tools and WebView2](https://tauri.app/start/prerequisites/) on Windows;
-- [Ollama](https://ollama.com), for the AI features in the desktop app. The browser version can run a model in the page instead.
+- [Ollama](https://ollama.com), for the AI features in the desktop app on a local model. The browser version can run a model in the page instead, and either can use OpenRouter with your own key.
 
 Then:
 

@@ -13,6 +13,7 @@ import type {
   GuideInput,
   GuideReply,
   LLMStatus,
+  ModelInfo,
   NextSentenceEvent,
   NoticeEvent,
   ProofreadInput,
@@ -45,11 +46,42 @@ export interface FetchedPage {
 /** Which model plays which role; a missing or null role uses the best model installed. */
 export type ModelChoice = Partial<Record<Role, string | null>>;
 
+/** The names of the secrets Clearpen keeps. An API key is never a setting. */
+export type SecretName = 'openrouter';
+
+/**
+ * Where API keys live. The desktop app keeps them in the operating system's
+ * credential store — the Mac's Keychain, Windows Credential Manager, the
+ * Linux Secret Service — never in the library, a settings file or a log. The
+ * browser preview keeps them in this tab's memory only, for as long as it is
+ * open.
+ */
+export interface Secrets {
+  /** Keys survive a restart (the operating system's store) rather than this session alone. */
+  readonly persistent: boolean;
+  get(name: SecretName): Promise<string | null>;
+  set(name: SecretName, value: string): Promise<void>;
+  delete(name: SecretName): Promise<void>;
+}
+
 /** The AI features, as streams of events. Locally they run in the app; on the web, on the server. */
 export interface AI {
   status(): Promise<LLMStatus>;
   /** `preload` loads the writing model into memory now, so the next answer starts quickly. */
   setModels(models: ModelChoice, opts?: { preload?: boolean }): void;
+  /** This build can reach OpenRouter with a key from the writer. */
+  readonly openRouter: boolean;
+  /**
+   * Writes through the writer's OpenRouter key. A model is chosen from
+   * OpenRouter's catalogue when `models` doesn't name one.
+   */
+  switchToOpenRouter(apiKey: string, models?: ModelChoice): Promise<LLMStatus>;
+  /** Goes back to the models on this computer. */
+  switchToLocal(models?: ModelChoice): Promise<LLMStatus>;
+  /** The active provider's models, with what it says about each, for a picker. */
+  catalogue(): Promise<ModelInfo[]>;
+  /** The models on this computer, whether or not OpenRouter is in use. */
+  localStatus(): Promise<LLMStatus>;
   rewrite(input: RewriteInput, opts?: TaskOptions): AsyncIterable<NoticeEvent | TokenEvent | RewriteDone>;
   edit(input: EditInput, opts?: TaskOptions): AsyncIterable<EditEvent>;
   /** An editor's notes on the whole draft. */
@@ -114,12 +146,16 @@ export interface Backend {
 
   ai: AI;
 
+  /** The writer's API keys, kept out of the library and out of any settings file. */
+  secrets: Secrets;
+
   /** Opens a web page in the writer's browser. */
   openLink(url: string): Promise<void>;
   /**
-   * Fetches a page the writer adds as a source, once, when they add or
-   * refresh it — the one request Clearpen makes to the web for the writing.
-   * Absent where the app can't reach the web; text can still be pasted.
+   * Fetches a page from the web: one the writer adds as a source (once, when
+   * they add or refresh it), or Ollama's model library, to choose a model.
+   * Nothing of the writer's is sent either way. Absent where the app can't
+   * reach the web; text can still be pasted, and a model named by hand.
    */
   fetchPage?(url: string, opts?: TaskOptions): Promise<FetchedPage>;
   /** The computer's memory in bytes, to offer a model that fits; null when it can't tell. */

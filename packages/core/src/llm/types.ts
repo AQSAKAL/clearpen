@@ -11,6 +11,21 @@ export interface ChatRequest {
   signal?: AbortSignal;
 }
 
+/** What a model server says about one of its models, for a picker. */
+export interface ModelInfo {
+  /** The name to send with a request. */
+  id: string;
+  /** The server's name for it, when it has one: "Google: Gemini 3.1 Flash Lite". */
+  name?: string;
+  description?: string;
+  /** The context window, in tokens. */
+  context?: number;
+  /** USD per million input tokens, when the server says and it isn't free. */
+  inputPrice?: number;
+  /** USD per million output tokens. */
+  outputPrice?: number;
+}
+
 /** Filled in as a stream runs. */
 export interface StreamInfo {
   /** True when the model stopped because it hit `maxTokens`. */
@@ -34,6 +49,8 @@ export interface LLMProvider {
   readonly kind: string;
   readonly baseUrl: string;
   listModels(signal?: AbortSignal): Promise<string[]>;
+  /** The models, with what the server says about each, for a picker. Absent: `listModels` alone. */
+  catalogue?(signal?: AbortSignal): Promise<ModelInfo[]>;
   /**
    * Streams the answer as text chunks. Yields an empty string for traffic
    * that carried no visible text (so callers can tell the model is alive).

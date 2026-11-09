@@ -5,6 +5,8 @@
 import { briefForMode, MODE, MODE_GROUPS, type ModeId } from '@clearpen/core';
 import type { DocumentSummary, Project } from '@clearpen/db';
 import {
+  CalendarClockIcon,
+  CalendarXIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   FilePlusIcon,
@@ -23,6 +25,7 @@ import { cn } from '../lib/utils.ts';
 import { useLibrary } from '../library.tsx';
 import { useSettings } from '../settings.tsx';
 import { ModelStatus } from './model-status.tsx';
+import { ScheduleDialog } from './schedule-dialog.tsx';
 import { Button } from './ui/button.tsx';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible.tsx';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from './ui/context-menu.tsx';
@@ -83,6 +86,7 @@ export function LibrarySidebar({
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<Set<string> | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState<Project | null>(null);
 
   // Full-text search, a moment after typing stops, and again when the library changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: lib.docs changing means the results may have too.
@@ -166,6 +170,18 @@ export function LibrarySidebar({
     if (!ok) return;
     const moved = await lib.deleteProject(p.id);
     toast(`Project deleted${moved ? ` · ${moved} article${moved === 1 ? '' : 's'} kept` : ''}`);
+  }
+
+  async function deleteSchedule(p: Project) {
+    const ok = await confirm({
+      title: `Stop scheduled writing in “${p.name}”?`,
+      description: 'The articles already created stay in the project. Clearpen stops making new ones.',
+      action: 'Delete schedule',
+      destructive: true,
+    });
+    if (!ok) return;
+    await lib.deleteSchedule(p.id).catch((err) => toast.error((err as Error).message));
+    toast('Schedule deleted');
   }
 
   const toggle = (id: string, open: boolean) =>
@@ -329,6 +345,12 @@ export function LibrarySidebar({
                           <ChevronRightIcon className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
                           <FolderIcon className="text-muted-foreground" />
                           <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                          {lib.scheduleFor(p.id) && (
+                            <CalendarClockIcon
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              aria-label="Scheduled writing"
+                            />
+                          )}
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <SidebarMenuBadge className="text-muted-foreground group-hover/menu-item:opacity-0">
@@ -349,6 +371,14 @@ export function LibrarySidebar({
                           </SidebarMenuAction>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem onSelect={() => setScheduling(p)}>
+                            <CalendarClockIcon /> Schedule…
+                          </DropdownMenuItem>
+                          {lib.scheduleFor(p.id) && (
+                            <DropdownMenuItem variant="destructive" onSelect={() => deleteSchedule(p)}>
+                              <CalendarXIcon /> Delete schedule
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onSelect={() => renameProject(p)}>Rename…</DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onSelect={() => deleteProject(p)}>
                             Delete…
@@ -399,6 +429,7 @@ export function LibrarySidebar({
         </SidebarMenu>
         <ModelStatus onOpen={onModels} />
       </SidebarFooter>
+      <ScheduleDialog project={scheduling} onOpenChange={(open) => !open && setScheduling(null)} />
     </Sidebar>
   );
 }

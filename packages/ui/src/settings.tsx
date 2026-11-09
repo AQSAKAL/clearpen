@@ -22,6 +22,10 @@ export interface Settings {
   goal: string | null;
   /** The model chosen for each role. */
   models: ModelChoice;
+  /** Where the models run: on this computer, or through the writer's OpenRouter key. */
+  aiProvider: 'local' | 'openrouter';
+  /** The model chosen for each role on OpenRouter. The key itself lives in the secret store. */
+  openrouterModels: ModelChoice;
   /** Suggest the next sentence when a paragraph is missing one. */
   autocomplete: boolean;
   /** Fix typos as the writer types. */
@@ -41,6 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   welcomed: false,
   goal: null,
   models: {},
+  aiProvider: 'local',
+  openrouterModels: {},
   autocomplete: true,
   autocorrect: true,
   prices: true,

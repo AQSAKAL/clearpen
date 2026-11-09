@@ -7,6 +7,55 @@
 
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
 
+/// The credential-store service name: these entries belong to Clearpen alone.
+const KEYCHAIN_SERVICE: &str = "app.clearpen.desktop";
+
+/// The only secret the app keeps. A name from the window can't reach any other
+/// entry in the writer's keychain.
+fn secret_account(name: &str) -> Result<&str, String> {
+    match name {
+        "openrouter" => Ok(name),
+        _ => Err(format!("Unknown secret: {name}")),
+    }
+}
+
+/// Reads an API key from the operating system's credential store. `None` means
+/// the writer hasn't saved one; the key never touches the library or a log.
+#[tauri::command]
+fn secret_get(name: String) -> Result<Option<String>, String> {
+    let account = secret_account(&name)?;
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Saves an API key in the operating system's credential store.
+#[tauri::command]
+fn secret_set(name: String, value: String) -> Result<(), String> {
+    let account = secret_account(&name)?;
+    if value.trim().is_empty() {
+        return Err("The key is empty.".to_string());
+    }
+    keyring::Entry::new(KEYCHAIN_SERVICE, account)
+        .map_err(|e| e.to_string())?
+        .set_password(value.trim())
+        .map_err(|e| e.to_string())
+}
+
+/// Forget an API key.
+#[tauri::command]
+fn secret_delete(name: String) -> Result<(), String> {
+    let account = secret_account(&name)?;
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account).map_err(|e| e.to_string())?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 
 /// Failing loudly on screen still needs a record when the window is blank:
 /// the UI writes startup and render errors here so they can be read afterward.
@@ -36,7 +85,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![total_memory, log_error])
+        .invoke_handler(tauri::generate_handler![
+            total_memory,
+            log_error,
+            secret_get,
+            secret_set,
+            secret_delete
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Clearpen");
 }

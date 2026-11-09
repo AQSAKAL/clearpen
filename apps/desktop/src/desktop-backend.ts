@@ -2,9 +2,17 @@
 // beside it, and models from Ollama on this machine. Both live in the app's
 // folder: ~/Library/Application Support/<identifier>/ on a Mac.
 
-import { createLLM, createOllama, IMAGE_TYPES, type ImageExt, MEDIA_SRC, prepareImage } from '@clearpen/core';
+import {
+  createLLM,
+  createOllama,
+  createOpenRouter,
+  IMAGE_TYPES,
+  type ImageExt,
+  MEDIA_SRC,
+  prepareImage,
+} from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI, pageFetcher } from '@clearpen/ui';
+import { type Backend, localAI, type ModelChoice, pageFetcher, type SecretName } from '@clearpen/ui';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { appConfigDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -75,7 +83,28 @@ export async function createDesktopBackend(): Promise<Backend> {
     return m ? { name: `${m[1]}.${m[2]}`, type: IMAGE_TYPES[m[2] as ImageExt] } : null;
   };
 
-  const llm = createLLM({ provider: createOllama({ fetch: localFetch }) });
+  const ai = localAI(() => createLLM({ provider: createOllama({ fetch: localFetch }) }), {
+    openRouter: (apiKey) => createOpenRouter({ apiKey, fetch: localFetch }),
+  });
+  const secrets: Backend['secrets'] = {
+    persistent: true,
+    get: (name: SecretName) => invoke<string | null>('secret_get', { name }),
+    set: (name: SecretName, value: string) => invoke<void>('secret_set', { name, value }),
+    delete: (name: SecretName) => invoke<void>('secret_delete', { name }),
+  };
+  // OpenRouter, when it was chosen last time and its key is still in the
+  // keychain. A failure here (the keychain is locked, the network is down)
+  // leaves the local models in place; the writer can reconnect in Models.
+  const savedProvider = await library.settings.get<'local' | 'openrouter'>('aiProvider');
+  if (savedProvider === 'openrouter') {
+    const key = await secrets.get('openrouter').catch(() => null);
+    if (key) {
+      const models = (await library.settings.get<ModelChoice>('openrouterModels').catch(() => undefined)) ?? {};
+      await ai
+        .switchToOpenRouter(key, models)
+        .catch((err: unknown) => console.error('Couldn’t reach OpenRouter; using this computer’s models.', err));
+    }
+  }
   const mac = /Mac/.test(navigator.userAgent);
 
   return {
@@ -113,7 +142,8 @@ export async function createDesktopBackend(): Promise<Backend> {
       },
     },
 
-    ai: localAI(llm),
+    ai,
+    secrets,
     openLink: (url) => openUrl(url),
     // Through the HTTP plugin, which no page's CORS stops; capabilities/default.json lets it reach the web.
     fetchPage: pageFetcher((input, init) => tauriFetch(input, init)),

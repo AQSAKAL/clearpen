@@ -104,6 +104,74 @@ test('OpenAI-compatible: reads server-sent events and sends the key', async () =
   assert.equal((calls[0]!.body.response_format as { type: string }).type, 'json_schema');
 });
 
+test('OpenAI-compatible: a model that wants max_completion_tokens is asked again that way', async () => {
+  const { fetch, calls } = fakeFetch((_url, body) =>
+    'max_completion_tokens' in body
+      ? streamOf(['data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n'])
+      : new Response(
+          '{"error":{"message":"Unsupported parameter: \'max_tokens\' is not supported with this model. Use \'max_completion_tokens\' instead."}}',
+          { status: 400 },
+        ),
+  );
+  const api = createOpenAICompatible({ baseUrl: 'https://llm.example/v1', apiKey: 'sk-test', fetch });
+  assert.equal((await collect(api.stream({ model: 'm', messages: [] }))).join(''), 'ok');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1]!.body.max_completion_tokens, 600);
+  assert.equal('max_tokens' in calls[1]!.body, false);
+});
+
+test('OpenAI-compatible: a busy model or an empty account says what to do', async () => {
+  const busy = createOpenAICompatible({
+    fetch: fakeFetch(() => new Response('{"error":{"message":"rate limited"}}', { status: 429 })).fetch,
+  });
+  await assert.rejects(collect(busy.stream({ model: 'm', messages: [] })), /busy right now/);
+  const empty = createOpenAICompatible({
+    fetch: fakeFetch(() => new Response('{"error":{"message":"insufficient credits"}}', { status: 402 })).fetch,
+  });
+  await assert.rejects(collect(empty.stream({ model: 'm', messages: [] })), /out of credit/);
+});
+
+test('OpenAI-compatible: an upstream failure is tried again before giving up', async () => {
+  let attempts = 0;
+  const { fetch, calls } = fakeFetch(() => {
+    attempts++;
+    return attempts === 1
+      ? new Response('{"error":{"message":"Provider returned error","code":502}}', { status: 502 })
+      : streamOf(['data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n']);
+  });
+  const api = createOpenAICompatible({ fetch });
+  assert.equal((await collect(api.stream({ model: 'm', messages: [] }))).join(''), 'ok');
+  assert.equal(calls.length, 2);
+});
+
+test('OpenAI-compatible: a provider that never answers says to pick another model', async () => {
+  const { fetch } = fakeFetch(() => new Response('{"error":{"message":"Provider returned error"}}', { status: 502 }));
+  const api = createOpenAICompatible({ fetch });
+  await assert.rejects(
+    collect(api.stream({ model: 'm', messages: [] })),
+    /isn’t answering right now\. Try again, or choose another model/,
+  );
+});
+
+test('a JSON answer that came back empty is asked for again, with room to think', async () => {
+  let calls = 0;
+  const provider = fakeProvider({
+    complete: (req) => (++calls === 1 ? '' : `{"budget":${req.maxTokens}}`),
+  });
+  const llm = createLLM({ provider });
+  assert.deepEqual(await llm.json({ model: 'quick-model', messages: [], maxTokens: 60 }), { budget: 800 });
+  assert.equal(calls, 2);
+  assert.equal(provider.requests[0]!.maxTokens, 60);
+  assert.equal(provider.requests[1]!.maxTokens, 800);
+});
+
+test('a JSON answer that is prose, not JSON, is not asked for twice', async () => {
+  const provider = fakeProvider({ complete: () => 'I think the point is made.' });
+  const llm = createLLM({ provider });
+  await assert.rejects(llm.json({ model: 'quick-model', messages: [] }), /didn’t answer in the format/);
+  assert.equal(provider.requests.length, 1);
+});
+
 test('a model that goes quiet is stopped, with a clear error', async () => {
   const provider = fakeProvider({ stream: () => 'hang' });
   const llm = createLLM({ provider, models: { quick: 'q' }, stallMs: 30 });

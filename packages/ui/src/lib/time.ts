@@ -21,3 +21,8 @@ export function timeAgo(ms: number, now = Date.now()): string {
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 export const formatDateTime = (ms: number) => dateTime.format(ms);
+
+const dateOnly = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+
+/** "9 Nov 2026", for a day rather than a moment. */
+export const formatDate = (ms: number) => dateOnly.format(ms);

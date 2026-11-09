@@ -8,21 +8,6 @@ import { Separator } from '@/components/ui/separator';
 const VERSION = '0.1.0';
 const RELEASES = 'https://github.com/AQSAKAL/clearpen/releases/latest';
 
-const downloads = {
-  mac: [
-    { label: 'Apple Silicon (arm64) — DMG', file: `Clearpen_${VERSION}_aarch64.dmg` },
-    { label: 'Intel (x64) — DMG', file: `Clearpen_${VERSION}_x64.dmg` },
-  ],
-  windows: [
-    { label: 'Installer (x64) — MSI', file: `Clearpen_${VERSION}_x64_en-US.msi` },
-    { label: 'Installer (x64) — NSIS', file: `Clearpen_${VERSION}_x64-setup.exe` },
-  ],
-  linux: [
-    { label: 'AppImage (x64)', file: `Clearpen_${VERSION}_amd64.AppImage` },
-    { label: 'Debian (x64) — DEB', file: `Clearpen_${VERSION}_amd64.deb` },
-  ],
-};
-
 const features = [
   {
     title: 'One sentence, only when a paragraph needs it',

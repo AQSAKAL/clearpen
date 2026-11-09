@@ -148,12 +148,29 @@ export function createLLM({
   }
 
   async function json(req: StreamRequest, salvage?: (text: string) => unknown): Promise<unknown> {
-    const text = await provider.complete({ maxTokens: 1500, ...req });
+    const ask = (maxTokens: number) => provider.complete({ ...req, maxTokens });
+    const unreadable = () =>
+      new Error('The model didn’t answer in the format Clearpen needs. Try again, or choose another model.');
+    const text = await ask(req.maxTokens ?? 1500);
     try {
       return parseJSONAnswer(text);
-    } catch (err) {
-      if (salvage) return salvage(text);
-      throw err;
+    } catch {
+      // A reasoning model can spend the whole budget before it answers, and a
+      // busy provider can return nothing at all. With no complete object to
+      // read, ask once more with room to think; a malformed answer isn't
+      // helped by asking the same model again.
+      const cut = text.trim();
+      if (cut && (!cut.startsWith('{') || cut.endsWith('}'))) {
+        if (salvage) return salvage(text);
+        throw unreadable();
+      }
+      const again = await ask(Math.max(800, (req.maxTokens ?? 1500) * 4));
+      try {
+        return parseJSONAnswer(again);
+      } catch {
+        if (salvage) return salvage(again || text);
+        throw unreadable();
+      }
     }
   }
 

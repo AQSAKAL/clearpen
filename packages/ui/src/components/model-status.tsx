@@ -19,7 +19,7 @@ export function ModelStatus({ onOpen }: { onOpen(): void }) {
   const setup = useSetup();
   const downloading = setup.downloading;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: check again when the writer picks other models.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: check again when the writer picks another model or provider.
   useEffect(() => {
     let live = true;
     const check = () =>
@@ -33,7 +33,7 @@ export function ModelStatus({ onOpen }: { onOpen(): void }) {
       live = false;
       clearInterval(t);
     };
-  }, [backend, settings.models, !!downloading]);
+  }, [backend, settings.models, settings.aiProvider, settings.openrouterModels, !!downloading]);
 
   const label = downloading
     ? `Downloading ${downloading.offer.name} · ${Math.floor(downloading.fraction * 100)}%`
@@ -47,10 +47,16 @@ export function ModelStatus({ onOpen }: { onOpen(): void }) {
     : !status
       ? ''
       : status.ok
-        ? `${status.provider === 'ollama' ? 'Ollama' : status.provider} at ${status.baseUrl} · ${status.models.length} model${status.models.length === 1 ? '' : 's'} installed`
+        ? status.provider === 'openrouter'
+          ? `OpenRouter · ${status.roles.quick}`
+          : `${status.provider === 'ollama' ? 'Ollama' : status.provider} at ${status.baseUrl} · ${status.models.length} model${status.models.length === 1 ? '' : 's'} installed`
         : status.reachable
-          ? 'Ollama is running, but there’s no model yet. Click to download one.'
-          : 'Clearpen’s AI runs through Ollama, which isn’t running. Click to set it up.';
+          ? status.provider === 'openrouter'
+            ? 'OpenRouter is connected, but no model is chosen. Click to choose one.'
+            : 'Ollama is running, but there’s no model yet. Click to download one.'
+          : status.provider === 'openrouter'
+            ? 'OpenRouter didn’t answer. Click to check your key and connection.'
+            : 'Clearpen’s AI runs through Ollama, which isn’t running. Click to set it up.';
   const ready = !!status?.ok && !downloading;
 
   return (

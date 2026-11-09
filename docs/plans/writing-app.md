@@ -1,6 +1,6 @@
 # Plan: the writing app in the desktop app
 
-**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review. Later, also at your request: the next sentence streams in, and typos are fixed as you write (autocorrect). Since then: writing modes and guided writing, live prices beside tickers in investment notes, sources (pages kept with an article, with passages drawn into suggestions and fact-checks, plus questions asked of them), and Markdown and code drawn as they read in the editor.
+**Status:** approved 2026-10-26. Milestones 1–4 (Write, Edit with AI, Next sentence, Check and review) are built; Think comes next. At your request the next sentence moved up, ahead of checks and review. Later, also at your request: the next sentence streams in, and typos are fixed as you write (autocorrect). Since then: writing modes and guided writing, live prices beside tickers in investment notes, sources (pages kept with an article, with passages drawn into suggestions and fact-checks, plus questions asked of them), Markdown and code drawn as they read in the editor, recurring writing in a project (daily, weekly, every two weeks or monthly, with the next article pre-created and the schedule deletable), and OpenRouter models beside the local ones — your own key, kept in the operating system's credential store, with the model list fetched from OpenRouter.
 
 ## Context
 
@@ -45,6 +45,7 @@ Portable types, as the architecture requires: UUIDv7 ids as text, times as integ
 | `projects` | name, slug, publishing settings (JSON, unused for now) |
 | `documents` | title, content (Markdown), brief (JSON), meta (JSON), project, **words** and **excerpt** (stored on save so the library list is instant), status |
 | `versions` | snapshots: label, title, content, words. Kept to 60, thinning the oldest unlabelled first; a version identical to the last isn't saved |
+| `schedules` | a project's recurring writing: cadence (`daily`, `weekly`, `biweekly`, `monthly`) and `next_at`, when the next article is due |
 | `media` | sha-256, type, size, file name |
 | `settings` | key → JSON: models per role, Ollama URL, theme, fonts, next-sentence on/off, collapsed projects, last article, drawer tab |
 
@@ -68,7 +69,7 @@ A TypeScript port of the prototype's `editor-src/index.js` (641 lines), keeping 
 
 | Region | Built from |
 |---|---|
-| Library sidebar: projects (titles only, collapsible, + and ⋯), loose articles, search, drag to move, Trash | `Sidebar`, `Collapsible`, `DropdownMenu`, `Input`, `ContextMenu` |
+| Library sidebar: projects (titles only, collapsible, + and ⋯ — Rename, Delete, and Schedule… for recurring writing), loose articles, search, drag to move, Trash | `Sidebar`, `Collapsible`, `DropdownMenu`, `Input`, `ContextMenu` |
 | Top bar: save state, word count, Read, Review, Assist, ⋯ | `Button`, `Tooltip`, `DropdownMenu` |
 | Title and editor | `Textarea` (auto-size) + `packages/editor` |
 | Selection toolbar: Improve, Shorten, Simplify, Fix grammar, What's missing?, Check ▾, Tone ▾, Ask AI to… | `Button`, `DropdownMenu`, `Input` in a positioned bar |

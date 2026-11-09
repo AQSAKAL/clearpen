@@ -3,7 +3,7 @@
 // pause; a failed save keeps its changes and retries with a growing delay.
 
 import type { Brief } from '@clearpen/core';
-import type { Document, DocumentPatch, DocumentSummary, NewDocument, Project } from '@clearpen/db';
+import type { Cadence, Document, DocumentPatch, DocumentSummary, NewDocument, Project, Schedule } from '@clearpen/db';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Backend } from './backend.ts';
 
@@ -16,6 +16,8 @@ export interface LibraryValue {
   backend: Backend;
   projects: Project[];
   docs: DocumentSummary[];
+  /** The recurring-writing rhythms, one per project at most. */
+  schedules: Schedule[];
   /** The open article, as last loaded; its live text is in the editor. */
   current: Document | null;
   saveState: SaveState;
@@ -35,6 +37,14 @@ export interface LibraryValue {
   trash(docId: string): Promise<void>;
   restore(docId: string): Promise<void>;
   purge(docId: string): Promise<void>;
+  /** A project's rhythm, if it has one. */
+  scheduleFor(projectId: string): Schedule | undefined;
+  /** Starts or changes a project's rhythm, creating its first article. */
+  setSchedule(projectId: string, cadence: Cadence): Promise<Schedule>;
+  /** Stops a project's rhythm; the articles it made stay. */
+  deleteSchedule(projectId: string): Promise<void>;
+  /** Creates the articles whose period has turned. Returns how many. */
+  runSchedules(): Promise<number>;
 }
 
 const LibraryContext = createContext<LibraryValue | null>(null);
@@ -55,6 +65,7 @@ export function LibraryProvider({
   const lib = backend.library;
   const [projects, setProjects] = useState<Project[]>([]);
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [current, setCurrent] = useState<Document | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [failures, setFailures] = useState(0);
@@ -67,9 +78,10 @@ export function LibraryProvider({
   currentRef.current = current;
 
   const refresh = useCallback(async () => {
-    const [p, d] = await Promise.all([lib.projects.list(), lib.documents.list()]);
+    const [p, d, s] = await Promise.all([lib.projects.list(), lib.documents.list(), lib.schedules.list()]);
     setProjects(p);
     setDocs(d);
+    setSchedules(s);
   }, [lib]);
 
   const send = useCallback(async (): Promise<void> => {
@@ -186,6 +198,7 @@ export function LibraryProvider({
       backend,
       projects,
       docs,
+      schedules,
       current,
       saveState,
       failures,
@@ -232,8 +245,40 @@ export function LibraryProvider({
       async purge(docId) {
         await lib.documents.purge(docId);
       },
+      scheduleFor: (projectId) => schedules.find((s) => s.projectId === projectId),
+      async setSchedule(projectId, cadence) {
+        await flush();
+        const { schedule } = await lib.schedules.set(projectId, cadence, defaultBrief);
+        await refresh();
+        return schedule;
+      },
+      async deleteSchedule(projectId) {
+        await lib.schedules.remove(projectId);
+        await refresh();
+      },
+      async runSchedules() {
+        const made = await lib.schedules.run();
+        if (made.length) await refresh();
+        return made.length;
+      },
     }),
-    [backend, lib, projects, docs, current, saveState, failures, open, create, edit, flush, refresh, reopen],
+    [
+      backend,
+      lib,
+      projects,
+      docs,
+      schedules,
+      current,
+      saveState,
+      failures,
+      open,
+      create,
+      edit,
+      flush,
+      refresh,
+      reopen,
+      defaultBrief,
+    ],
   );
 
   useEffect(() => () => clearTimeout(timer.current), []);

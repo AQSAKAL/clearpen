@@ -16,8 +16,12 @@ import { testBackend } from './memory-backend.ts';
 const GB = 2 ** 30;
 const slow = { timeout: 4000 };
 
-async function launch(machine: FakeMachine, memory: number | null = null) {
-  const backend = await testBackend([], { machine, memory });
+async function launch(
+  machine: FakeMachine,
+  memory: number | null = null,
+  pages: Record<string, { type?: string; text: string }> = {},
+) {
+  const backend = await testBackend([], { machine, memory, pages });
   const user = userEvent.setup();
   render(<App backend={backend} />);
   return { backend, user };
@@ -121,4 +125,75 @@ test('with a model ready there is no setup, and Models can download another', as
   await user.click(screen.getByRole('button', { name: 'Download 2.5 GB' }));
   await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
   assert.deepEqual(await backend.library.settings.get('models'), { quick: 'qwen3:4b-instruct' });
+});
+
+const CARD = (name: string, description: string, sizes: string[]) => `
+  <a href="/library/${name}" class="group w-full space-y-5">
+    <div title="${name}" class="flex flex-col">
+      <p class="max-w-lg break-words text-neutral-800 text-md">${description}</p>
+    </div>
+    <div class="flex flex-col space-y-2">
+      <div class="flex flex-wrap space-x-2">
+        ${sizes
+          .map(
+            (s) =>
+              `<span class="inline-flex items-center rounded-md bg-[#ddf4ff] px-2 py-0.5 text-xs font-medium text-blue-600 sm:text-[13px]">${s}</span>`,
+          )
+          .join('')}
+      </div>
+      <p class="flex space-x-5 text-[13px] font-medium">
+        <span class="flex items-center"><span>12</span><span class="hidden sm:flex">&nbsp;Tags</span></span>
+      </p>
+    </div>
+  </a>`;
+
+const TAG = (model: string, size: string, latest = false) => `
+  <div class="group px-4 py-3">
+    <a href="/library/${model}" class="md:hidden flex flex-col space-y-[6px] group">
+      <div class="flex items-center font-medium">
+        <span class="group-hover:underline">${model}</span>
+        ${latest ? '<span class="ml-2 inline-flex items-center rounded-full px-2 py-px text-xs font-medium border border-blue-500 text-blue-600">latest</span>' : ''}
+      </div>
+      <div class="flex flex-col text-neutral-500 text-[13px]">
+        <span><span class="font-mono">500a1f067a9f</span> • ${size} • 40K context window •</span>
+      </div>
+    </a>
+  </div>`;
+
+test('the chooser searches all of Ollama, and downloads any model and size chosen', async () => {
+  const machine: FakeMachine = { running: true, installed: [] };
+  const { backend, user } = await launch(machine, 8 * GB, {
+    'https://ollama.com/library': {
+      text: `${CARD('acme', 'A model that is not one of the offers.', ['7b'])}${CARD('other', 'Another one.', ['3b'])}`,
+    },
+    'https://ollama.com/library/acme/tags': {
+      text: `${TAG('acme:7b', '4.2GB', true)}${TAG('acme:14b', '8.4GB')}`,
+    },
+  });
+  await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
+
+  // The recommended offers are still there; searching reaches everything else.
+  assert.ok(screen.getByRole('radio', { name: /Qwen3\.5 4B/ }));
+  await user.type(screen.getByLabelText('Search Ollama’s library'), 'acme');
+  await user.click(await screen.findByRole('radio', { name: /acme/ }));
+  const version = await screen.findByRole('combobox', { name: 'Version of acme' });
+  await user.click(version);
+  await user.click(await screen.findByRole('option', { name: /14b/ }));
+  await user.click(screen.getByRole('button', { name: 'Download 8.4 GB' }));
+
+  await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
+  assert.ok(machine.installed.includes('acme:14b'));
+  assert.deepEqual(await backend.library.settings.get('models'), { quick: 'acme:14b' });
+});
+
+test('a model can be typed by hand when the library can’t be reached', async () => {
+  const machine: FakeMachine = { running: true, installed: [] };
+  const { backend, user } = await launch(machine, 8 * GB);
+  await screen.findByRole('heading', { name: 'Choose your writing model' }, slow);
+  await user.click(screen.getByLabelText('Search Ollama’s library'));
+  await screen.findByText(/Couldn’t reach ollama.com/, undefined, slow);
+  await user.type(screen.getByLabelText('Or type any model from ollama.com/library'), 'mistral:7b');
+  await user.click(screen.getByRole('button', { name: 'Download' }));
+  await screen.findByRole('heading', { name: 'Clearpen is ready' }, slow);
+  assert.deepEqual(await backend.library.settings.get('models'), { quick: 'mistral:7b' });
 });

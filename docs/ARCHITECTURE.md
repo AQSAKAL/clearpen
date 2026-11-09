@@ -30,7 +30,7 @@ Principles that every decision below follows:
 | Who runs it | you | you | the project owner | — |
 | Shell | Tauri 2 ✅ | Node (Hono) in Docker | the same server, plus cloud services | Browser |
 | Data | **SQLite file** on disk 🟡 | **Postgres 16+** ✅ | Postgres ✅ | via a server |
-| AI | Ollama on the machine, or any configured provider | the server's Ollama or API keys | your own key, or managed models | through the server |
+| AI | Ollama on the machine, OpenRouter with your own key (or WebLLM in the browser) | the server's Ollama or API keys | your own key, or managed models | through the server |
 | Publishing | to any target | to any target | **hosts your site on your domain** | — |
 | Offline | yes, fully | — | — | v2 (local cache + outbox) |
 | Accounts | none (sign in to sync) | yes | yes | yes |
@@ -63,6 +63,7 @@ Every row has a UUIDv7 id (time-ordered), `created_at`, `updated_at`, `deleted_a
 | `projects` | name, slug, publishing settings (JSON) |
 | `documents` | title, slug, **content as Markdown**, brief, outline, meta, `status` (draft / published / scheduled), `published_at`, `project_id` |
 | `versions` | snapshots of a document (label, title, content, words) |
+| `schedules` | a project's recurring writing: cadence and when the next article is due |
 | `media` | images: sha-256, type, size, storage key — deduplicated by content |
 | `ai_profiles` | providers and which model plays which role (see AI) |
 | `publish_targets`, `deploys` | where a project publishes, and each deploy's result |
@@ -100,12 +101,12 @@ So a feature like *fact-check a selection* is written once in `core` and appears
 
 ## AI
 
-- **Providers:** Ollama (default, local) · any OpenAI-compatible endpoint (LM Studio, llama.cpp, vLLM, hosted) · Anthropic · WebLLM, for the browser version when WebGPU is available (the model runs in the tab, on its GPU).
+- **Providers:** Ollama (default, local) · OpenRouter, a hosted gateway to hundreds of models from many companies, through the writer's own key · any OpenAI-compatible endpoint (LM Studio, llama.cpp, vLLM, hosted) · Anthropic · WebLLM, for the browser version when WebGPU is available (the model runs in the tab, on its GPU). The writer switches between the machine and OpenRouter in **Models**; local stays the default, and works when OpenRouter is unreachable.
 - **Roles, each its own model** (none of them writes the author's prose):
   - *quick*: autocomplete, edits, checks;
   - *coach*: outlines and section plans — the argument, never the prose;
   - *checker*: fact-checking, where a larger or hosted model helps most.
-- **Keys:** the OS keychain on desktop; encrypted server secrets when self-hosted. Never stored in plain text, never in exports.
+- **Keys:** the writer brings their own OpenRouter key. The desktop app keeps it in the operating system's credential store — the macOS Keychain, Windows Credential Manager, or the Linux Secret Service — through a Tauri command that accepts only the account name `openrouter`; it is never in the library database, a settings file, a log or an export. The browser preview (development only) holds it in the tab's memory and forgets it when the tab closes, never in localStorage or IndexedDB. Settings keep only the provider choice and the model ids. Self-hosted deployments keep encrypted server secrets. Never stored in plain text, never in exports.
 - **Transparency:** the UI shows where each request goes (this Mac / your server / a named provider).
 - **Rules kept from the prototype:**
   - edits are pinpoint operations, never whole-passage rewrites;

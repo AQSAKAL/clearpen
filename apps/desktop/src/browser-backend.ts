@@ -8,6 +8,7 @@
 import {
   createLLM,
   createOllama,
+  createOpenRouter,
   createWebLLM,
   prepareImage,
   WEBLLM_DEFAULT_MODEL,
@@ -15,7 +16,7 @@ import {
   webllmSupported,
 } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI, pageFetcher } from '@clearpen/ui';
+import { type Backend, localAI, pageFetcher, type SecretName } from '@clearpen/ui';
 import initSqlJs, { type BindParams } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
@@ -64,6 +65,21 @@ export async function createBrowserBackend(): Promise<Backend> {
       .then((m) => llm.provider.preload(m))
       .catch((err: unknown) => console.error('[clearpen] the browser model did not load:', err));
 
+  // A key typed into the browser preview lives in this tab's memory only: no
+  // localStorage, no IndexedDB, gone when the tab closes. The desktop app is
+  // where a key can be kept, in the operating system's credential store.
+  const keys = new Map<SecretName, string>();
+  const secrets: Backend['secrets'] = {
+    persistent: false,
+    get: async (name) => keys.get(name) ?? null,
+    set: async (name, value) => {
+      keys.set(name, value);
+    },
+    delete: async (name) => {
+      keys.delete(name);
+    },
+  };
+
   return {
     where: 'in this browser tab (not saved)',
     platform: /Mac/.test(navigator.userAgent) ? 'mac' : 'web',
@@ -99,7 +115,8 @@ export async function createBrowserBackend(): Promise<Backend> {
         return true;
       },
     },
-    ai: localAI(llm),
+    ai: localAI(llm, { openRouter: (apiKey) => createOpenRouter({ apiKey }) }),
+    secrets,
     async openLink(url) {
       window.open(url, '_blank', 'noopener');
     },

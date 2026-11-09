@@ -2,6 +2,7 @@
 // saved files recorded instead of written, web pages from a Map, and a model
 // that's there unless a test says otherwise.
 
+import type { LLMProvider } from '@clearpen/core';
 import { prepareImage } from '@clearpen/core';
 import { openLibrary } from '@clearpen/db';
 import { nodeDriver } from '@clearpen/db/node';
@@ -24,11 +25,14 @@ export async function testBackend(
     machine,
     memory = null,
     pages = {},
+    openRouter,
   }: {
     machine?: FakeMachine;
     memory?: number | null;
     /** The web, as far as the test goes: each page's content type and text. */
     pages?: Record<string, { type?: string; text: string }>;
+    /** Makes OpenRouter, with whatever fetch the test wants. Absent: this build has no cloud models. */
+    openRouter?: (apiKey: string) => LLMProvider;
   } = {},
 ): Promise<TestBackend> {
   const library = await openLibrary(nodeDriver());
@@ -36,6 +40,7 @@ export async function testBackend(
   const saved: TestBackend['saved'] = [];
   const opened: string[] = [];
   const fetched: string[] = [];
+  const keys = new Map<string, string>();
   return {
     where: 'in memory',
     platform: 'mac',
@@ -69,7 +74,17 @@ export async function testBackend(
         return true;
       },
     },
-    ai: localAI(fakeModel(replies, machine).llm),
+    ai: localAI(fakeModel(replies, machine).llm, openRouter ? { openRouter } : undefined),
+    secrets: {
+      persistent: false,
+      get: async (name) => keys.get(name) ?? null,
+      set: async (name, value) => {
+        keys.set(name, value);
+      },
+      delete: async (name) => {
+        keys.delete(name);
+      },
+    },
     async openLink(url) {
       opened.push(url);
     },

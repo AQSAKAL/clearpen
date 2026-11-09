@@ -3,11 +3,11 @@
 // backend stores the same thing. Deletes are tombstones until purged.
 
 import { type Brief, countWords, type Meta, normaliseMeta, normaliseSources } from '@clearpen/core';
-import { and, asc, count, desc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, isNull, lte, or, type SQL, sql } from 'drizzle-orm';
 import { connect, type Db, type SqlDriver } from './driver.ts';
 import { now, uuidv7 } from './ids.ts';
 import { migrate } from './migrate.ts';
-import { documents, media, projects, settings, versions } from './schema.ts';
+import { documents, media, projects, schedules, settings, versions } from './schema.ts';
 
 export class LibraryError extends Error {
   status: number;
@@ -20,6 +20,19 @@ export class LibraryError extends Error {
 export interface Project {
   id: string;
   name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** How often a project's recurring article appears. */
+export type Cadence = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
+export interface Schedule {
+  id: string;
+  projectId: string;
+  cadence: Cadence;
+  /** When the next article is due, in milliseconds. */
+  nextAt: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -106,6 +119,27 @@ export interface Library {
     get(documentId: string, id: string): Promise<Version | null>;
     /** Saves a snapshot of the article as it is now, unless it matches the last one. */
     save(documentId: string, label?: string): Promise<VersionSummary & { unchanged?: boolean }>;
+  };
+  schedules: {
+    /** The active recurring-writing schedules, soonest first. */
+    list(): Promise<Schedule[]>;
+    /** A project's schedule, if it has one. */
+    get(projectId: string): Promise<Schedule | null>;
+    /**
+     * Sets a project's rhythm. The first time, it also creates this period's
+     * article straight away, so one is waiting; changing the rhythm keeps the
+     * articles already made and makes no new one now. A `brief` (the kind of
+     * piece the writer usually writes) starts every article it makes.
+     */
+    set(
+      projectId: string,
+      cadence: Cadence,
+      brief?: Brief,
+    ): Promise<{ schedule: Schedule; document?: DocumentSummary }>;
+    /** Stops the rhythm. The articles it made stay in the project. */
+    remove(projectId: string): Promise<void>;
+    /** Creates the articles whose period has turned, and moves their schedules on. */
+    run(at?: number): Promise<DocumentSummary[]>;
   };
   media: {
     get(sha256: string): Promise<MediaRecord | null>;
@@ -206,6 +240,67 @@ const projectColumns = {
   updatedAt: projects.updatedAt,
 };
 
+const scheduleColumns = {
+  id: schedules.id,
+  projectId: schedules.projectId,
+  cadence: schedules.cadence,
+  nextAt: schedules.nextAt,
+  createdAt: schedules.createdAt,
+  updatedAt: schedules.updatedAt,
+};
+
+const CADENCES: readonly Cadence[] = ['daily', 'weekly', 'biweekly', 'monthly'];
+
+function cadenceOf(v: unknown): Cadence {
+  const c = String(v ?? '');
+  if (!CADENCES.includes(c as Cadence)) throw new LibraryError('Choose how often the article should appear.');
+  return c as Cadence;
+}
+
+/**
+ * The next time a rhythm falls due, from `from`. Articles arrive at the start
+ * of their period (local midnight), so "every day" means the morning, not the
+ * hour the schedule happened to be set. A month keeps the day of the month,
+ * clamped to a shorter month (31 January → 28 February).
+ */
+export function nextOccurrence(from: number, cadence: Cadence): number {
+  const d = new Date(from);
+  if (cadence === 'monthly') {
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  } else {
+    d.setDate(d.getDate() + (cadence === 'daily' ? 1 : cadence === 'weekly' ? 7 : 14));
+  }
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** The article's title for a period: the date, or the week or month it belongs to. */
+export function titleFor(cadence: Cadence, at: number): string {
+  const d = new Date(at);
+  const month = MONTHS[d.getMonth()]!;
+  if (cadence === 'monthly') return `${month} ${d.getFullYear()}`;
+  if (cadence === 'daily') return `${month} ${d.getDate()}, ${d.getFullYear()}`;
+  return `Week of ${month} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
 /** Opens a library on `driver`, bringing its tables up to date first. */
 export async function openLibrary(driver: SqlDriver): Promise<Library> {
   await migrate(driver);
@@ -260,6 +355,39 @@ export function createLibrary(db: Db): Library {
   const listWhere = (where: SQL | undefined, order = desc(documents.updatedAt)) =>
     db.select(summaryColumns).from(documents).where(where).orderBy(order);
 
+  /** The one write path for a new article: the UI and the schedules both use it. */
+  async function createDoc(fields: NewDocument = {}): Promise<Document> {
+    const at = now();
+    const title = clean.title(fields.title);
+    const content = clean.content(fields.content);
+    const row = {
+      id: uuidv7(at),
+      projectId: await projectId(fields.projectId),
+      title,
+      slug: slugify(title),
+      content,
+      brief: clean.brief(fields.brief),
+      meta: null,
+      words: countWords(content),
+      excerpt: excerpt(content),
+      createdAt: at,
+      updatedAt: at,
+    };
+    await db.insert(documents).values(row);
+    return { ...row, deletedAt: null };
+  }
+
+  /** A project's live schedule, newest first (there is one at a time). */
+  async function activeSchedule(projectId: string): Promise<Schedule | null> {
+    const [s] = await db
+      .select(scheduleColumns)
+      .from(schedules)
+      .where(and(eq(schedules.projectId, projectId), isNull(schedules.deletedAt)))
+      .orderBy(desc(schedules.createdAt))
+      .limit(1);
+    return s ?? null;
+  }
+
   return {
     projects: {
       list: () =>
@@ -295,6 +423,11 @@ export function createLibrary(db: Db): Library {
           .where(and(eq(documents.projectId, id), live));
         // Trashed articles leave too, so restoring one never points at a deleted project.
         await db.update(documents).set({ projectId: null, updatedAt: at }).where(eq(documents.projectId, id));
+        // A deleted project has no rhythm to keep.
+        await db
+          .update(schedules)
+          .set({ deletedAt: at, updatedAt: at })
+          .where(and(eq(schedules.projectId, id), isNull(schedules.deletedAt)));
         await db.update(projects).set({ deletedAt: at, updatedAt: at }).where(eq(projects.id, id));
         return { moved: n };
       },
@@ -319,26 +452,7 @@ export function createLibrary(db: Db): Library {
         return d ? toDocument(d) : null;
       },
 
-      async create(fields = {}) {
-        const at = now();
-        const title = clean.title(fields.title);
-        const content = clean.content(fields.content);
-        const row = {
-          id: uuidv7(at),
-          projectId: await projectId(fields.projectId),
-          title,
-          slug: slugify(title),
-          content,
-          brief: clean.brief(fields.brief),
-          meta: null,
-          words: countWords(content),
-          excerpt: excerpt(content),
-          createdAt: at,
-          updatedAt: at,
-        };
-        await db.insert(documents).values(row);
-        return { ...row, deletedAt: null };
-      },
+      create: (fields = {}) => createDoc(fields),
 
       async update(id, patch) {
         const current = await doc(id);
@@ -435,6 +549,67 @@ export function createLibrary(db: Db): Library {
           if (gone) await db.delete(versions).where(eq(versions.id, gone.id));
         }
         return v;
+      },
+    },
+
+    schedules: {
+      list: () =>
+        db.select(scheduleColumns).from(schedules).where(isNull(schedules.deletedAt)).orderBy(asc(schedules.nextAt)),
+
+      get: activeSchedule,
+
+      async set(projectId, cadence, brief) {
+        const p = await project(projectId);
+        const how = cadenceOf(cadence);
+        const at = now();
+        const existing = await activeSchedule(p.id);
+        const nextAt = nextOccurrence(at, how);
+        if (existing) {
+          await db.update(schedules).set({ cadence: how, nextAt, updatedAt: at }).where(eq(schedules.id, existing.id));
+          return { schedule: { ...existing, cadence: how, nextAt, updatedAt: at } };
+        }
+        // The first article is made now, so one is waiting to be written.
+        const document = await createDoc({
+          projectId: p.id,
+          title: titleFor(how, at),
+          ...(brief ? { brief } : {}),
+        });
+        const schedule: Schedule = {
+          id: uuidv7(at),
+          projectId: p.id,
+          cadence: how,
+          nextAt,
+          createdAt: at,
+          updatedAt: at,
+        };
+        await db.insert(schedules).values(schedule);
+        return { schedule, document };
+      },
+
+      async remove(projectId) {
+        const at = now();
+        await db
+          .update(schedules)
+          .set({ deletedAt: at, updatedAt: at })
+          .where(and(eq(schedules.projectId, projectId), isNull(schedules.deletedAt)));
+      },
+
+      async run(at = now()) {
+        const due = await db
+          .select(scheduleColumns)
+          .from(schedules)
+          .innerJoin(projects, eq(projects.id, schedules.projectId))
+          .where(and(isNull(schedules.deletedAt), isNull(projects.deletedAt), lte(schedules.nextAt, at)));
+        const made: DocumentSummary[] = [];
+        for (const s of due) {
+          made.push(await createDoc({ projectId: s.projectId, title: titleFor(s.cadence, at) }));
+          // Move past the periods that went by while the app was closed; the
+          // writer gets one article to catch up with, not a backlog.
+          let next = nextOccurrence(s.nextAt, s.cadence);
+          for (let i = 0; next <= at && i < 1000; i++) next = nextOccurrence(next, s.cadence);
+          await db.update(schedules).set({ nextAt: next, updatedAt: at }).where(eq(schedules.id, s.id));
+        }
+        return made;
       },
     },
 
