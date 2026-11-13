@@ -41,7 +41,7 @@ export function Reader({
         const href = a.getAttribute('href') || '';
         if (/^(https?:|mailto:)/i.test(href)) void backend.openLink(href);
       }}
-      className="prose prose-stone dark:prose-invert mx-auto w-full max-w-[700px] px-6 pt-10 pb-32 font-read text-[calc(18px*var(--f-read-scale))] leading-[1.7] outline-none sm:px-8 prose-headings:font-read prose-img:rounded-md [&_:is(h1,h2,h3,h4,h5,h6)_strong]:font-black"
+      className="workspace-page prose prose-stone dark:prose-invert mx-auto w-full max-w-[700px] px-6 pt-10 pb-32 font-read text-[calc(18px*var(--f-read-scale))] leading-[1.7] outline-none sm:px-8 prose-headings:font-read prose-img:rounded-md [&_:is(h1,h2,h3,h4,h5,h6)_strong]:font-black"
     >
       <h1 className="mb-2 text-[calc(36px*var(--f-read-scale))] leading-[1.15]">{title || 'Untitled'}</h1>
       <p className="mt-0 font-sans text-sm text-muted-foreground">

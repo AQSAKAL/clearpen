@@ -6,7 +6,7 @@ import type { LLMProvider } from '@clearpen/core';
 import { prepareImage } from '@clearpen/core';
 import { openLibrary } from '@clearpen/db';
 import { nodeDriver } from '@clearpen/db/node';
-import type { Backend } from '../src/backend.ts';
+import type { AppEvent, Backend, EventInput } from '../src/backend.ts';
 import { localAI } from '../src/local-ai.ts';
 import { type FakeMachine, fakeModel, type Reply } from './fake-model.ts';
 
@@ -41,11 +41,30 @@ export async function testBackend(
   const opened: string[] = [];
   const fetched: string[] = [];
   const keys = new Map<string, string>();
+  const listeners = new Set<(event: AppEvent) => void>();
+  let seq = 0;
   return {
     where: 'in memory',
     platform: 'mac',
     overlayTitleBar: false,
     library,
+    events: {
+      onEvent(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      emit(input: EventInput) {
+        const at = Date.now();
+        const event: AppEvent = {
+          id: `ev_test_${seq++}`,
+          kind: input.kind,
+          source: input.source ?? 'test',
+          at,
+          data: input.data ?? null,
+        };
+        for (const listener of listeners) listener(event);
+      },
+    },
     saved,
     images,
     opened,

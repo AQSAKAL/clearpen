@@ -1,10 +1,3 @@
-// For developing the interface in a browser (`pnpm dev`, outside Tauri): the
-// real library code on SQLite compiled to WebAssembly, held in memory, with
-// the model running in the page through WebLLM when WebGPU is available, or
-// Ollama reached directly (it allows localhost origins). Never in a build.
-// `?webllm=0` turns the page model off; `?ollama=<url>` points Ollama
-// elsewhere — at nothing, to see first-run setup.
-
 import {
   createLLM,
   createOllama,
@@ -15,32 +8,29 @@ import {
   WEBLLM_MODELS,
   webllmSupported,
 } from '@clearpen/core';
-import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI, pageFetcher, type SecretName } from '@clearpen/ui';
-import initSqlJs, { type BindParams } from 'sql.js';
-import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+import {
+  type AppEvent,
+  type Backend,
+  type EventInput,
+  type EventsService,
+  localAI,
+  pageFetcher,
+  type SecretName,
+} from '@clearpen/ui';
+import { createBrowserExplorer } from './browser-files.ts';
+import { openBrowserStorage } from './browser-storage.ts';
+
+// A self-host can link its existing browser terminal or opencode web interface.
+function toolUrl(configured: string | undefined) {
+  if (!configured) return undefined;
+  const url = new URL(configured, location.href);
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Web tool URLs must use HTTP or HTTPS.');
+  return url.href;
+}
 
 export async function createBrowserBackend(): Promise<Backend> {
-  const SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  const db = new SQL.Database();
-  const driver: SqlDriver = {
-    async run(sql, params) {
-      db.run(sql, params as BindParams);
-    },
-    async all(sql, params) {
-      const stmt = db.prepare(sql);
-      stmt.bind(params as BindParams);
-      const rows: Record<string, unknown>[] = [];
-      while (stmt.step()) rows.push(stmt.getAsObject());
-      stmt.free();
-      return rows;
-    },
-    async exec(sql) {
-      db.exec(sql);
-    },
-  };
-  const library = await openLibrary(driver);
-  const images = new Map<string, { blob: Blob; url: string }>();
+  if (!window.isSecureContext) throw new Error('Open Clearpen over HTTPS or localhost to save your library.');
+  const { library, images, putImage } = await openBrowserStorage();
   const params = new URLSearchParams(location.search);
   const ollama = params.get('ollama');
   // With WebGPU the model runs in the page, so the browser needs no Ollama.
@@ -80,16 +70,39 @@ export async function createBrowserBackend(): Promise<Backend> {
     },
   };
 
+  // The browser preview has no Rust hub; this is the same stream in memory.
+  const listeners = new Set<(event: AppEvent) => void>();
+  const events: EventsService = {
+    onEvent(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    emit(input: EventInput) {
+      const at = Date.now();
+      const event: AppEvent = {
+        id: crypto.randomUUID(),
+        kind: input.kind,
+        source: input.source ?? 'browser',
+        at,
+        data: input.data ?? null,
+      };
+      for (const listener of listeners) listener(event);
+    },
+  };
+
   return {
-    where: 'in this browser tab (not saved)',
+    where: 'in this browser on this device',
+    explorer: createBrowserExplorer(),
+    webTerminalUrl: toolUrl(import.meta.env.VITE_TERMINAL_URL),
+    webRunnerUrl: toolUrl(import.meta.env.VITE_OPENCODE_URL),
     platform: /Mac/.test(navigator.userAgent) ? 'mac' : 'web',
     overlayTitleBar: false,
     library,
+    events,
     media: {
       async add(file) {
         const img = await prepareImage(file);
-        const blob = new Blob([img.bytes], { type: img.type });
-        if (!images.has(img.src)) images.set(img.src, { blob, url: URL.createObjectURL(blob) });
+        await putImage(img.src, img.bytes, img.type);
         await library.media.record({ sha256: img.sha256, type: img.type, size: img.bytes.length, name: img.name });
         return { src: img.src, type: img.type, bytes: img.bytes.length };
       },

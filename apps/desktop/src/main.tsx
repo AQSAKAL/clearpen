@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
           <strong>Clearpen hit an error while drawing the window.</strong>
           {'\n\n'}
           {this.state.error}
-          {'\n\n'}The details were written to /tmp/clearpen-js.log.
+          {isTauri() && '\n\nThe details were written to /tmp/clearpen-js.log.'}
         </div>
       );
     }
@@ -47,8 +47,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
 
 async function backend(): Promise<Backend> {
   if (isTauri()) return (await import('./desktop-backend.ts')).createDesktopBackend();
-  if (import.meta.env.DEV) return (await import('./browser-backend.ts')).createBrowserBackend();
-  throw new Error('Clearpen runs as the desktop app.');
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    void navigator.serviceWorker.register('./sw.js').catch((error) => console.warn('Offline setup failed', error));
+  }
+  return (await import('./browser-backend.ts')).createBrowserBackend();
 }
 
 const root = document.getElementById('root')!;

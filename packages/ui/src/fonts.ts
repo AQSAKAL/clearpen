@@ -6,7 +6,8 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '@fontsource-variable/literata';
 import '@fontsource-variable/lora';
-import '@fontsource-variable/newsreader';
+import '@fontsource-variable/newsreader/standard.css';
+import '@fontsource-variable/newsreader/standard-italic.css';
 import '@fontsource-variable/source-serif-4';
 
 export interface FontChoice {
@@ -61,7 +62,7 @@ export interface FontSettings {
   read: string;
 }
 
-export const DEFAULT_FONTS: FontSettings = { write: 'source-serif', read: 'source-serif' };
+export const DEFAULT_FONTS: FontSettings = { write: 'newsreader', read: 'newsreader' };
 
 const font = (id: string) => FONTS.find((f) => f.id === id) ?? FONTS[0]!;
 

@@ -12,11 +12,28 @@ import {
   prepareImage,
 } from '@clearpen/core';
 import { openLibrary, type SqlDriver } from '@clearpen/db';
-import { type Backend, localAI, type ModelChoice, pageFetcher, type SecretName } from '@clearpen/ui';
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { appConfigDir, join, sep } from '@tauri-apps/api/path';
+import {
+  type AppEvent,
+  type Backend,
+  type EventInput,
+  type EventsService,
+  type FileEntry,
+  type FilePlaces,
+  type FilesService,
+  type FolderSize,
+  type LargeFiles,
+  localAI,
+  type ModelChoice,
+  pageFetcher,
+  type SecretName,
+  type TerminalService,
+  type WebAppsService,
+} from '@clearpen/ui';
+import { Channel, convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { appConfigDir, homeDir, join, sep } from '@tauri-apps/api/path';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { save } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 import { BaseDirectory, exists, mkdir, readFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -107,6 +124,145 @@ export async function createDesktopBackend(): Promise<Backend> {
   }
   const mac = /Mac/.test(navigator.userAgent);
 
+  // A pseudo-terminal per tab. Output comes over a channel, keyed to the tab's
+  // id; input and resizing go back as commands. The shell stays in Rust, so
+  // closing the window ends it with the app.
+  const terminal: TerminalService = {
+    async open(options) {
+      const id = `term-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const channel = new Channel<ArrayBuffer>();
+      channel.onmessage = (message) => {
+        const data = new Uint8Array(message);
+        // An empty chunk is the shell ending; the rest is what it wrote.
+        if (data.byteLength === 0) options.onExit();
+        else options.onData(data);
+      };
+      await invoke('terminal_open', {
+        id,
+        cols: options.cols,
+        rows: options.rows,
+        cwd: options.cwd ?? null,
+        shell: options.shell ?? null,
+        command: options.command ?? null,
+        onOutput: channel,
+      });
+      return {
+        write(data) {
+          void invoke('terminal_write', { id, data }).catch(() => {});
+        },
+        resize(cols, rows) {
+          void invoke('terminal_resize', { id, cols, rows }).catch(() => {});
+        },
+        close() {
+          void invoke('terminal_close', { id }).catch(() => {});
+        },
+      };
+    },
+    defaultShell: () => invoke<string>('terminal_default_shell'),
+    defaultCwd: () => homeDir(),
+    async chooseFolder() {
+      const dir = await openDialog({
+        directory: true,
+        multiple: false,
+        title: 'Choose a folder for the terminal',
+      });
+      return typeof dir === 'string' ? dir : null;
+    },
+  };
+
+  // Telegram, WhatsApp, X, Google and Wikipedia: one child webview each,
+  // kept alive while the app runs. The Rust side owns them; this is the small
+  // surface the UI uses.
+  const opening = new Map<string, Promise<void>>();
+  const webapps: WebAppsService = {
+    open({ id, url }) {
+      const pending = opening.get(id);
+      if (pending) return pending;
+      const created = invoke<void>('webapp_open', { label: id, url }).finally(() => opening.delete(id));
+      opening.set(id, created);
+      return created;
+    },
+    present(id, bounds) {
+      void invoke('webapp_present', { label: id, bounds }).catch(console.error);
+    },
+    navigate(id, url) {
+      void invoke('webapp_navigate', { label: id, url }).catch(() => {});
+    },
+    action(id, action) {
+      void invoke('webapp_action', { label: id, action }).catch(() => {});
+    },
+    close(id) {
+      void invoke('webapp_close', { label: id }).catch(() => {});
+    },
+    url: (id) => invoke<string | null>('webapp_url', { label: id }),
+    onNavigate(listener) {
+      let stop: (() => void) | null = null;
+      let cancelled = false;
+      void listen<{ label: string; url: string }>('webapp-navigated', (event) => {
+        listener(event.payload.label, event.payload.url);
+      })
+        .then((unlisten) => {
+          if (cancelled) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+        stop?.();
+      };
+    },
+  };
+
+  const events: EventsService = {
+    onEvent(listener) {
+      let stop: (() => void) | null = null;
+      let cancelled = false;
+      void listen<AppEvent>('clearpen://event', (event) => listener(event.payload))
+        .then((unlisten) => {
+          if (cancelled) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+        stop?.();
+      };
+    },
+    emit(event: EventInput) {
+      void invoke('event_emit', { input: event }).catch(() => {});
+    },
+  };
+
+  const explorer: FilesService = {
+    places: () => invoke<FilePlaces>('fs_places'),
+    list: (path, options) => invoke<FileEntry[]>('fs_list', { path, showHidden: options?.showHidden ?? false }),
+    search: (root, query, options) =>
+      invoke<FileEntry[]>('fs_search', {
+        root,
+        query,
+        limit: options?.limit ?? 200,
+        showHidden: options?.showHidden ?? false,
+      }),
+    open: (path) => invoke<void>('fs_open', { path }),
+    reveal: (path) => invoke<void>('fs_reveal', { path }),
+    folderSizes: (paths) => invoke<FolderSize[]>('fs_folder_sizes', { paths }),
+    largeFiles: (root, limit) => invoke<LargeFiles>('fs_large_files', { root, limit: limit ?? 100 }),
+    onFolderSize(listener) {
+      let stop: (() => void) | null = null;
+      let cancelled = false;
+      void listen<FolderSize>('fs-folder-size', (event) => listener(event.payload))
+        .then((unlisten) => {
+          if (cancelled) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+        stop?.();
+      };
+    },
+  };
+
   return {
     where: 'on this computer',
     platform: mac ? 'mac' : /Windows/.test(navigator.userAgent) ? 'windows' : 'linux',
@@ -143,6 +299,10 @@ export async function createDesktopBackend(): Promise<Backend> {
     },
 
     ai,
+    events,
+    terminal,
+    webapps,
+    explorer,
     secrets,
     openLink: (url) => openUrl(url),
     // Through the HTTP plugin, which no page's CORS stops; capabilities/default.json lets it reach the web.
@@ -151,6 +311,7 @@ export async function createDesktopBackend(): Promise<Backend> {
 
     beforeClose(saveAll) {
       const stop = getCurrentWindow().onCloseRequested(async () => {
+        void invoke('terminal_close_all').catch(() => {});
         await saveAll().catch((err) => console.error('Couldn’t save before closing', err));
       });
       return () => void stop.then((unlisten) => unlisten());

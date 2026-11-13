@@ -73,6 +73,7 @@
         }
       ]
     },
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "dialog:allow-open"
   ]
 }

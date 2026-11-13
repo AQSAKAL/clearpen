@@ -76,7 +76,7 @@ A TypeScript monorepo (pnpm workspaces):
 
 ```
 apps/
-  desktop/    Tauri 2 shell — window, menus, auto-update, keychain, SQL, HTTP to Ollama
+  desktop/    Tauri 2 shell — window, menus, auto-update, keychain, SQL, HTTP to Ollama, terminals
   server/     Hono API — auth, Postgres, AI proxy, scheduled publishing; serves the web build
   web/        Vite build of the UI for browsers
 packages/
@@ -97,7 +97,15 @@ So a feature like *fact-check a selection* is written once in `core` and appears
 
 **UI stack:** React 19, Vite, Tailwind CSS v4, shadcn/ui (Radix underneath) for every control, TanStack Router and Query, CodeMirror 6 for the editor (shadcn has no editor; CodeMirror works fine inside React).
 
-**The editor keeps the keyboard.** Tab never leaves the editor. It accepts the suggestion or hint that's showing; the "¶ point made" hint inserts a paragraph break in place of the trailing space. Otherwise Tab indents a list item (Shift-Tab outdents), and otherwise it does nothing. Esc then Tab within 1.5 s moves focus on, so keyboard users are never trapped. The reference is the prototype's `margin/editor-src/index.js`: the `aiKeys` Tab binding, `inListItem` and `escapedJustNow`.
+**The integrated terminal** is a bottom panel of tabs, each a real shell on the writer's computer. In the desktop app, `portable-pty` opens a pseudo-terminal, streams its output over a Tauri IPC channel to xterm.js (WebGL when the driver allows it, canvas otherwise), and writes keystrokes back. **AI Runner** opens a tab in a folder the writer chooses and starts `opencode` there; if it isn't installed, the tab stays as a shell. The browser build leaves `Backend.terminal` out, and the panel says so.
+
+**The web apps and the feed.** Telegram, WhatsApp, X, Google and Wikipedia live in their own child webviews (`tauri`'s multiwebview API), one per tab and each with its own persistent profile — no iframe, so logins and sites that refuse to be framed work. Google and Apple sign-in cannot work inside an embedded browser by their own policy; those redirects and popups open in the system browser, and a notification says why. The news rail fetches WSJ, FT, MarketWatch and CNBC RSS through the same backend `fetchPage`; parsing happens in the window and the headlines are never stored.
+
+**Events and interactions.** Every meaningful action becomes an `AppEvent` (`command.executed`, `article.written`, `terminal.opened`, `webapp.navigated`, …). The Rust hub in `src-tauri/src/events.rs` broadcasts it with `tokio::sync::broadcast` and forwards it to the window; the window's `EventProvider` appends it to the `interactions` table (`id`, `kind`, `source`, `at`, `data`). Notifications are events of kind `notification.received` with `title`, `body` and `severity`; the bell shows those and a toast. The log is append-only and pruned after 90 days, the raw material for the small model filter that will later decide what deserves attention.
+
+**The file explorer** is a read-only Finder-style view over the real filesystem. Rust does the work in `src-tauri/src/files.rs`: `fs_list` reads a directory, and `fs_search` walks it with the same parallel walker ripgrep uses, skipping `node_modules`, `.git`, `target`, `Library` and similar trees, stopping at 200 results or 2.2 seconds. A bare query matches names; words are matched in any order (`project notes` finds `Project_Draft_Notes.pdf`); `docs/report` matches parent paths. **Cleanup** runs an 8-second bounded scan of Home and keeps the 100 largest files, read-only. Nothing is indexed or stored. Folder sizes are computed lazily, one folder at a time, cached for two minutes, and streamed back as each finishes; a walk that hits its budget is marked as a lower bound. Opening and revealing use the system's own applications.
+
+**The editor renders Markdown.** The Markdown string remains the document, but the syntax characters that only describe formatting — `#`, `**`, backticks, a link's brackets and URL — are hidden by decorations; a marker returns at the point being edited. Tables stay rendered and their cells are edited in place, committing to Markdown on blur or save. Offsets, suggestions, notes and exports are untouched. **The editor keeps the keyboard.** Tab never leaves the editor. It accepts the suggestion or hint that's showing; the "¶ point made" hint inserts a paragraph break in place of the trailing space. Otherwise Tab indents a list item (Shift-Tab outdents), and otherwise it does nothing. Esc then Tab within 1.5 s moves focus on, so keyboard users are never trapped. The reference is the prototype's `margin/editor-src/index.js`: the `aiKeys` Tab binding, `inListItem` and `escapedJustNow`.
 
 ## AI
 
@@ -106,7 +114,7 @@ So a feature like *fact-check a selection* is written once in `core` and appears
   - *quick*: autocomplete, edits, checks;
   - *coach*: outlines and section plans — the argument, never the prose;
   - *checker*: fact-checking, where a larger or hosted model helps most.
-- **Keys:** the writer brings their own OpenRouter key. The desktop app keeps it in the operating system's credential store — the macOS Keychain, Windows Credential Manager, or the Linux Secret Service — through a Tauri command that accepts only the account name `openrouter`; it is never in the library database, a settings file, a log or an export. The browser preview (development only) holds it in the tab's memory and forgets it when the tab closes, never in localStorage or IndexedDB. Settings keep only the provider choice and the model ids. Self-hosted deployments keep encrypted server secrets. Never stored in plain text, never in exports.
+- **Keys:** the writer brings their own OpenRouter key. The desktop app keeps it in the operating system's credential store — the macOS Keychain, Windows Credential Manager, or the Linux Secret Service — through a Tauri command that accepts only the account name `openrouter`; it is never in the library database, a settings file, a log or an export. The self-hosted browser app holds it in the tab's memory and forgets it when the tab closes, never in localStorage or IndexedDB. Settings keep only the provider choice and the model ids. The static deployment uses the same per-tab key handling. Never stored in plain text, never in exports.
 - **Transparency:** the UI shows where each request goes (this Mac / your server / a named provider).
 - **Rules kept from the prototype:**
   - edits are pinpoint operations, never whole-passage rewrites;

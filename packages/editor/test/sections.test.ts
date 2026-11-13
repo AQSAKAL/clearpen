@@ -27,8 +27,8 @@ describe('Shape this section', () => {
     const buttons = all(ed, '.cm-write-section');
     expect(buttons.map((b) => b.textContent)).toEqual(['◇ Shape this section', '◇ Shape this section']);
     expect(buttons.map((b) => b.closest('.cm-line')?.textContent?.replace('◇ Shape this section', ''))).toEqual([
-      '## Planned',
-      '## Empty',
+      'Planned',
+      'Empty',
     ]);
     mousedown(buttons[0]!);
     mousedown(buttons[1]!);

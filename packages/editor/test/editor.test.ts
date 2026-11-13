@@ -72,7 +72,7 @@ describe('onUpdate', () => {
 });
 
 describe('Markdown styling', () => {
-  test('keeps bold, italic and underline inside a heading, with <u> and </u> as marks', () => {
+  test('renders bold, italic and underline inside a heading, keeping the <u> in the Markdown', () => {
     const ed = mount('## A **bold**, *italic* and <u>underlined</u> heading\n\nA <u>stray tag');
     const classes = (text: string) =>
       all(ed, 'span')
@@ -81,8 +81,9 @@ describe('Markdown styling', () => {
     expect(classes('bold')).toEqual(expect.arrayContaining(['md-h2', 'md-strong']));
     expect(classes('italic')).toEqual(expect.arrayContaining(['md-h2', 'md-em']));
     expect(classes('underlined')).toEqual(expect.arrayContaining(['md-h2', 'md-u']));
-    expect(classes('<u>')).toEqual(expect.arrayContaining(['md-u', 'md-mark']));
-    expect(all(ed, '.md-u').map((s) => s.textContent)).toEqual(['<u>', 'underlined', '</u>']);
+    // The tags are hidden as formatting; the Markdown itself is untouched.
+    expect(all(ed, '.md-u').map((s) => s.textContent)).toEqual(['underlined']);
+    expect(ed.getText()).toContain('<u>underlined</u>');
   });
 });
 

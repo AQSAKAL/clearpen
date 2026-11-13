@@ -8,6 +8,7 @@
 <p align="center">
   <a href="#download">Download</a> ·
   <a href="#run-it-from-source">Run it from source</a> ·
+  <a href="#self-host-the-web-app">Self-host the web app</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="LICENSE">AGPL-3.0</a>
 </p>
@@ -21,9 +22,9 @@ Most AI writing tools offer to write for you. Clearpen helps you write. It gives
 
 That's the idea behind Clearpen: less writing done by AI, and more help from AI while you write.
 
-Your writing stays on your machine. The AI is a local model by default — through [Ollama](https://ollama.com) in the desktop app, or running in the page itself in a browser. If you choose OpenRouter instead, only the text each task needs is sent there, with your own key. Your library is a single file, and every article exports to plain Markdown.
+Your writing stays on your machine. The AI is a local model by default — through [Ollama](https://ollama.com) in the desktop app, or running in the page itself in a browser. If you choose OpenRouter instead, only the text each task needs is sent there, with your own key. The desktop app stores articles in SQLite and attachments in a media folder. The web app stores both in your browser. Every article exports to plain Markdown.
 
-> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the writing app runs on the desktop: library, editor, versions and export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing, sources (pages kept with an article, with passages drawn into suggestions and fact-checks), recurring writing in a project, and Markdown and code drawn as they read — on a local model, or on OpenRouter with your own key. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
+> **Status:** early. This repository is being built in phases — see [the architecture](docs/ARCHITECTURE.md). The engine (`packages/core`) is done, and the desktop and self-hosted web apps share the library, editor, versions, export, and the AI features — pinpoint edits, next-sentence suggestions, autocorrect, review and checks, writing modes and guided writing, sources (pages kept with an article, with passages drawn into suggestions and fact-checks), recurring writing in a project, and Markdown and code drawn as they read — on a local model, or on OpenRouter with your own key. The thinking aids for planning a section, and publishing, come next (see [the plan](docs/plans/writing-app.md)).
 
 ## What it does
 
@@ -67,11 +68,16 @@ A frame is a question in the shape of a sentence. It waits in grey at the cursor
 
 ### And a quiet place to write
 
-- A plain Markdown page: headings, lists, quotes, tables and images.
+- A rendered Markdown page: headings, bold, lists, quotes, code, tables and images read as they will; the file underneath stays plain Markdown.
 - Projects, full-text search, a trash, and drag-and-drop between projects.
 - A version on **⌘S** and every ten minutes, so you can always go back.
 - Typo fixes as you type; **⌘Z** right after one puts back what you typed.
 - Reader mode, focus mode, light and dark.
+- An integrated terminal with tabs (**Ctrl+\`**), and an **AI Runner** that starts `opencode` in a folder you choose, in the desktop app.
+- The **Writing ▾** menu switches between your draft, Home, Files, and five web apps: Telegram, WhatsApp, X, Google and Wikipedia. **Back to writing** returns to the same editor; each desktop web app keeps its session.
+- A live markets and economy ticker beside the page — WSJ, FT, MarketWatch and CNBC headlines, in memory only, never saved.
+- A native file explorer: browse any folder with lazy, cached folder sizes, search words in any order, open and reveal files in Finder, and a read-only **Cleanup** list of the 100 largest files in your home folder — no index to go stale.
+- A notification bell for what happens while you write, and a local interaction log those notifications come from.
 - Export to Markdown or a web page, or copy rich text for Google Docs, Medium or WordPress.
 
 On Windows, **Ctrl** stands in for **⌘**.
@@ -102,6 +108,10 @@ Those are shortcuts, not a limit: the setup screen searches [ollama.com/library]
 **OpenRouter, with your own key.** If you would rather use a hosted model — Claude, Gemini, GPT, Qwen, or anything else [OpenRouter](https://openrouter.ai) serves — choose **OpenRouter** in **Models**, paste a key from [openrouter.ai/keys](https://openrouter.ai/keys), and pick from its catalogue. The key is kept in your operating system's credential store (macOS Keychain, Windows Credential Manager, or the Linux Secret Service), never in your library, a settings file or a log; Clearpen sends it only to `openrouter.ai`. Each task sends just the text it needs, and the model is billed to your OpenRouter account. Switching back to a local model is one click in the same dialog.
 
 In a browser with WebGPU there is nothing to install: the browser version runs the model in the page itself (see [Or try it in a browser](#or-try-it-in-a-browser-without-rust)). It can use OpenRouter too, but there the key is held in the tab's memory only, so closing the tab forgets it.
+
+### Upgrade an existing Mac installation
+
+Quit Clearpen. In Finder, choose **Go → Go to Folder**, enter `~/Library/Application Support/app.clearpen.desktop/`, and copy the whole folder to a backup location. It holds the SQLite library and attached images. Drag the new `Clearpen.app` into **Applications**, choose **Replace**, then reopen it and check a previous article and its version history.
 
 ### The first run
 
@@ -139,9 +149,23 @@ Your library lives in one SQLite file, `library.db`, in `~/Library/Application S
 pnpm --filter @clearpen/desktop dev
 ```
 
-Open http://localhost:1420. The app runs on the same library code, with SQLite compiled to WebAssembly and held in memory, so **nothing is saved** when you close the tab.
+Open http://localhost:1420. Each browser keeps its own SQLite library and images in IndexedDB. Articles, versions, projects and preferences survive closing the browser. Clearing site data removes that library.
 
 Where the browser has [WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API) — current Chrome, Edge and Safari — the model runs in the page: no Ollama and no server. **Qwen3.5 2B** (~1 GB) is the default, downloaded once and kept in the browser's cache; **Models** also offers Qwen3.5 0.8B (~426 MB) and 4B (~2.3 GB). The weights come from Hugging Face on first use and then run locally, so your writing never leaves the tab. Add `?model=Qwen3.5-0.8B-q4f16_1-MLC` to choose a model from the URL, `?webllm=0` to use Ollama instead, and `?debug=1` to log what the model is asked and answers. Without WebGPU, the browser version talks to Ollama on `localhost` directly.
+
+### Self-host the web app
+
+From the repository root, use Node 24 or later and pnpm 11 to build and preview the same writing interface as the desktop app.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build:web
+pnpm --filter @clearpen/desktop exec vite preview
+```
+
+Open the local URL printed by the preview command. To deploy, publish the contents of `apps/desktop/dist/` to an HTTPS static host at the domain root or in a subdirectory. Once the first visit finishes caching, the editor can reopen offline.
+
+Each visitor writes without an account. The library stays in that browser profile on that origin, independently of the desktop library. Clearing site data removes the browser library. **Files** searches a folder the visitor selects. See [browser deployment](apps/web/README.md) for AI options and how to connect a web terminal.
 
 ### Build an installer
 
@@ -169,7 +193,7 @@ packages/
 apps/
   desktop/    Tauri app for Mac and Windows
   server/     self-hosted server with Postgres         (phase 4)
-  web/        the app in a browser                     (phase 4)
+  web/        self-hosting instructions for the browser build
 docs/
   ARCHITECTURE.md
 ```

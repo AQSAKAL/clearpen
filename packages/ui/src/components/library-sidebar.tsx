@@ -17,7 +17,7 @@ import {
   SearchIcon,
   Trash2Icon,
 } from 'lucide-react';
-import { type DragEvent, useEffect, useMemo, useState } from 'react';
+import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAsk } from '../ask.tsx';
 import { timeAgo } from '../lib/time.ts';
@@ -86,6 +86,8 @@ export function LibrarySidebar({
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<Set<string> | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // The article being dragged, in case WebKit strips the custom MIME type.
+  const dragging = useRef<string | null>(null);
   const [scheduling, setScheduling] = useState<Project | null>(null);
 
   // Full-text search, a moment after typing stops, and again when the library changes.
@@ -187,10 +189,17 @@ export function LibrarySidebar({
   const toggle = (id: string, open: boolean) =>
     set('collapsed', open ? settings.collapsed.filter((x) => x !== id) : [...new Set([...settings.collapsed, id])]);
 
+  // WebKit's `dataTransfer.types` is a DOMStringList, not always an array;
+  // `.includes` can be missing there. Array.from is the portable check.
+  const hasDocDrag = (e: DragEvent) => {
+    if (dragging.current) return true;
+    return Array.from(e.dataTransfer.types).includes(DRAG_TYPE);
+  };
+
   // Drag an article onto a project, or onto "Articles" to take it out of one.
   const dropProps = (target: string | null) => ({
     onDragOver(e: DragEvent) {
-      if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+      if (!hasDocDrag(e)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       setDropTarget(target ?? '');
@@ -199,13 +208,18 @@ export function LibrarySidebar({
       setDropTarget(null);
     },
     onDrop(e: DragEvent) {
-      const id = e.dataTransfer.getData(DRAG_TYPE);
+      // The custom type is the reliable one; text/plain is there for WebKit.
+      const id = e.dataTransfer.getData(DRAG_TYPE) || dragging.current || '';
       setDropTarget(null);
       if (!id) return;
       e.preventDefault();
       const doc = lib.docs.find((d) => d.id === id);
       if (!doc || doc.projectId === target) return;
-      lib.move(id, target).catch((err) => toast.error(err.message));
+      const project = target ? lib.projects.find((p) => p.id === target) : null;
+      lib
+        .move(id, target)
+        .then(() => toast(project ? `Moved to “${project.name}”` : 'Moved out of its project'))
+        .catch((err) => toast.error(err.message));
     },
   });
 
@@ -225,8 +239,15 @@ export function LibrarySidebar({
                 type="button"
                 draggable
                 onDragStart={(e) => {
+                  dragging.current = d.id;
                   e.dataTransfer.setData(DRAG_TYPE, d.id);
+                  // Some WebKit builds drop unknown MIME types on the floor.
+                  e.dataTransfer.setData('text/plain', d.id);
                   e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragEnd={() => {
+                  dragging.current = null;
+                  setDropTarget(null);
                 }}
                 onClick={() => openDoc(d.id)}
                 title={`${d.title || 'Untitled'} · ${timeAgo(d.updatedAt)} · ${d.words.toLocaleString()} words`}
@@ -249,22 +270,13 @@ export function LibrarySidebar({
   return (
     <Sidebar>
       <SidebarHeader className="gap-2 pt-0">
-        {lib.backend.overlayTitleBar ? (
-          <>
-            {/* The title bar: the window's buttons at its left, level with the top bar; the logo on its own row beneath. */}
-            <div data-tauri-drag-region className="flex h-12 shrink-0 items-center justify-end px-2">
-              <SidebarTrigger className="text-muted-foreground" />
-            </div>
-            <div data-tauri-drag-region className="flex h-8 shrink-0 items-center px-2">
-              <Logo />
-            </div>
-          </>
-        ) : (
-          <div className="flex h-12 shrink-0 items-center justify-between px-2">
-            <Logo />
-            <SidebarTrigger className="text-muted-foreground" />
-          </div>
-        )}
+        <div
+          data-tauri-drag-region
+          className={cn('flex h-12 shrink-0 items-center justify-between px-2', lib.backend.overlayTitleBar && 'pl-20')}
+        >
+          <Logo />
+          <SidebarTrigger className="text-muted-foreground" />
+        </div>
         <div className="flex gap-1.5">
           <div className="flex min-w-0 flex-1">
             <Button
@@ -347,7 +359,7 @@ export function LibrarySidebar({
                           <span className="min-w-0 flex-1 truncate">{p.name}</span>
                           {lib.scheduleFor(p.id) && (
                             <CalendarClockIcon
-                              className="size-3.5 shrink-0 text-muted-foreground"
+                              className="size-3.5 shrink-0 text-muted-foreground group-hover/menu-item:opacity-0"
                               aria-label="Scheduled writing"
                             />
                           )}
@@ -386,7 +398,7 @@ export function LibrarySidebar({
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <CollapsibleContent>
-                        <SidebarMenuSub>
+                        <SidebarMenuSub {...dropProps(p.id)}>
                           {docs.length ? (
                             docs.map((d) => docItem(d, true))
                           ) : (
@@ -403,15 +415,13 @@ export function LibrarySidebar({
         )}
 
         {(groups.loose.length > 0 || (!q && groups.projects.length > 0)) && (
-          <SidebarGroup>
-            {groups.projects.length > 0 && (
-              <SidebarGroupLabel
-                {...dropProps(null)}
-                className={cn(dropTarget === '' && 'bg-sidebar-accent ring-2 ring-ai/40')}
-              >
-                Articles
-              </SidebarGroupLabel>
-            )}
+          <SidebarGroup {...dropProps(null)}>
+            <SidebarGroupLabel
+              {...dropProps(null)}
+              className={cn(dropTarget === '' && 'bg-sidebar-accent ring-2 ring-ai/40')}
+            >
+              Articles
+            </SidebarGroupLabel>
             <SidebarMenu>{groups.loose.map((d) => docItem(d, false))}</SidebarMenu>
           </SidebarGroup>
         )}
@@ -419,7 +429,7 @@ export function LibrarySidebar({
         {nothing && <p className="px-4 py-2 text-sm text-muted-foreground">Nothing matches.</p>}
       </SidebarContent>
 
-      <SidebarFooter className="gap-1">
+      <SidebarFooter className="gap-1 border-t">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={onTrash} className="text-muted-foreground">

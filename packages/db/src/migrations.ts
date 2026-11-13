@@ -14,4 +14,8 @@ export const MIGRATIONS: Migration[] = [
     id: "0001_schedules",
     sql: "CREATE TABLE `schedules` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`project_id` text NOT NULL,\n\t`cadence` text NOT NULL,\n\t`next_at` integer NOT NULL,\n\t`created_at` integer NOT NULL,\n\t`updated_at` integer NOT NULL,\n\t`deleted_at` integer,\n\t`rev` integer DEFAULT 0 NOT NULL\n);\n--> statement-breakpoint\nCREATE INDEX `schedules_project` ON `schedules` (`project_id`);--> statement-breakpoint\nCREATE INDEX `schedules_next` ON `schedules` (`next_at`);",
   },
+  {
+    id: "0002_blushing_ted_forrester",
+    sql: "CREATE TABLE `interactions` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`kind` text NOT NULL,\n\t`source` text NOT NULL,\n\t`at` integer NOT NULL,\n\t`data` text\n);\n--> statement-breakpoint\nCREATE INDEX `interactions_at` ON `interactions` (`at`);--> statement-breakpoint\nCREATE INDEX `interactions_kind` ON `interactions` (`kind`,`at`);",
+  },
 ];

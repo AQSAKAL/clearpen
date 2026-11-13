@@ -95,3 +95,21 @@ export const settings = sqliteTable('settings', {
   value: text('value', { mode: 'json' }).notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
+
+/**
+ * The interaction log: one append-only row per event from the app's event hub.
+ * `data` is the event's free-form JSON (for a notification, its title, body and
+ * severity). A later small model reads this to learn what to surface.
+ */
+export const interactions = sqliteTable(
+  'interactions',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind').notNull(),
+    source: text('source').notNull(),
+    /** Milliseconds since the Unix epoch. */
+    at: integer('at').notNull(),
+    data: text('data', { mode: 'json' }),
+  },
+  (t) => [index('interactions_at').on(t.at), index('interactions_kind').on(t.kind, t.at)],
+);

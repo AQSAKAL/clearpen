@@ -11,25 +11,32 @@ import { AskProvider } from './ask.tsx';
 import { Autocomplete } from './autocomplete.tsx';
 import { Autocorrect } from './autocorrect.tsx';
 import type { Backend } from './backend.ts';
+import { AppNavigation, type WorkspaceView } from './components/app-navigation.tsx';
 import { ArticleEditor, type Counts, countsOf } from './components/article-editor.tsx';
 import { AssistPanel, type AssistTab } from './components/assist-panel.tsx';
+import { FilesView } from './components/files-view.tsx';
 import { FontsDialog } from './components/fonts-dialog.tsx';
 import { GuideCard } from './components/guide-card.tsx';
 import { HistoryDialog } from './components/history-dialog.tsx';
+import { HomeView } from './components/home.tsx';
 import { useHighlights } from './components/insights.tsx';
 import { LibrarySidebar, Logo } from './components/library-sidebar.tsx';
 import { MarginNotes } from './components/margin-notes.tsx';
 import { ModelsDialog } from './components/models-dialog.tsx';
 import { MoveDialog } from './components/move-dialog.tsx';
+import { NewsFeed } from './components/news-feed.tsx';
 import { Reader } from './components/reader.tsx';
 import { SelectionToolbar } from './components/selection-toolbar.tsx';
 import { ShortcutsDialog } from './components/shortcuts-dialog.tsx';
+import { TerminalPanel, type TerminalPanelRef } from './components/terminal-panel.tsx';
 import { type Command, TopBar } from './components/top-bar.tsx';
 import { TrashDialog } from './components/trash-dialog.tsx';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar.tsx';
 import { Toaster } from './components/ui/sonner.tsx';
 import { TooltipProvider } from './components/ui/tooltip.tsx';
+import { WebAppsView } from './components/webapps-view.tsx';
 import { EditorRefProvider, usePage } from './editor-ref.tsx';
+import { EventProvider, useEventActions } from './events.tsx';
 import { exampleArticle } from './examples/index.ts';
 import { applyFonts } from './fonts.ts';
 import { GuideProvider } from './guide.tsx';
@@ -121,8 +128,10 @@ function Shell({ backend }: { backend: Backend }) {
   const { settings, set } = useSettings();
   useEffect(() => applyFonts(settings.fonts), [settings.fonts]);
   const onTheme = useCallback((t: Settings['theme']) => set('theme', t), [set]);
+  const [view, setView] = useState<WorkspaceView>('writing');
   const onOpen = useCallback(
     (id: string) => {
+      setView('writing');
       set('last', id);
       if (hashId() !== id) window.history.replaceState(null, '', `#/${id}`);
     },
@@ -146,25 +155,27 @@ function Shell({ backend }: { backend: Backend }) {
     <ThemeProvider theme={settings.theme} onChange={onTheme}>
       <TooltipProvider delayDuration={400}>
         <StatusProvider>
-          <SetupProvider backend={backend}>
-            <AIProvider>
-              <AskProvider>
-                <LibraryProvider
-                  backend={backend}
-                  defaultBrief={goal ? { genre: goal.genre } : undefined}
-                  onOpen={onOpen}
-                >
-                  <EditorRefProvider>
-                    <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
-                      <GuideProvider>
-                        <Workspace />
-                      </GuideProvider>
-                    </NotesProvider>
-                  </EditorRefProvider>
-                </LibraryProvider>
-              </AskProvider>
-            </AIProvider>
-          </SetupProvider>
+          <EventProvider backend={backend}>
+            <SetupProvider backend={backend}>
+              <AIProvider>
+                <AskProvider>
+                  <LibraryProvider
+                    backend={backend}
+                    defaultBrief={goal ? { genre: goal.genre } : undefined}
+                    onOpen={onOpen}
+                  >
+                    <EditorRefProvider>
+                      <NotesProvider mod={backend.platform === 'mac' ? '⌘' : 'Ctrl+'}>
+                        <GuideProvider>
+                          <Workspace view={view} setView={setView} />
+                        </GuideProvider>
+                      </NotesProvider>
+                    </EditorRefProvider>
+                  </LibraryProvider>
+                </AskProvider>
+              </AIProvider>
+            </SetupProvider>
+          </EventProvider>
         </StatusProvider>
         <Toaster position="top-center" />
       </TooltipProvider>
@@ -172,12 +183,13 @@ function Shell({ backend }: { backend: Backend }) {
   );
 }
 
-function Workspace() {
+function Workspace({ view, setView }: { view: WorkspaceView; setView(view: WorkspaceView): void }) {
   const lib = useLibrary();
   const { backend, current } = lib;
   const { settings, set } = useSettings();
   const page = usePage();
   const editor = page.editor;
+  const { emit } = useEventActions();
   const [ready, setReady] = useState(false);
   const [counts, setCounts] = useState<Counts>({ words: 0, minutes: 1 });
   const [reading, setReading] = useState<{ title: string; content: string } | null>(null);
@@ -188,6 +200,9 @@ function Workspace() {
   const setup = useSetup();
   const [moving, setMoving] = useState<string | null>(null);
   const [panel, setPanel] = useState<AssistTab | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const terminalRef = useRef<TerminalPanelRef>(null);
+  const [news, setNews] = useState(false);
   const mod = backend.platform === 'mac' ? '⌘' : 'Ctrl+';
   const scroller = useRef<HTMLDivElement>(null);
   const notesInMargin = useWide(scroller, MARGIN_ROOM_PX);
@@ -196,7 +211,10 @@ function Workspace() {
   const mode = useMode();
   // Notes go in the margin when there's room, otherwise in the Assist panel.
   const openNotes = useCallback(() => {
-    if (!notesInMargin) setPanel('notes');
+    if (!notesInMargin) {
+      setNews(false);
+      setPanel('notes');
+    }
   }, [notesInMargin]);
   const { review, check } = useReviewActions(openNotes);
   const askSources = useSourceQuestions(openNotes);
@@ -205,6 +223,22 @@ function Workspace() {
   useEffect(() => page.on('note', (id) => id && openNotes()), [page, openNotes]);
   const libRef = useRef(lib);
   libRef.current = lib;
+
+  const notifyScheduled = useCallback(
+    (made: number) => {
+      if (made < 1) return;
+      emit({
+        kind: 'notification.received',
+        source: 'app',
+        data: {
+          title: made === 1 ? 'A scheduled article is ready' : `${made} scheduled articles are ready`,
+          body: made === 1 ? 'It is waiting in your library.' : 'They are waiting in your library.',
+          severity: 'info',
+        },
+      });
+    },
+    [emit],
+  );
 
   // Open the article in the address, else the last one, else the newest. A
   // first launch, with nothing in the library, asks what the writer will
@@ -217,7 +251,7 @@ function Workspace() {
     (async () => {
       await lib.refresh();
       // Recurring writing: make any article whose period turned while the app was closed.
-      await lib.runSchedules();
+      notifyScheduled(await lib.runSchedules());
       const docs = await backend.library.documents.list();
       const want = [hashId(), settings.last].find((id) => id && docs.some((d) => d.id === id));
       if (want) await lib.open(want);
@@ -283,15 +317,61 @@ function Workspace() {
   // A schedule that turns while the app is open: its article appears without
   // waiting for a restart. One small query a minute.
   useEffect(() => {
-    const t = setInterval(() => void libRef.current.runSchedules().catch(() => {}), 60_000);
+    const t = setInterval(() => {
+      void libRef.current
+        .runSchedules()
+        .then((made) => notifyScheduled(made))
+        .catch(() => {});
+    }, 60_000);
     return () => clearInterval(t);
-  }, []);
+  }, [notifyScheduled]);
 
   // Focus mode carries over when another article opens.
   // biome-ignore lint/correctness/useExhaustiveDependencies: loading an article resets the editor's focus mode, so re-apply it.
   useEffect(() => {
     editor.current?.setFocus(focus);
   }, [focus, current?.id, editor]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one event per article opened, not per word.
+  useEffect(() => {
+    if (!current?.id) return;
+    emit({
+      kind: 'article.opened',
+      source: 'ui',
+      data: { id: current.id, title: current.title, words: current.words },
+    });
+  }, [current?.id, emit]);
+
+  // A long pause, then activity: one event with how long the writer was away.
+  useEffect(() => {
+    const IDLE_MS = 5 * 60 * 1000;
+    let idleSince: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        idleSince = Date.now();
+      }, IDLE_MS);
+    };
+    const wake = () => {
+      if (idleSince) {
+        const durationSecs = Math.round((Date.now() - idleSince) / 1000);
+        idleSince = null;
+        emit({ kind: 'idle.recorded', source: 'ui', data: { durationSecs } });
+      }
+      schedule();
+    };
+    schedule();
+    window.addEventListener('pointerdown', wake);
+    window.addEventListener('keydown', wake);
+    window.addEventListener('wheel', wake, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointerdown', wake);
+      window.removeEventListener('keydown', wake);
+      window.removeEventListener('wheel', wake);
+    };
+  }, [emit]);
 
   const text = () => editor.current?.getText() ?? current?.content ?? '';
   const title = () => page.title.current.trim();
@@ -328,18 +408,37 @@ function Workspace() {
   }
 
   async function run(c: Command) {
+    emit({ kind: 'command.executed', source: 'ui', data: { command: c } });
     try {
       switch (c) {
         case 'review':
           review();
           break;
         case 'assist':
+          setNews(false);
           setPanel((p) => (p ? null : notesInMargin ? 'insights' : 'notes'));
           break;
         case 'insights':
+          setNews(false);
           setPanel('insights');
           break;
+        case 'terminal':
+          if (backend.webTerminalUrl) await backend.openLink(backend.webTerminalUrl);
+          else if (backend.terminal) setTerminalOpen((open) => !open);
+          break;
+        case 'news':
+          if (!news) setPanel(null);
+          setNews(!news);
+          break;
+        case 'ai-runner':
+          if (backend.webRunnerUrl) await backend.openLink(backend.webRunnerUrl);
+          else if (backend.terminal) {
+            setTerminalOpen(true);
+            terminalRef.current?.create('ai');
+          }
+          break;
         case 'sources':
+          setNews(false);
           setPanel('sources');
           break;
         case 'autocomplete':
@@ -427,6 +526,12 @@ function Workspace() {
   // Shortcuts that work anywhere in the window. ⌘\ belongs to the sidebar.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((backend.terminal || backend.webTerminalUrl) && e.ctrlKey && !e.metaKey && e.code === 'Backquote') {
+        e.preventDefault();
+        void runRef.current('terminal');
+        return;
+      }
+      if (view !== 'writing' || e.defaultPrevented) return;
       const modKey = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       if (modKey && !e.shiftKey && key === 's') {
@@ -450,7 +555,7 @@ function Workspace() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [toggleReader]);
+  }, [toggleReader, view, backend]);
 
   const onCounts = useCallback((c: Counts) => setCounts(c), []);
 
@@ -458,19 +563,37 @@ function Workspace() {
     <SidebarProvider open={settings.libraryOpen} onOpenChange={(o) => set('libraryOpen', o)}>
       <LibrarySidebar onMove={setMoving} onTrash={() => setDialog('trash')} onModels={() => setDialog('models')} />
       <SidebarInset className="h-svh min-w-0 overflow-hidden">
-        <TopBar
-          counts={counts}
-          reading={!!reading}
-          focus={focus}
-          autocomplete={settings.autocomplete}
-          autocorrect={settings.autocorrect}
-          prices={settings.prices}
-          mode={mode}
-          mod={mod}
-          onCommand={run}
-        />
-        <div className="flex min-h-0 flex-1">
-          <div ref={scroller} className="min-w-0 flex-1 overflow-y-auto" data-reading={reading ? '' : undefined}>
+        <AppNavigation view={view} onView={setView} terminal={terminalOpen} onTerminal={() => void run('terminal')}>
+          {view === 'writing' && (
+            <TopBar
+              counts={counts}
+              reading={!!reading}
+              focus={focus}
+              autocomplete={settings.autocomplete}
+              autocorrect={settings.autocorrect}
+              prices={settings.prices}
+              mode={mode}
+              mod={mod}
+              onCommand={run}
+            />
+          )}
+        </AppNavigation>
+        {view === 'files' ? (
+          <FilesView />
+        ) : view === 'home' ? (
+          <HomeView />
+        ) : view !== 'writing' ? (
+          <WebAppsView active={view} />
+        ) : null}
+        <div
+          className={cn('workspace-page flex min-h-0 flex-1', view !== 'writing' && 'hidden')}
+          inert={view !== 'writing'}
+        >
+          <div
+            ref={scroller}
+            className="isolate min-w-0 flex-1 overflow-y-auto"
+            data-reading={reading ? '' : undefined}
+          >
             <div className={cn('flex justify-center gap-9 px-2', reading && 'hidden')} aria-hidden={!!reading}>
               <div className="w-full min-w-0 max-w-[700px]">
                 <ArticleEditor onCounts={onCounts} />
@@ -501,9 +624,13 @@ function Workspace() {
           {panelInline && (
             <AssistPanel inline tab={panel} onTab={setPanel} notesInMargin={notesInMargin} highlight={highlight} />
           )}
+          {news && <NewsFeed onClose={() => setNews(false)} />}
         </div>
+        {backend.terminal && (
+          <TerminalPanel ref={terminalRef} open={terminalOpen} onClose={() => setTerminalOpen(false)} />
+        )}
       </SidebarInset>
-      {!panelInline && (
+      {view === 'writing' && !panelInline && (
         <AssistPanel inline={false} tab={panel} onTab={setPanel} notesInMargin={notesInMargin} highlight={highlight} />
       )}
       <HistoryDialog
@@ -528,7 +655,7 @@ function Workspace() {
         onOpenChange={(o) => !o && void skipGoal().catch((err) => toast.error(String(err.message ?? err)))}
         onChoose={(g) => void chooseGoal(g).catch((err) => toast.error(String(err.message ?? err)))}
       />
-      {!reading && <SelectionToolbar mod={mod} check={check} ask={askSources} />}
+      {view === 'writing' && !reading && <SelectionToolbar mod={mod} check={check} ask={askSources} />}
       <Autocomplete />
       <Autocorrect />
       <SourceLinks />

@@ -40,6 +40,7 @@ import { Label } from './components/ui/label.tsx';
 import { Progress } from './components/ui/progress.tsx';
 import { RadioGroup, RadioGroupItem } from './components/ui/radio-group.tsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select.tsx';
+import { useEventActions } from './events.tsx';
 import { cn } from './lib/utils.ts';
 import { useSettings } from './settings.tsx';
 
@@ -95,6 +96,7 @@ function phase(p: PullProgress | null): string {
 
 export function SetupProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
   const { settings, set } = useSettings();
+  const { notify } = useEventActions();
   const [shown, setShown] = useState(false);
   const [step, setStep] = useState<Step>({ kind: 'checking' });
   const [status, setStatus] = useState<LLMStatus | null>(null);
@@ -158,6 +160,11 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
         backend.ai.setModels(models, { preload: true });
         setStep({ kind: 'ready', model: offer.model, name: offer.name });
         setShown(true);
+        notify({
+          title: 'Model ready',
+          body: `Clearpen can now write with ${offer.name}.`,
+          severity: 'success',
+        });
       } catch (err) {
         if (c.signal.aborted) return;
         setStep({ kind: 'failed', offer, error: err instanceof Error ? err.message : String(err) });
@@ -166,7 +173,7 @@ export function SetupProvider({ backend, children }: { backend: Backend; childre
         if (ctrl.current === c) ctrl.current = null;
       }
     },
-    [backend, set],
+    [backend, set, notify],
   );
 
   const use = useCallback(

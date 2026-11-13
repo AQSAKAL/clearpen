@@ -7,7 +7,7 @@ import { and, asc, count, desc, eq, isNotNull, isNull, lte, or, type SQL, sql } 
 import { connect, type Db, type SqlDriver } from './driver.ts';
 import { now, uuidv7 } from './ids.ts';
 import { migrate } from './migrate.ts';
-import { documents, media, projects, schedules, settings, versions } from './schema.ts';
+import { documents, interactions, media, projects, schedules, settings, versions } from './schema.ts';
 
 export class LibraryError extends Error {
   status: number;
@@ -92,6 +92,16 @@ export interface MediaRecord {
   name: string;
 }
 
+/** One row of the interaction log: an event, as the app emitted it. */
+export interface Interaction {
+  id: string;
+  kind: string;
+  source: string;
+  /** Milliseconds since the Unix epoch. */
+  at: number;
+  data: unknown;
+}
+
 export interface Library {
   projects: {
     list(): Promise<Project[]>;
@@ -150,6 +160,14 @@ export interface Library {
     all(): Promise<Record<string, unknown>>;
     get<T = unknown>(key: string): Promise<T | undefined>;
     set(key: string, value: unknown): Promise<void>;
+  };
+  interactions: {
+    /** Appends an event. The same id twice is a no-op. */
+    add(event: Interaction): Promise<void>;
+    /** The newest events first. */
+    recent(limit?: number): Promise<Interaction[]>;
+    /** Deletes everything older than `before` (milliseconds), keeping the log small. */
+    prune(before: number): Promise<void>;
   };
 }
 
@@ -643,6 +661,30 @@ export function createLibrary(db: Db): Library {
           .insert(settings)
           .values({ key, value, updatedAt: at })
           .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: at } });
+      },
+    },
+
+    interactions: {
+      async add(event) {
+        await db
+          .insert(interactions)
+          .values({
+            id: s(event.id, 80),
+            kind: s(event.kind, 80),
+            source: s(event.source, 40),
+            at: event.at,
+            data: event.data ?? null,
+          })
+          .onConflictDoNothing();
+      },
+
+      async recent(limit = 100) {
+        const n = Math.min(Math.max(Math.trunc(limit), 1), 500);
+        return db.select().from(interactions).orderBy(desc(interactions.at)).limit(n);
+      },
+
+      async prune(before) {
+        await db.delete(interactions).where(lte(interactions.at, before));
       },
     },
   };

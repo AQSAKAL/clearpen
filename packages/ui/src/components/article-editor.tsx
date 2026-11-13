@@ -7,6 +7,7 @@ import { type ClearpenEditor, createEditor } from '@clearpen/editor';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { usePage } from '../editor-ref.tsx';
+import { useEventActions } from '../events.tsx';
 import { useLibrary } from '../library.tsx';
 import { usePrices } from '../tickers.ts';
 import { Textarea } from './ui/textarea.tsx';
@@ -26,6 +27,7 @@ export function countsOf(text: string): Counts {
 export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
   const { backend, current, edit } = useLibrary();
   const page = usePage();
+  const { emit } = useEventActions();
   const ref = page.editor;
   const host = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -33,6 +35,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
   const loading = useRef(false);
   const docId = useRef<string | null>(null);
   const countsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef({ edit, onCounts });
   latest.current = { edit, onCounts };
   const prices = usePrices();
@@ -53,6 +56,18 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
         if (!u.docChanged || loading.current) return;
         latest.current.edit({ content: ed.getText() });
         recount(ed);
+        // One event when the writer pauses, not one per keystroke.
+        clearTimeout(writeTimer.current);
+        writeTimer.current = setTimeout(() => {
+          const id = docId.current;
+          if (!id) return;
+          const text = ed.getText();
+          emit({
+            kind: 'article.written',
+            source: 'editor',
+            data: { documentId: id, words: countWords(text), characters: text.length },
+          });
+        }, 2500);
       },
       onAccept: (id, suggestion) => page.emit('accept', { id, suggestion }),
       onReject: (id, suggestion) => page.emit('reject', { id, suggestion }),
@@ -91,10 +106,11 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
 
     return () => {
       clearTimeout(countsTimer.current);
+      clearTimeout(writeTimer.current);
       ref.current = null;
       ed.destroy();
     };
-  }, [backend, ref, page]);
+  }, [backend, ref, page, emit]);
 
   // Load the text when a different article opens.
   useEffect(() => {
@@ -138,7 +154,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
   }, [title]);
 
   return (
-    <div className="mx-auto w-full max-w-[700px] px-6 pt-10 pb-[40vh] sm:px-8">
+    <div className="mx-auto w-full max-w-[700px] px-6 pt-10 pb-[40vh] sm:px-8 sm:pt-14">
       <Textarea
         ref={titleRef}
         value={title}
@@ -146,7 +162,7 @@ export function ArticleEditor({ onCounts }: { onCounts(c: Counts): void }) {
         placeholder="Title"
         aria-label="Title"
         spellCheck
-        className="mb-4 min-h-0 resize-none overflow-hidden rounded-none border-0 bg-transparent p-0 font-write text-[calc(36px*var(--f-write-scale))] leading-[1.15] font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-[calc(36px*var(--f-write-scale))] dark:bg-transparent"
+        className="mb-4 min-h-0 resize-none overflow-hidden rounded-none border-0 bg-transparent p-0 font-write text-[calc(36px*var(--f-write-scale))] leading-[1.15] font-medium tracking-tight shadow-none focus-visible:ring-0 md:text-[calc(36px*var(--f-write-scale))] dark:bg-transparent"
         onChange={(e) => {
           const value = e.target.value.replace(/\s*\n\s*/g, ' ');
           setTitle(value);

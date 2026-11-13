@@ -4,6 +4,28 @@
 import './fonts.ts';
 
 export { App } from './app.tsx';
-export type { AI, Backend, FetchedPage, ModelChoice, SecretName, Secrets, StoredImage } from './backend.ts';
+export type {
+  AI,
+  AppEvent,
+  Backend,
+  EventInput,
+  EventsService,
+  FetchedPage,
+  FileEntry,
+  FilePlace,
+  FilePlaces,
+  FilesService,
+  FolderSize,
+  LargeFiles,
+  ModelChoice,
+  SecretName,
+  Secrets,
+  StoredImage,
+  TerminalOpenOptions,
+  TerminalService,
+  TerminalSession,
+  WebAppBounds,
+  WebAppsService,
+} from './backend.ts';
 export { localAI } from './local-ai.ts';
 export { pageFetcher } from './sources.ts';

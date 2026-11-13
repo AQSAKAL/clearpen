@@ -1,6 +1,6 @@
 # apps/desktop
 
-Clearpen for Mac and Windows: the writing app (`@clearpen/ui`) in a [Tauri 2](https://tauri.app) shell. This app only supplies a `Backend` (`src/desktop-backend.ts`): the library, images, save dialogs and the local model. Everything you see comes from `packages/ui`. What's built and what comes next is in [the plan](../../docs/plans/writing-app.md).
+Clearpen for Mac and Windows: the writing app (`@clearpen/ui`) in a [Tauri 2](https://tauri.app) shell. This app only supplies a `Backend` (`src/desktop-backend.ts`): the library, images, save dialogs, the local model and the integrated terminal. Everything you see comes from `packages/ui`. What's built and what comes next is in [the plan](../../docs/plans/writing-app.md).
 
 ## What the shell adds
 
@@ -11,6 +11,10 @@ Clearpen for Mac and Windows: the writing app (`@clearpen/ui`) in a [Tauri 2](ht
 | **Saving files** | "Save as Markdown…" and "Save as web page…" ask where with the system's save dialog. | `src/desktop-backend.ts` |
 | **Local models** | Requests to Ollama go through Tauri's HTTP plugin, so there is no CORS. They carry no `Origin` header, because Ollama turns away the app's Windows origin (`http://tauri.localhost`) with a 403. The same plugin reaches OpenRouter. | `src/desktop-backend.ts`, `src-tauri/Cargo.toml` |
 | **API keys** | The OpenRouter key is kept in the operating system's credential store, under the service `app.clearpen.desktop` and the account `openrouter` — Keychain on Mac, Credential Manager on Windows, Secret Service on Linux — through the `keyring` crate. It never touches the library, a settings file or a log, and the window can read, write or delete only that one entry. | `src-tauri/src/lib.rs`, `packages/ui/src/backend.ts` |
+| **Terminal** | A bottom panel of tabs, each a real shell: `portable-pty` opens a pseudo-terminal per tab, streams its bytes over a Tauri channel to xterm.js, and writes keystrokes back. **AI Runner** starts `opencode` in a folder the writer chooses. Closing a tab, or the window, ends its shell. | `src-tauri/src/terminal.rs`, `packages/ui/src/components/terminal-panel.tsx` |
+| **Web apps** | Telegram, WhatsApp, X, Google and Wikipedia in child webviews (Tauri's multiwebview API), each with its own data directory, so a login survives a restart. No iframe; only http and https load. Google and Apple sign-in open in the system browser because they refuse to authorize inside embedded webviews. | `src-tauri/src/webapps.rs`, `packages/ui/src/components/webapps-view.tsx` |
+| **Event log** | `command.executed`, `article.written`, `terminal.opened`, `webapp.navigated` and notifications go through a `tokio::sync::broadcast` hub, then into the `interactions` table. The window shows `notification.received` in the bell. | `src-tauri/src/events.rs`, `packages/ui/src/events.tsx`, `packages/db/src/schema.ts` |
+| **File explorer** | A read-only Finder-style view: `fs_list` reads a folder; `fs_search` uses the `ignore` crate's parallel walker over the current folder, skips dependency trees, and returns at most 200 paths within 2.2 s. Folder sizes are lazy, cached for two minutes and streamed as each finishes; `fs_open` and `fs_reveal` use the system. Cleanup scans Home for the 100 largest files (read-only). No index, no writes. | `src-tauri/src/files.rs`, `packages/ui/src/components/files-view.tsx` |
 | **First-run setup** | With no Ollama or no model, the app links to ollama.com in the browser (Tauri's opener plugin) and downloads the model through Ollama with its progress. It reads the computer's memory (a `total_memory` command, with the `sysinfo` crate) to offer Qwen3 8B, or Qwen3 4B on 8 GB. | `src-tauri/src/lib.rs`, `packages/ui/src/setup.tsx` |
 | **Never lose a word** | Changes waiting to be saved are written before the window closes. | `src/desktop-backend.ts` (`beforeClose`) |
 | **Permissions** | The window may open its database, read and write its `media` folder, write a file the writer picked in a save dialog, reach model hosts over HTTP and HTTPS (Ollama on `127.0.0.1:11434` / `localhost:11434`, and OpenRouter), and open web and mail links (an article's links, `https://ollama.com/*`, `https://www.tradingview.com/*` for the full chart behind a ticker's price tag) in the browser — nothing else. Redirects are checked against that list too. | `src-tauri/capabilities/default.json`, `tauri.conf.json` |
@@ -31,7 +35,7 @@ pnpm --filter @clearpen/desktop tauri dev
 
 The window loads the Vite dev server on port 1420 and reloads as you edit.
 
-To work on the interface without Tauri, run `pnpm --filter @clearpen/desktop dev` and open http://localhost:1420 in a browser. There the app runs on the same library code with SQLite compiled to WebAssembly, held in memory, so nothing is saved. It reaches Ollama directly.
+To work on the interface without Tauri, run `pnpm --filter @clearpen/desktop dev` and open http://localhost:1420 in a browser. The browser saves its SQLite library and images in IndexedDB. See [self-hosting](../web/README.md) to serve the production web build.
 
 ## Build an installer
 

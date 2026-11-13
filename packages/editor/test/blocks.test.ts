@@ -26,15 +26,15 @@ The end.`;
 const at = (text: string) => NOTES.indexOf(text);
 
 describe('drawn Markdown', () => {
-  test('a table is drawn as one, and is Markdown again with the cursor in it', () => {
+  test('a table stays drawn while the cursor is in it, with editable cells', () => {
     const ed = mount(NOTES);
-    const cells = () => all(ed, '.cm-table th, .cm-table td').map((c) => c.textContent);
+    const cells = () => (all(ed, '.cm-table input[data-cell]') as HTMLInputElement[]).map((c) => c.value);
     expect(cells()).toEqual(['Trail', 'Distance', 'Lakeside Loop', '4 km', 'Ridge Path', '9 km']);
     expect(ed.view.contentDOM.textContent).not.toContain('|-------|');
 
     ed.setSelection(at('Ridge Path'));
-    expect(all(ed, '.cm-table')).toEqual([]);
-    expect(ed.view.contentDOM.textContent).toContain('| Ridge Path | 9 km |');
+    expect(all(ed, '.cm-table').length).toBe(1);
+    expect(all(ed, '.cm-table input[data-cell]').length).toBe(6);
   });
 
   test('a table with a note or a tracked change on it stays Markdown, so the passage is underlined', () => {
@@ -49,12 +49,23 @@ describe('drawn Markdown', () => {
     expect(all(ed, '.cm-table')).toEqual([]);
   });
 
-  test('a click on a drawn table puts the cursor at the end of the row clicked', () => {
+  test('editing a cell writes the table back to Markdown when focus leaves', () => {
     const ed = mount(NOTES);
-    const ridge = all(ed, '.cm-table td').find((c) => c.textContent === 'Ridge Path')!;
-    mousedown(ridge);
-    expect(ed.cursor()).toBe(at('| Ridge Path | 9 km |') + '| Ridge Path | 9 km |'.length);
-    expect(all(ed, '.cm-table')).toEqual([]);
+    const cell = (all(ed, '.cm-table input[data-cell]') as HTMLInputElement[]).find((c) => c.value === '9 km')!;
+    cell.focus();
+    cell.value = '11 km';
+    cell.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
+    expect(ed.getText()).toContain('| Ridge Path | 11 km |');
+    expect((all(ed, '.cm-table input[data-cell]') as HTMLInputElement[]).map((c) => c.value)).toContain('11 km');
+  });
+
+  test('getText commits a cell that is still focused, so a save never writes the old table', () => {
+    const ed = mount(NOTES);
+    const cell = (all(ed, '.cm-table input[data-cell]') as HTMLInputElement[]).find((c) => c.value === '4 km')!;
+    cell.focus();
+    cell.value = '5 km';
+    expect(ed.getText()).toContain('| Lakeside Loop | 5 km |');
+    expect((all(ed, '.cm-table input[data-cell]') as HTMLInputElement[]).map((c) => c.value)).toContain('5 km');
   });
 
   test('a task’s [ ] is a checkbox that ticks, and a done task recedes', () => {

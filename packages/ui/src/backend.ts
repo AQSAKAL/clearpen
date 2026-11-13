@@ -1,7 +1,5 @@
-// Everything the interface needs from the outside world. The desktop app
-// implements it with SQLite, files and Ollama on the machine; tests and the
-// browser preview implement it in memory; the web app will implement it over
-// HTTP. The UI never calls Tauri, SQLite or a model server directly.
+// Desktop and browser implement this contract. The shared UI opens the same
+// library on native SQLite or browser storage and uses the available platform tools.
 
 import type {
   Brief,
@@ -62,6 +60,161 @@ export interface Secrets {
   get(name: SecretName): Promise<string | null>;
   set(name: SecretName, value: string): Promise<void>;
   delete(name: SecretName): Promise<void>;
+}
+
+/** One row in the file browser. */
+export interface FileEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  /** Bytes, for files. */
+  size: number | null;
+  /** Milliseconds since the Unix epoch, when the filesystem gives one. */
+  modified: number | null;
+}
+
+export interface FilePlace {
+  name: string;
+  path: string;
+  kind: 'home' | 'desktop' | 'documents' | 'downloads' | 'volume';
+}
+
+export interface FilePlaces {
+  home: string;
+  places: FilePlace[];
+}
+
+/** A folder's size, computed in the background. `bytes` is null while pending. */
+export interface FolderSize {
+  path: string;
+  bytes: number | null;
+  /** False when the walk hit its time budget or an unreadable folder. */
+  complete: boolean;
+}
+
+/** The largest files a cleanup scan found, and whether it finished the tree. */
+export interface LargeFiles {
+  files: FileEntry[];
+  scannedMs: number;
+  complete: boolean;
+}
+
+/**
+ * The native file browser. Listing and search touch the filesystem directly in
+ * the desktop shell, so they are not bound by the library folder. The browser indexes files in a directory selected by the user.
+ */
+export interface FilesService {
+  places(): Promise<FilePlaces>;
+  list(path: string, options?: { showHidden?: boolean }): Promise<FileEntry[]>;
+  /** Parallel path search under `root`; stops at a time/result budget. */
+  search(root: string, query: string, options?: { limit?: number; showHidden?: boolean }): Promise<FileEntry[]>;
+  /** Opens a file or folder with the system's default application. */
+  open(path: string): Promise<void>;
+  /** Shows the file or folder in Finder/Explorer. */
+  reveal?(path: string): Promise<void>;
+  /** Browse a directory explicitly selected in the browser. */
+  selectFolder?(files: FileList): void;
+  /** Cached sizes immediately; missing ones are computed and sent via `onFolderSize`. */
+  folderSizes(paths: string[]): Promise<FolderSize[]>;
+  /** Background folder-size results, as each one finishes. */
+  onFolderSize(listener: (size: FolderSize) => void): () => void;
+  /** The largest files under `root`, for the Cleanup view. Read-only. */
+  largeFiles(root: string, limit?: number): Promise<LargeFiles>;
+}
+
+/** One event from the app's event hub. `data` is free-form JSON. */
+export interface AppEvent {
+  id: string;
+  kind: string;
+  source: string;
+  /** Milliseconds since the Unix epoch. */
+  at: number;
+  data: unknown;
+}
+
+/** An event to emit. The hub adds the id, time and a default source. */
+export interface EventInput {
+  kind: string;
+  source?: string;
+  data?: unknown;
+}
+
+/**
+ * The app's event hub: one subscription for everything that happens. The
+ * desktop shell broadcasts events from Rust; the browser preview keeps an
+ * in-memory hub. Events are stored in the `interactions` table.
+ */
+export interface EventsService {
+  onEvent(listener: (event: AppEvent) => void): () => void;
+  emit(event: EventInput): void;
+}
+
+/**
+ * One terminal: a shell process on this computer, drawn by xterm.js in the
+ * window. It exists only while its tab does.
+ */
+export interface TerminalSession {
+  /** Keystrokes, exactly as typed. */
+  write(data: string): void;
+  resize(cols: number, rows: number): void;
+  /** Ends the shell and forgets the session. */
+  close(): void;
+}
+
+export interface TerminalOpenOptions {
+  cols: number;
+  rows: number;
+  /** Where the shell starts. Defaults to the writer's home folder. */
+  cwd?: string;
+  /** A command line to start instead of an interactive prompt, e.g. "opencode". */
+  command?: string;
+  /** The shell to run; defaults to the writer's own. */
+  shell?: string;
+  /** Raw bytes from the shell, as they arrive. */
+  onData(data: Uint8Array): void;
+  /** The shell ended; the tab can say so and offer a new one. */
+  onExit(): void;
+}
+
+/**
+ * The integrated terminal, where the platform has one. The desktop app gives
+ * it a pseudo-terminal; the browser has no place to run one, so it leaves
+ * `Backend.terminal` out.
+ */
+export interface TerminalService {
+  open(options: TerminalOpenOptions): Promise<TerminalSession>;
+  /** The shell Clearpen would start. */
+  defaultShell(): Promise<string>;
+  /** The writer's home folder. */
+  defaultCwd(): Promise<string>;
+  /** Ask the writer for a folder to start in; null when they cancel. */
+  chooseFolder?(): Promise<string | null>;
+}
+
+/** The rectangle a web app may cover, in CSS pixels relative to the window. */
+export interface WebAppBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * An embedded web app: Telegram, WhatsApp, X, Google, Wikipedia. Each runs in its own
+ * child webview, with its own cookies and storage, so it stays logged in.
+ */
+export interface WebAppsService {
+  /** Ensures the child exists without bringing it forward. */
+  open(options: { id: string; url: string }): Promise<void>;
+  /** Place the child in its host rectangle, or hide it without ending its session. */
+  present(id: string, bounds: WebAppBounds | null): void;
+  navigate(id: string, url: string): void;
+  action(id: string, action: 'back' | 'forward' | 'reload'): void;
+  close(id: string): void;
+  /** The page a web app is on now, or null if it isn't open. */
+  url(id: string): Promise<string | null>;
+  /** The page a web app is on, after links and redirects. Returns an unsubscribe. */
+  onNavigate(listener: (id: string, url: string) => void): () => void;
 }
 
 /** The AI features, as streams of events. Locally they run in the app; on the web, on the server. */
@@ -145,6 +298,21 @@ export interface Backend {
   };
 
   ai: AI;
+
+  /** Everything that happens, in one stream; the window stores it and listens. */
+  events: EventsService;
+
+  /** The integrated terminal; absent where the platform can't run a shell. */
+  terminal?: TerminalService;
+  /** Existing web tools supplied by the self-hosting operator. */
+  webTerminalUrl?: string;
+  webRunnerUrl?: string;
+
+  /** Telegram, WhatsApp, X, Google and Wikipedia, in child webviews; desktop only. */
+  webapps?: WebAppsService;
+
+  /** The file browser, scoped to the selected directory on the web. */
+  explorer?: FilesService;
 
   /** The writer's API keys, kept out of the library and out of any settings file. */
   secrets: Secrets;

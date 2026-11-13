@@ -1,7 +1,8 @@
+import { useLibrary } from '../library.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog.tsx';
 import { Kbd, KbdGroup } from './ui/kbd.tsx';
 
-export function shortcuts(mod: string): [string[], string][] {
+export function shortcuts(mod: string, terminal = true): [string[], string][] {
   return [
     [['Tab'], 'Keep the suggested next sentence'],
     [[`${mod}→`], 'Keep one word of it'],
@@ -11,6 +12,7 @@ export function shortcuts(mod: string): [string[], string][] {
     [[`${mod}⇧E`], 'Review the draft'],
     [[`${mod}⇧A`], 'Show or hide the Assist panel'],
     [[`${mod}S`], 'Save a version'],
+    ...(terminal ? [[['Ctrl', '`'], 'Open terminal'] as [string[], string]] : []),
     [[`${mod}\\`], 'Show or hide the library'],
     [[`${mod}.`], 'Focus mode'],
     [[`${mod}⇧P`], 'Reader mode (Esc to leave)'],
@@ -31,6 +33,7 @@ export function ShortcutsDialog({
   onOpenChange(open: boolean): void;
   mod: string;
 }) {
+  const { backend } = useLibrary();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -39,7 +42,7 @@ export function ShortcutsDialog({
           <DialogDescription>Tab never leaves the editor by accident: press Esc first.</DialogDescription>
         </DialogHeader>
         <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2.5 text-sm">
-          {shortcuts(mod).map(([keys, what]) => (
+          {shortcuts(mod, !!(backend.terminal || backend.webTerminalUrl)).map(([keys, what]) => (
             <div key={what} className="contents">
               <dt>
                 <KbdGroup>

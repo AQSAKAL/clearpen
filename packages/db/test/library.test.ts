@@ -312,6 +312,44 @@ test('settings keep JSON values', async () => {
   assert.equal(await lib.settings.get('missing'), undefined);
 });
 
+test('the interaction log appends once, newest first, and prunes', async () => {
+  const lib = await open();
+  const at = Date.now();
+  await lib.interactions.add({
+    id: 'ev_1',
+    kind: 'command.executed',
+    source: 'ui',
+    at,
+    data: { command: 'review' },
+  });
+  // The same event arriving twice (a replayed channel) is one row.
+  await lib.interactions.add({
+    id: 'ev_1',
+    kind: 'command.executed',
+    source: 'ui',
+    at,
+    data: { command: 'review' },
+  });
+  await lib.interactions.add({
+    id: 'ev_2',
+    kind: 'notification.received',
+    source: 'app',
+    at: at + 1,
+    data: { title: 'Model ready' },
+  });
+  const rows = await lib.interactions.recent();
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    ['ev_2', 'ev_1'],
+  );
+  assert.deepEqual(rows[1]?.data, { command: 'review' });
+  await lib.interactions.prune(at);
+  assert.deepEqual(
+    (await lib.interactions.recent()).map((row) => row.id),
+    ['ev_2'],
+  );
+});
+
 test('excerpts and slugs', () => {
   assert.equal(excerpt('# Title\n\n![chart](media/ab.png)\n\n> A *quoted* line.'), 'A quoted line.');
   assert.ok(excerpt('word '.repeat(60)).endsWith('…'));

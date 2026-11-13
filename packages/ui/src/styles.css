@@ -11,16 +11,16 @@
 
 /* Clearpen's palette — paper and ink — and shadcn's tokens drawn from it. */
 :root {
-  --paper: #fbfaf7;
-  --paper-2: #f4f2ec;
+  --paper: #fcfbf8;
+  --paper-2: #f2f2ed;
   --panel: #ffffff;
-  --ink: #1d1c1a;
-  --ink-2: #4a4741;
-  --faint: #a8a398;
-  --line: #e9e5dc;
-  --line-2: #dcd7cb;
+  --ink: #242824;
+  --ink-2: #474f49;
+  --faint: #787c73;
+  --line: #dfe2da;
+  --line-2: #c5cbbf;
   --hover: rgba(29, 28, 26, 0.05);
-  --brand: #d6452b;
+  --brand: #a5452b;
   --brand-soft: rgba(214, 69, 43, 0.1);
   --ai: #6650e0;
   --ai-soft: rgba(102, 80, 224, 0.1);
@@ -37,7 +37,7 @@
   --c-clarity: #2f6fde;
   --c-concision: #b7791f;
   --c-structure: #7b4bd6;
-  --c-evidence: #d6452b;
+  --c-evidence: #a5452b;
   --c-tone: #0f8f87;
   --c-grammar: #c2367d;
   --c-style: #5b6b7c;
@@ -50,8 +50,8 @@
   --c-idea: #0f8f87;
   --c-coach: var(--ai);
 
-  --f-ui: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --f-text: "Source Serif 4 Variable", "Source Serif Pro", Charter, "Iowan Old Style", Georgia, serif;
+  --f-ui: "IBM Plex Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --f-text: "Newsreader Variable", Charter, "Iowan Old Style", Georgia, serif;
   --f-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   /* The writer's chosen fonts, set by the Fonts dialog, and how much each is scaled to read at the same size. */
   --f-write: var(--f-text);
@@ -71,33 +71,33 @@
   --secondary: var(--paper-2);
   --secondary-foreground: var(--ink);
   --muted: var(--paper-2);
-  --muted-foreground: #7a766d;
-  --accent: #efece5;
+  --muted-foreground: #626b62;
+  --accent: #e9ede6;
   --accent-foreground: var(--ink);
   --destructive: #c0392b;
   --border: var(--line);
   --input: var(--line-2);
-  --ring: #b9b2a3;
+  --ring: #678375;
   --sidebar: var(--paper-2);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--ink);
   --sidebar-primary-foreground: var(--paper);
-  --sidebar-accent: #ebe8e0;
+  --sidebar-accent: #e2e9df;
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
-  --sidebar-ring: #b9b2a3;
+  --sidebar-ring: var(--ring);
   color-scheme: light;
 }
 
 .dark {
-  --paper: #161513;
-  --paper-2: #1c1b18;
-  --panel: #201f1c;
-  --ink: #ece8df;
-  --ink-2: #c9c4b8;
-  --faint: #6e6a62;
-  --line: #2d2b27;
-  --line-2: #3a3833;
+  --paper: #191d1b;
+  --paper-2: #202521;
+  --panel: #262b27;
+  --ink: #ecefe7;
+  --ink-2: #c2cbbf;
+  --faint: #949f94;
+  --line: #303a33;
+  --line-2: #4c574e;
   --hover: rgba(255, 255, 255, 0.05);
   --brand: #ef6a4f;
   --brand-soft: rgba(239, 106, 79, 0.14);
@@ -128,12 +128,12 @@
   --c-procedure: #94d82d;
   --c-idea: #3cc1b8;
 
-  --muted-foreground: #9a958a;
-  --accent: #2a2925;
+  --muted-foreground: #acb6aa;
+  --accent: #303a32;
   --destructive: #ef6a4f;
-  --ring: #5a564e;
-  --sidebar-accent: #272622;
-  --sidebar-ring: #5a564e;
+  --ring: #889d8e;
+  --sidebar-accent: #303c33;
+  --sidebar-ring: var(--ring);
   color-scheme: dark;
 }
 
@@ -205,6 +205,7 @@ tv-ticker-tag:not(:defined) {
     height: 100%;
   }
   body {
+    font-optical-sizing: auto;
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 14px;
   }
@@ -216,7 +217,28 @@ tv-ticker-tag:not(:defined) {
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-page {
+    animation: workspace-appear 160ms ease-out;
+  }
+  [data-sidebar="menu-button"],
+  [data-sidebar="menu-sub-button"] {
+    transition:
+      background-color 120ms ease-out,
+      color 120ms ease-out;
+  }
+}
+@keyframes workspace-appear {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
   }
 }

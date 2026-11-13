@@ -1,11 +1,20 @@
 // The bar above the page: save state, word count, reader mode and the ⋯ menu.
 
 import type { Mode } from '@clearpen/core';
-import { BookOpenIcon, MessageSquareTextIcon, MoreHorizontalIcon, PanelRightIcon, PencilLineIcon } from 'lucide-react';
+import {
+  BookOpenIcon,
+  BotIcon,
+  MessageSquareTextIcon,
+  MoreHorizontalIcon,
+  NewspaperIcon,
+  PanelRightIcon,
+  PencilLineIcon,
+} from 'lucide-react';
 import { cn } from '../lib/utils.ts';
 import { type SaveState, useLibrary } from '../library.tsx';
 import { type ThemeSetting, useTheme } from '../theme.tsx';
 import type { Counts } from './article-editor.tsx';
+import { BrandXIcon } from './brand-icons.tsx';
 import { Button } from './ui/button.tsx';
 import {
   DropdownMenu,
@@ -19,13 +28,15 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu.tsx';
-import { SidebarTrigger, useSidebar } from './ui/sidebar.tsx';
 
 export type Command =
   | 'review'
   | 'assist'
   | 'insights'
   | 'sources'
+  | 'terminal'
+  | 'news'
+  | 'ai-runner'
   | 'autocomplete'
   | 'autocorrect'
   | 'prices'
@@ -77,31 +88,20 @@ export function TopBar({
   onCommand(c: Command): void;
 }) {
   const { backend, saveState, failures } = useLibrary();
-  const { open, isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
-  // tauri.conf.json's trafficLightPosition centres the window's buttons in this
-  // 48px bar. Its y is not the buttons' top: macOS keeps them a few points
-  // below it, so y: 27 was measured to put their centre at 24px.
-  const roomForLights = backend.overlayTitleBar && (!open || isMobile);
-
   return (
-    <header
-      data-tauri-drag-region
-      className={cn(
-        'sticky top-0 z-10 flex h-12 shrink-0 items-center gap-1 bg-background/90 px-3 backdrop-blur',
-        roomForLights && 'pl-20',
-      )}
-    >
-      {(!open || isMobile) && <SidebarTrigger className="text-muted-foreground" />}
+    <>
       <span
         data-tauri-drag-region
-        className={cn('px-2 text-xs text-muted-foreground', saveState === 'retrying' && 'text-destructive')}
+        className={cn(
+          'hidden text-xs text-muted-foreground @[640px]:inline',
+          saveState === 'retrying' && 'inline text-destructive',
+        )}
         role="status"
         aria-live="polite"
       >
         {saveState === 'retrying' && failures > 2 ? 'Not saved — can’t reach the library' : SAVE_LABELS[saveState]}
       </span>
-      <div data-tauri-drag-region className="h-full flex-1" />
       <Button
         variant="ghost"
         size="sm"
@@ -109,7 +109,8 @@ export function TopBar({
         onClick={() => onCommand('insights')}
         title="Insights"
       >
-        {counts.words.toLocaleString()} words<span className="max-sm:hidden"> · {counts.minutes} min read</span>
+        {counts.words.toLocaleString()} words
+        <span className="hidden @[640px]:inline"> · {counts.minutes} min read</span>
       </Button>
       <Button
         variant="ghost"
@@ -118,20 +119,20 @@ export function TopBar({
         title={reading ? 'Back to editing (Esc)' : `Reader mode (${mod}⇧P)`}
       >
         {reading ? <PencilLineIcon /> : <BookOpenIcon />}
-        <span className="max-sm:hidden">{reading ? 'Edit' : 'Read'}</span>
+        <span className="hidden @[640px]:inline">{reading ? 'Edit' : 'Read'}</span>
       </Button>
       <Button variant="ghost" size="sm" onClick={() => onCommand('review')} title={`Review the draft (${mod}⇧E)`}>
         <MessageSquareTextIcon />
-        <span className="max-sm:hidden">Review</span>
+        <span className="hidden @[640px]:inline">Review</span>
       </Button>
       <Button
         variant="ghost"
-        size="icon-sm"
+        size="sm"
         onClick={() => onCommand('assist')}
         aria-label="Assist"
         title={`Assist: notes, insights and sources (${mod}⇧A)`}
       >
-        <PanelRightIcon />
+        <PanelRightIcon /> <span className="hidden @[640px]:inline">Assist</span>
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -175,6 +176,14 @@ export function TopBar({
             Reader mode <DropdownMenuShortcut>{mod}⇧P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('sources')}>Sources…</DropdownMenuItem>
+          {(backend.terminal || backend.webRunnerUrl) && (
+            <DropdownMenuItem onSelect={() => onCommand('ai-runner')}>
+              <BotIcon /> Run opencode (AI Runner)
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onSelect={() => onCommand('news')}>
+            <NewspaperIcon /> Markets and economy headlines
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('fonts')}>Fonts…</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs text-muted-foreground">Theme</DropdownMenuLabel>
@@ -195,7 +204,9 @@ export function TopBar({
           <DropdownMenuLabel className="text-xs text-muted-foreground">Copy for</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => onCommand('copy-substack')}>Substack post</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('copy-linkedin')}>LinkedIn post</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onCommand('copy-x')}>X post (plain text)</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCommand('copy-x')}>
+            <BrandXIcon className="size-4" /> X post (plain text)
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('save-md')}>Save as Markdown…</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onCommand('save-html')}>Save as web page…</DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -208,6 +219,6 @@ export function TopBar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </header>
+    </>
   );
 }

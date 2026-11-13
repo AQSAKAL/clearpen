@@ -1,47 +1,167 @@
 // Markdown that reads better drawn than spelled out: a table as a table, a
-// task's [ ] as a checkbox, a bullet's - as a dot, --- as a rule. Each is
-// drawn only while the cursor is away from it; with the cursor on it, the
-// Markdown is there to edit as typed. A click on a drawn table puts the
-// cursor in the row clicked. The table is drawn by the same renderer as
-// Reader mode and the exports, which escapes everything first. A table with a
-// note or a tracked change on it stays Markdown, so the wrong total is
-// underlined where the note says it is.
+// task's [ ] as a checkbox, a bullet's - as a dot, --- as a rule. Tasks,
+// bullets and rules are drawn while the cursor is away from them; tables stay
+// drawn and their cells are edited in place, committing back to Markdown when
+// focus leaves the table. A table with a note or a tracked change stays
+// Markdown, so the wrong total is underlined where the note says it is.
 
-import { toHTML } from '@clearpen/core';
 import { syntaxTree } from '@codemirror/language';
 import { type EditorState, type Range, StateField } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { notesField } from './notes.ts';
 import type { Suggestion } from './types.ts';
 
+function splitRow(line: string): string[] {
+  let text = line.trim();
+  if (text.startsWith('|')) text = text.slice(1);
+  if (text.endsWith('|')) text = text.slice(0, -1);
+  return text.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'));
+}
+
+function joinRow(cells: string[]): string {
+  return `| ${cells.map((cell) => cell.replace(/\|/g, '\\|')).join(' | ')} |`;
+}
+
+function alignment(separator: string): 'left' | 'center' | 'right' {
+  const text = separator.trim();
+  if (text.startsWith(':') && text.endsWith(':')) return 'center';
+  if (text.endsWith(':')) return 'right';
+  return 'left';
+}
+
+/** Reads the edited cells and puts them back into the table's Markdown. */
+function tableSource(wrap: HTMLElement, separator: string[]): string {
+  const read = (row: Element) =>
+    [...row.querySelectorAll<HTMLInputElement>('input[data-cell]')].map((cell) => cell.value.trim());
+  const headRow = wrap.querySelector('thead tr');
+  const header = headRow ? read(headRow) : [];
+  const body = [...wrap.querySelectorAll('tbody tr')].map(read);
+  const columns = header.length;
+  if (!columns) return '';
+  const separators = Array.from({ length: columns }, (_, index) => separator[index] ?? '---');
+  return [joinRow(header), joinRow(separators), ...body.map(joinRow)].join('\n');
+}
+
 class TableWidget extends WidgetType {
   readonly source: string;
   readonly from: number;
+  private readonly header: string[];
+  private readonly separator: string[];
+  private readonly body: string[][];
 
   constructor(source: string, from: number) {
     super();
     this.source = source;
     this.from = from;
+    const lines = source.split('\n');
+    this.header = splitRow(lines[0] ?? '');
+    this.separator = splitRow(lines[1] ?? '');
+    this.body = lines.slice(2).map(splitRow);
   }
 
   override eq(other: TableWidget): boolean {
     return other.source === this.source && other.from === this.from;
   }
 
+  private cell(
+    tag: 'th' | 'td',
+    row: number,
+    column: number,
+    value: string,
+    align: string,
+    commit: () => void,
+  ): HTMLElement {
+    const cell = document.createElement(tag);
+    cell.style.textAlign = align;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    input.dataset.cell = `${row}:${column}`;
+    input.spellcheck = true;
+    input.style.textAlign = align;
+    input.setAttribute('aria-label', `Table cell, row ${row + 1}, column ${column + 1}`);
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        input.blur();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        input.value = value;
+        commit();
+        input.blur();
+      }
+    });
+
+    cell.append(input);
+    return cell;
+  }
+
   toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-table';
-    wrap.innerHTML = toHTML(this.source);
-    // A click edits the row it lands on: the header is the table's first line,
-    // the rule under it the second, then a line a row.
-    wrap.onmousedown = (ev) => {
-      ev.preventDefault();
-      const row = (ev.target as Element | null)?.closest('tr');
-      const index = row ? [...wrap.querySelectorAll('tr')].indexOf(row) : 0;
-      const line = view.state.doc.lineAt(this.from).number + (index > 0 ? index + 1 : 0);
-      view.dispatch({ selection: { anchor: view.state.doc.line(Math.min(line, view.state.doc.lines)).to } });
-      view.focus();
+    const columns = Math.max(this.header.length, this.separator.length, ...this.body.map((row) => row.length));
+    if (!columns) {
+      wrap.textContent = this.source;
+      return wrap;
+    }
+
+    const commit = () => {
+      const nextSource = tableSource(wrap, this.separator);
+      if (!nextSource || nextSource === this.source) return;
+      // The table may have moved or changed while a cell was focused; never
+      // write a stale range over newer text.
+      if (view.state.doc.sliceString(this.from, this.from + this.source.length) !== this.source) return;
+      view.dispatch({
+        changes: { from: this.from, to: this.from + this.source.length, insert: nextSource },
+        userEvent: 'input.table',
+      });
     };
+    // getText() can be called while a cell is focused (a save, an export);
+    // it reaches in and commits before reading the document.
+    (wrap as HTMLElement & { __clearpenCommit?: () => void }).__clearpenCommit = commit;
+    const header = Array.from({ length: columns }, (_, index) => this.header[index] ?? '');
+    const separators = Array.from({ length: columns }, (_, index) => this.separator[index] ?? '---');
+    const body = this.body.map((row) => Array.from({ length: columns }, (_, index) => row[index] ?? ''));
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    header.forEach((value, column) => {
+      headRow.append(this.cell('th', 0, column, value, alignment(separators[column]!), commit));
+    });
+    thead.append(headRow);
+    table.append(thead);
+
+    const tbody = document.createElement('tbody');
+    body.forEach((row, index) => {
+      const tr = document.createElement('tr');
+      row.forEach((value, column) => {
+        tr.append(this.cell('td', index + 1, column, value, alignment(separators[column]!), commit));
+      });
+      tbody.append(tr);
+    });
+    table.append(tbody);
+    wrap.append(table);
+
+    wrap.addEventListener('focusout', (event) => {
+      const next = event.relatedTarget as Node | null;
+      if (next && wrap.contains(next)) return;
+      if (next) {
+        commit();
+        return;
+      }
+      // WebKit doesn't always supply relatedTarget; wait until the next
+      // focus lands before deciding the table was left.
+      setTimeout(() => {
+        if (!wrap.contains(document.activeElement)) commit();
+      }, 0);
+    });
+
     return wrap;
   }
 
@@ -131,7 +251,9 @@ function drawn(state: EditorState, suggestions: StateField<readonly Suggestion[]
         case 'Table': {
           const from = doc.lineAt(node.from).from;
           const to = doc.lineAt(node.to).to;
-          if (touches(state, from, to) || markedIn(from, to)) return false;
+          // A noted or suggested table stays Markdown so its underline lands
+          // on the words; otherwise it stays a table while its cells are edited.
+          if (markedIn(from, to)) return false;
           marks.push(
             Decoration.replace({ widget: new TableWidget(doc.sliceString(from, to), from), block: true }).range(
               from,

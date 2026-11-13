@@ -5,6 +5,11 @@
 // there is for a model. What the window may do with them is listed in
 // capabilities/default.json.
 
+mod events;
+mod files;
+mod terminal;
+mod webapps;
+
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
 
 /// The credential-store service name: these entries belong to Clearpen alone.
@@ -80,6 +85,9 @@ fn total_memory() -> u64 {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(events::EventBus::new())
+        .manage(std::sync::Arc::new(files::FolderSizes::default()))
+        .manage(terminal::TerminalState::default())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())
@@ -90,7 +98,27 @@ pub fn run() {
             log_error,
             secret_get,
             secret_set,
-            secret_delete
+            secret_delete,
+            terminal::terminal_open,
+            terminal::terminal_write,
+            terminal::terminal_resize,
+            terminal::terminal_close,
+            terminal::terminal_close_all,
+            terminal::terminal_default_shell,
+            webapps::webapp_open,
+            webapps::webapp_present,
+            webapps::webapp_navigate,
+            webapps::webapp_action,
+            webapps::webapp_close,
+            webapps::webapp_url,
+            events::event_emit,
+            files::fs_places,
+            files::fs_list,
+            files::fs_search,
+            files::fs_folder_sizes,
+            files::fs_large_files,
+            files::fs_open,
+            files::fs_reveal
         ])
         .run(tauri::generate_context!())
         .expect("error while running Clearpen");

@@ -653,6 +653,22 @@
 .cm-table tr:hover td {
   background: color-mix(in srgb, var(--paper-2) 60%, transparent);
 }
+.cm-table input[data-cell] {
+  display: block;
+  width: 100%;
+  min-width: 4ch;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  outline: none;
+}
+.cm-table input[data-cell]:focus {
+  background: var(--background);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ai) 35%, transparent);
+}
 
 /* A task's [ ] as a checkbox; a done task recedes. */
 .cm-task {

@@ -142,6 +142,25 @@ export function LibraryProvider({
     await send();
   }, [send]);
 
+  useEffect(() => {
+    if (backend.beforeClose || saveState === 'saved') return;
+    const flushHidden = () => {
+      if (document.hidden) void flush();
+    };
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!pending.current.size && !saving.current) return;
+      void flush();
+      event.preventDefault();
+      event.returnValue = true;
+    };
+    window.addEventListener('beforeunload', warn);
+    document.addEventListener('visibilitychange', flushHidden);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      document.removeEventListener('visibilitychange', flushHidden);
+    };
+  }, [backend, saveState, flush]);
+
   const edit = useCallback(
     (patch: DocumentPatch) => {
       const doc = currentRef.current;

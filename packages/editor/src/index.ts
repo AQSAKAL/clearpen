@@ -19,6 +19,7 @@ import { imageField } from './images.ts';
 import { aiKeys } from './keys.ts';
 import { lineStyles, proseHighlight, underline } from './markdown.ts';
 import { notesField, removeNote, setActiveNote, setNotes } from './notes.ts';
+import { renderedMarkdown } from './rendered.ts';
 import { sectionField } from './sections.ts';
 import {
   acceptingAnnotation,
@@ -99,6 +100,7 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
     lineStyles,
     codeBlocks,
     markdownBlocks(sugField),
+    renderedMarkdown,
     highlightSelectionMatches({ minSelectionLength: 3 }),
     placeholder(opts.placeholder || 'Start writing…'),
     sugField,
@@ -201,12 +203,27 @@ export function createEditor(parent: HTMLElement, opts: EditorOptions = {}): Cle
 
   const view = new EditorView({ state: EditorState.create({ doc: opts.doc || '', extensions }), parent });
 
+  // A table cell is a contenteditable island: its edit reaches the Markdown on
+  // focusout. Saves and exports read getText() while a cell may still be
+  // focused, so commit it first instead of saving the previous table.
+  const flushTableEdits = () => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches('.cm-table input[data-cell]')) return;
+    const table = active.closest('.cm-table') as (HTMLElement & { __clearpenCommit?: () => void }) | null;
+    table?.__clearpenCommit?.();
+    active.blur();
+  };
+
   let seq = 0;
   let destroyed = false;
   const api: ClearpenEditor = {
     view,
-    getText: () => view.state.doc.toString(),
+    getText: () => {
+      flushTableEdits();
+      return view.state.doc.toString();
+    },
     setText(text) {
+      flushTableEdits();
       view.setState(EditorState.create({ doc: text, extensions }));
     },
     focus: () => view.focus(),
